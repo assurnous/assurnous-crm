@@ -1,0 +1,689 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+nav {
+  background-color: #007BFF;
+  padding: 1rem;
+  width: 100%;
+}
+
+nav h1 {
+  color: white;
+  display: inline;
+}
+
+nav a {
+  color: white;
+  margin-left: 20px;
+  text-decoration: none;
+}
+
+.hero {
+  text-align: center;
+  padding: 80px 20px;
+  background-color: #f5f5f5;
+}
+
+.hero h2 {
+  font-size: 36px;
+  margin-bottom: 20px;
+}
+
+.hero p {
+  font-size: 18px;
+  margin-bottom: 30px;
+}
+
+.hero a {
+  padding: 10px 20px;
+  background-color: #007BFF;
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+}
+
+.features {
+  display: flex;
+  justify-content: space-around;
+  padding: 50px;
+}
+
+.features div {
+  background-color: #f9f9f9;
+  padding: 20px;
+  width: 30%;
+  text-align: center;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+}
+
+.signup {
+  background-color: #eeeeee;
+  padding: 40px;
+  text-align: center;
+}
+
+.signup form {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.footer {
+  background-color: #007BFF;
+  color: white;
+  text-align: center;
+  padding: 10px;
+}
+
+
+/* Reduce the font size for table rows */
+.ant-table td {
+  font-size: 12px; /* Adjust the size as needed */
+}
+.ant-input::placeholder {
+  font-size: 12px; /* Adjust the value as needed */
+}
+
+/* Reduce the font size for table headers */
+.ant-table th {
+  font-size: 2px; /* Adjust the size for header titles */
+}
+
+/* Optionally reduce the padding for a more compact table */
+.ant-table td, .ant-table th {
+  padding: 8px; /* Adjust the padding for your needs */
+}
+
+.leads-container {
+  padding: 24px;
+  background-color: #f4f4f4;
+}
+
+.ant-table {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.ant-table-thead > tr > th {
+  background-color: #fafafa;
+  color: #333;
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.ant-table-tbody > tr > td {
+  text-align: center;
+}
+
+.ant-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Custom styles for table */
+.custom-table .ant-table-thead > tr > th {
+  background-color: #2563eb; /* Tailwind's blue-600 */
+  color: #fff;
+  font-weight: bold;
+}
+
+.custom-table .ant-table-tbody > tr > td {
+  background-color: #f9fafb; /* Tailwind's gray-50 */
+  color: #4b5563; /* Tailwind's gray-700 */
+  padding: 12px;
+  transition: background-color 0.2s ease;
+}
+
+.custom-table .ant-table-tbody > tr:hover > td {
+  background-color: #e0f2fe; /* Tailwind's light blue-100 */
+}
+
+.custom-table .ant-pagination-item-active {
+  border-color: #2563eb;
+}
+
+.custom-table .ant-pagination-item-active a {
+  color: #2563eb;
+  font-weight: bold;
+}
+/* You can add this CSS in your CSS file or inline styles */
+.banner-image {
+  width: 100%; /* Ensures the image takes the full width of the container */
+  height: 200px; /* Set a fixed height for all images */
+  object-fit: contain; /* Ensures the image maintains aspect ratio and fills the container */
+}
+
+/* Ensures the sidebar content is always visible */
+.sidebar-content {
+  display: block;
+  visibility: visible;
+  overflow: visible;
+}
+.program-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* 3 cards per row by default */
+  gap: 16px;
+  padding: 16px;
+}
+
+@media (max-width: 1024px) {
+  .program-container {
+    grid-template-columns: repeat(2, 1fr); /* 2 per row on tablets */
+  }
+}
+
+@media (max-width: 640px) {
+  .program-container {
+    grid-template-columns: 1fr; /* Stack on small devices */
+    padding: 8px;
+  }
+}
+
+.program-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  background-color: white;
+  width: 100%;
+}
+
+.program-card-image {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.program-card-content {
+  flex-grow: 1;
+  padding: 16px;
+}
+
+.program-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.program-description {
+  font-size: 1rem;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 767px) {
+  .program-card-content {
+    padding: 12px;
+  }
+
+  .program-title {
+    font-size: 1rem;
+    margin-bottom: 6px;
+  }
+
+  .program-description {
+    font-size: 0.875rem;
+    margin-bottom: 12px;
+  }
+}
+
+.program-card-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+  border-top: 1px solid #ddd;
+}
+
+
+
+
+
+
+/* Main container styles */
+.crm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.crm-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+}
+
+.crm-actions {
+  display: flex;
+  gap: 16px;
+}
+
+/* Card and tabs styles */
+.crm-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.09);
+  margin-bottom: 24px;
+}
+
+.crm-tabs .ant-tabs-nav {
+  margin: 0;
+}
+
+.crm-tabs .ant-tabs-tab {
+  padding: 16px 24px;
+  font-size: 15px;
+}
+
+.crm-tabs .ant-tabs-tab-active {
+  font-weight: 500;
+}
+
+/* Filters section */
+.crm-filters {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  width: 300px;
+  border-radius: 6px;
+}
+
+.status-filter {
+  width: 180px;
+  border-radius: 6px;
+}
+
+.advanced-filter {
+  border-radius: 6px;
+}
+
+/* Table styles */
+.crm-table {
+  width: 100%;
+}
+
+.crm-table .ant-table-thead > tr > th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  padding: 12px 16px;
+}
+
+.crm-table .ant-table-tbody > tr > td {
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.crm-table .ant-table-tbody > tr:hover > td {
+  background-color: #f8f9fa;
+}
+
+.action-button {
+  padding: 4px 8px;
+}
+
+/* Modal styles */
+.crm-modal .modal-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.crm-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.form-item {
+  margin-bottom: 0;
+}
+
+.form-item .ant-form-item-label {
+  padding-bottom: 4px;
+}
+
+.form-item .ant-form-item-label > label {
+  color: #5a5a5a;
+  font-size: 14px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Button styles */
+.add-button {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.add-button:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.submit-button {
+  background-color: #1890ff;
+  border-color: #1890ff;
+  border-radius: 6px;
+  font-weight: 500;
+  min-width: 120px;
+}
+
+.submit-button:hover {
+  background-color: #40a9ff;
+  border-color: #40a9ff;
+}
+
+.cancel-button {
+  border-radius: 6px;
+  min-width: 120px;
+}
+
+/* Divider styles */
+.crm-divider {
+  margin: 16px 0;
+}
+
+/* Avatar styles */
+.ant-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .crm-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .crm-filters {
+    flex-direction: column;
+  }
+  
+  .search-input,
+  .status-filter,
+  .advanced-filter {
+    width: 100%;
+  }
+}
+
+/* Tag styles */
+.ant-tag {
+  border-radius: 12px;
+  padding: 0 10px;
+  font-size: 13px;
+  line-height: 22px;
+}
+
+/* Badge styles */
+.ant-badge-count {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Custom status colors */
+.ant-tag-green {
+  background-color: #f6ffed;
+  border-color: #b7eb8f;
+  color: #52c41a;
+}
+
+.ant-tag-red {
+  background-color: #fff2f0;
+  border-color: #ffccc7;
+  color: #ff4d4f;
+}
+
+.ant-tag-orange {
+  background-color: #fff7e6;
+  border-color: #ffd591;
+  color: #fa8c16;
+}
+
+/* Main container */
+.calendar-container {
+  display: flex;
+  width: 100%;
+  max-width: 100vw;
+  height: 100vh;
+}
+
+/* Sidebar styles */
+.sidebar {
+  width: 20%;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-right: 1px solid #e8e8e8;
+  overflow-y: auto;
+}
+
+.new-event-btn {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+/* Section styles */
+.section {
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.icon-blue {
+  color: #1890ff;
+  margin-right: 8px;
+}
+
+.icon-red {
+  color: #ff4d4f;
+  margin-right: 8px;
+}
+
+.section-title {
+  font-weight: 200;
+  font-size: 14px;
+}
+
+/* Event list styles */
+.event-list {
+  padding-left: 8px;
+}
+
+.event-preview {
+  font-size: 13px;
+  padding: 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-time {
+  color: #666;
+  margin-right: 4px;
+}
+
+.more-events {
+  font-size: 12px;
+  color: #999;
+  padding: 4px 0;
+}
+
+/* Divider */
+.divider {
+  margin: 16px 0;
+}
+
+/* Filter options */
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sub-filters {
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-checkbox {
+  font-size: 14px;
+}
+
+/* Calendar view */
+.calendar-view {
+  width: 80%;
+
+}
+
+.calendar-title {
+  font-size: 20px;
+  font-weight: 600;
+
+}
+
+
+/* Calendar header */
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.month-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* Event items */
+.event-item {
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.event-item:hover {
+  opacity: 0.9;
+}
+
+/* Modal event details */
+.event-detail {
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.event-header {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.event-comment {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.event-lead {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Mastructure Component Styles */
+.mastructure-container {
+  @apply font-sans p-1 max-w-6xl mx-auto;
+}
+
+.mastructure-title {
+  @apply text-[#6a0dad] mb-4 text-sm font-semibold;
+}
+
+.mastructure-content {
+  @apply flex gap-10 bg-white p-1 rounded-lg shadow-sm;
+}
+
+.mastructure-info-section {
+  @apply flex-1;
+}
+
+.mastructure-company-header {
+  @apply flex items-center mb-6 pb-4 border-b border-gray-200;
+}
+
+.mastructure-company-name {
+  @apply m-0 text-lg text-gray-800;
+}
+
+.mastructure-edit-icon {
+  @apply ml-3 text-[#6a0dad] cursor-pointer text-base;
+}
+
+.mastructure-info-grid {
+  @apply grid grid-cols-[150px_1fr] gap-y-4 gap-x-5 items-start;
+}
+
+.mastructure-info-label {
+  @apply font-semibold text-gray-600 py-2;
+}
+
+.mastructure-info-value {
+  @apply py-2;
+}
+
+.mastructure-logo-section {
+  @apply flex-1 flex justify-center items-start;
+}
+
+.mastructure-logo-placeholder {
+  @apply w-48 h-48 bg-gray-50 rounded-lg flex justify-center items-center border border-dashed border-gray-300 shadow-inner;
+}
+
+.mastructure-logo-text {
+  @apply text-gray-400 text-sm;
+}
