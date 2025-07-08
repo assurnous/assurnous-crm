@@ -109,12 +109,6 @@ const SignIn = () => {
             </button>
           </form>
 
-          <p className="text-sm font-light text-gray-500 text-center">
-            Vous n'avez pas de compte ?{" "}
-            <Link to="/SignUp" className="font-medium text-purple-900 hover:underline">
-              Inscrivez-vous
-            </Link>
-          </p> 
         </div>
       </div>
       </section>
