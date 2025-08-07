@@ -15,7 +15,7 @@ const Publicités = () => {
 useEffect(() => {
   const fetchAds = async () => {
     try {
-      const response = await axios.get("http://localhost:3000/pub");
+      const response = await axios.get("/pub");
       console.log("ads:", response.data);
       setPubs(response.data);
     } catch (error) {
@@ -66,7 +66,7 @@ useEffect(() => {
       }
 
       // Activate the selected ad
-      await axios.post("http://localhost:3000/pub", selectedPub);
+      await axios.post("/pub", selectedPub);
 
       setActivePubId(pubId); // Set the active publicité ID
       message.success("Publicité activated successfully!");
@@ -85,7 +85,7 @@ useEffect(() => {
       }
 
       // Deactivate the publicité on the server
-      await axios.delete(`http://localhost:3000/pub/${pubId}`);
+      await axios.delete(`/pub/${pubId}`);
 
       // Update state
       setPubs((prevPubs) => prevPubs.filter((p) => p._id !== pubId));

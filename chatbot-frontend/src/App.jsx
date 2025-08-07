@@ -108,7 +108,7 @@ function App() {
             <Route path="/leads/:id/create-command" element={<CreateCommand />} />
             <Route path="/leads/:id/create-command/:commandId" element={<CreateCommand />} />
 
-            <Route path="/lead/:id" element={<LeadDetailsPage />}>
+            <Route path="/client/:id" element={<LeadDetailsPage />}>
               <Route path="" element={<LeadDetailsPage />} />{" "}
               {/* Default Tab */}
               <Route path="commentaires" element={<CommentairePage />} />

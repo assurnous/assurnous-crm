@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import { Tabs, Button, Card, Divider, Descriptions, Tag, Space, Typography, Input } from "antd";
+import { Tabs, Button, Card, Select, DatePicker, Form, Descriptions, InputNumber, Radio, Tag, Space, Typography, Input, Modal } from "antd";
 import { 
   EditOutlined, 
   PlusOutlined, 
@@ -15,12 +15,22 @@ import {
   TeamOutlined,
   UserOutlined,
   DeleteOutlined,
+  CloseOutlined 
   
 } from "@ant-design/icons";
 import { jwtDecode } from "jwt-decode";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+import moment from "moment";
+import DevisTabContent from "../components/TabsContent/DevisTabContent";
+import ContratTabContent from "../components/TabsContent/ContratTabContent";
+import DocumentTabContent from "../components/TabsContent/DocumentTabContent";
+import SinistreTabContent from "../components/TabsContent/SinistreTabContent";
+import ReclamtionTabContent from "../components/TabsContent/ReclamtionTabContent";
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const ClientDetailPage = () => {
   const { id } = useParams();
@@ -28,7 +38,32 @@ const ClientDetailPage = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
+  const [users, setUsers] = useState([]);
   const [comments, setComments] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [gestionnaire, setGestionnaire] = useState(null);
+    const [form] = Form.useForm();
+
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (isModalOpen && client) {
+      // Format dates and other special fields before setting form values
+      const formattedData = {
+        ...client,
+        date_naissance: client.date_naissance ? moment(client.date_naissance) : null,
+        date_creation: client.date_creation ? moment(client.date_creation) : null,
+      };
+      
+      form.setFieldsValue(formattedData);
+    }
+  }, [isModalOpen, client, form]);
 
     const handleAddNote = async () => {
     if (!newComment.trim()) return alert("Comment cannot be empty!");
@@ -71,7 +106,25 @@ const ClientDetailPage = () => {
       try {
         const response = await axios.get(`/lead/${id}`);
         setClient(response.data.chat);
+        console.log("Client data:", response.data.chat);
         setLoading(false);
+        if (isModalOpen) {
+          form.setFieldsValue({
+            ...response.data.chat,
+            date_naissance: response.data.chat.date_naissance 
+              ? dayjs(response.data.chat.date_naissance) 
+              : null,
+            date_creation: response.data.chat.date_creation 
+              ? dayjs(response.data.chat.date_creation) 
+              : null,
+          });
+        }
+        if (client?.gestionnaire) {
+          setGestionnaire(client.gestionnaire);
+          form.setFieldsValue({
+            gestionnaire: client.gestionnaire._id || client.gestionnaire,
+          });
+        }
       } catch (error) {
         console.error("Error fetching client details:", error);
         setLoading(false);
@@ -86,7 +139,7 @@ const ClientDetailPage = () => {
       const response = await axios.put(`/lead/${id}`, formData);
       if (response.status === 200) {
         alert("Modifications enregistrées avec succès !");
-        setLead(response.data.chat);
+        setClient(response.data.chat);
         setIsModalOpen(false);
       }
     } catch (error) {
@@ -183,11 +236,12 @@ const ClientDetailPage = () => {
       type="primary" 
       icon={<EditOutlined />}
       className="text-xs sm:text-sm"
+      onClick={showModal}
     >
       <span className="hidden xs:inline">Modifier</span>
       <span className="xs:hidden">Modif.</span>
     </Button>
-    <Button 
+    {/* <Button 
       icon={<PlusOutlined />}
       className="text-xs sm:text-sm"
     >
@@ -200,9 +254,940 @@ const ClientDetailPage = () => {
     >
       <span className="hidden sm:inline">Ajouter un connecté</span>
       <span className="sm:hidden">Connecté</span>
-    </Button>
+    </Button> */}
   </Space>
 </div>
+
+      <Modal
+        title={
+          <div className="bg-gray-100 p-3 -mx-6 -mt-6 flex justify-between items-center sticky top-0 z-10 border-b">
+            <span className="font-medium text-sm">
+              MODIFIER LE CLIENT
+            </span>
+            <button
+              onClick={handleCancel}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
+            >
+              <CloseOutlined className="text-xs" />
+            </button>
+          </div>
+        }
+        open={isModalOpen}
+        onCancel={handleCancel}
+        footer={null}
+        width="30%"
+        style={{
+          position: "fixed",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          height: "100vh",
+          margin: 0,
+          padding: 0,
+          overflow: "hidden",
+        }}
+        bodyStyle={{
+          height: "calc(100vh - 49px)",
+          padding: 0,
+          margin: 0,
+        }}
+        maskStyle={{
+          backgroundColor: "rgba(0, 0, 0, 0.1)",
+        }}
+        closeIcon={null}
+      >
+        <div
+          className="h-full overflow-y-auto ml-4 w-full"
+          style={{ scrollbarWidth: "thin" }}
+        >
+          <Form
+            form={form}
+            onFinish={handleEdit}
+            layout="vertical"
+            className="space-y-2 w-full"
+          >
+            {/* === INFORMATIONS GÉNÉRALES === */}
+            <h2 className="text-sm font-semibold mt-3 mb-2">
+              INFORMATIONS GÉNÉRALES
+            </h2>
+
+            {/* Catégorie */}
+            <Form.Item
+              label={<span className="text-xs font-medium">CATÉGORIE*</span>}
+              name="categorie"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+                onChange={() =>
+                  form.setFieldsValue({
+                    denomination_commerciale: undefined,
+                    raison_sociale: undefined,
+                    siret: undefined,
+                  })
+                }
+              >
+                <Option value="particulier">Particulier</Option>
+                <Option value="professionnel">Professionnel</Option>
+                <Option value="entreprise">Entreprise</Option>
+              </Select>
+            </Form.Item>
+
+            {/* Statut */}
+            <Form.Item
+              label={<span className="text-xs font-medium">STATUS*</span>}
+              name="statut"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+              >
+                <Option value="client">Client</Option>
+                <Option value="prospect">Prospect</Option>
+                <Option value="ancien_client">Ancien client</Option>
+              </Select>
+            </Form.Item>
+
+            {/* Civilité */}
+            <Form.Item
+              label={<span className="text-xs font-medium">CIVILITÉ*</span>}
+              name="civilite"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+              >
+                <Option value="monsieur">M.</Option>
+                <Option value="madame">Mme</Option>
+                <Option value="mademoiselle">Mlle</Option>
+                <Option value="societe">Société</Option>
+              </Select>
+            </Form.Item>
+
+            {/* === INFORMATIONS PERSONNELLES === */}
+            <h2 className="text-sm font-semibold mt-6 mb-2">
+              INFORMATIONS PERSONNELLES
+            </h2>
+
+            {/* Nom */}
+            <Form.Item
+              label={<span className="text-xs font-medium">NOM*</span>}
+              name="nom"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Input className="w-full text-xs h-7" placeholder="Nom" />
+            </Form.Item>
+
+            {/* Nom de naissance */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">NOM DE NAISSANCE</span>
+              }
+              name="nom_naissance"
+              className="mb-0"
+            >
+              <Input
+                className="w-full text-xs h-7"
+                placeholder="Nom de naissance"
+              />
+            </Form.Item>
+
+            {/* Prénom */}
+            <Form.Item
+              label={<span className="text-xs font-medium">PRÉNOM*</span>}
+              name="prenom"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Input className="w-full text-xs h-7" placeholder="Prénom" />
+            </Form.Item>
+
+            {/* Date de naissance */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">DATE DE NAISSANCE*</span>
+              }
+              name="date_naissance"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <DatePicker className="w-full text-xs h-7" format="DD/MM/YYYY" />
+            </Form.Item>
+
+            {/* Pays de naissance */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">PAYS DE NAISSANCE*</span>
+              }
+              name="pays_naissance"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+                showSearch
+              >
+                <Option value="france">France</Option>
+                <Option value="belgique">Belgique</Option>
+                <Option value="suisse">Suisse</Option>
+                <Option value="autre">Autre</Option>
+              </Select>
+            </Form.Item>
+
+            {/* Code postal de naissance */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  CODE POSTAL DE NAISSANCE
+                </span>
+              }
+              name="code_postal_naissance"
+              className="mb-0"
+            >
+              <Input
+                className="w-full text-xs h-7"
+                placeholder="Code postal de naissance"
+              />
+            </Form.Item>
+
+            {/* Commune de naissance */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  COMMUNE DE NAISSANCE
+                </span>
+              }
+              name="commune_naissance"
+              className="mb-0"
+            >
+              <Input
+                className="w-full text-xs h-7"
+                placeholder="Commune de naissance"
+              />
+            </Form.Item>
+
+            {/* Situation familiale */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  SITUATION FAMILIALE*
+                </span>
+              }
+              name="situation_famille"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+              >
+                <Option value="celibataire">Célibataire</Option>
+                <Option value="marie">Marié(e)</Option>
+                <Option value="pacsé">Pacsé(e)</Option>
+                <Option value="divorce">Divorcé(e)</Option>
+                <Option value="veuf">Veuf(ve)</Option>
+                <Option value="concubinage">Concubinage</Option>
+              </Select>
+            </Form.Item>
+
+            {/* Enfants à charge */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">ENFANTS À CHARGE</span>
+              }
+              name="enfants_charge"
+              className="mb-0"
+            >
+              <InputNumber
+                className="w-full text-xs h-7"
+                min={0}
+                placeholder="Nombre d'enfants à charge"
+              />
+            </Form.Item>
+
+            {/* === ADRESSE === */}
+            <h2 className="text-sm font-semibold mt-6 mb-2">ADRESSE</h2>
+
+            {/* N° et libellé de la voie */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  N° ET LIBELLÉ DE LA VOIE*
+                </span>
+              }
+              name="numero_voie"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Input
+                className="w-full text-xs h-7"
+                placeholder="Ex: 12 rue des Fleurs"
+              />
+            </Form.Item>
+
+            {/* Complément d'adresse */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  COMPLÉMENT D'ADRESSE
+                </span>
+              }
+              name="complement_adresse"
+              className="mb-0"
+            >
+              <Input
+                className="w-full text-xs h-7"
+                placeholder="Ex: Bâtiment B, Appartement 12"
+              />
+            </Form.Item>
+
+            {/* Lieu-dit */}
+            <Form.Item
+              label={<span className="text-xs font-medium">LIEU-DIT</span>}
+              name="lieu_dit"
+              className="mb-0"
+            >
+              <Input className="w-full text-xs h-7" placeholder="Lieu-dit" />
+            </Form.Item>
+
+            {/* Code postal */}
+            <Form.Item
+              label={<span className="text-xs font-medium">CODE POSTAL*</span>}
+              name="code_postal"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Input className="w-full text-xs h-7" placeholder="Code postal" />
+            </Form.Item>
+
+            {/* Ville */}
+            <Form.Item
+              label={<span className="text-xs font-medium">VILLE*</span>}
+              name="ville"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Input className="w-full text-xs h-7" placeholder="Ville" />
+            </Form.Item>
+
+            {/* Inscrit sur Bloctel */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  INSCRIT SUR BLOCTEL*
+                </span>
+              }
+              name="bloctel"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Radio.Group>
+                <Radio value="oui">Oui</Radio>
+                <Radio value="non">Non</Radio>
+              </Radio.Group>
+            </Form.Item>
+
+            {/* === COORDONNÉES === */}
+            <h2 className="text-sm font-semibold mt-6 mb-2">COORDONNÉES</h2>
+
+            {/* Téléphone portable */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">TÉLÉPHONE PORTABLE*</span>
+              }
+              name="portable"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <PhoneInput
+                country={"fr"}
+                inputClass="w-full text-xs h-7"
+                containerClass="w-full"
+                inputProps={{
+                  required: false,
+                }}
+              />
+            </Form.Item>
+
+            {/* Téléphone fixe */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">TÉLÉPHONE FIXE</span>
+              }
+              name="fixe"
+              className="mb-0"
+            >
+              <PhoneInput
+                country={"fr"}
+                inputClass="w-full text-xs h-7"
+                containerClass="w-full"
+              />
+            </Form.Item>
+
+            {/* Email */}
+            <Form.Item
+              label={<span className="text-xs font-medium">EMAIL*</span>}
+              name="email"
+              className="mb-0"
+              rules={[
+                { required: false, message: "Ce champ est obligatoire" },
+                { type: "email", message: "Email non valide" },
+              ]}
+            >
+              <Input
+                type="email"
+                className="w-full text-xs h-7"
+                placeholder="Email"
+              />
+            </Form.Item>
+
+            <>
+              <h2 className="text-sm font-semibold mt-6 mb-2">
+                INFORMATIONS PROFESSIONNELLES
+              </h2>
+
+              {/* Activité de l'entreprise */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    ACTIVITÉ DE L'ENTREPRISE*
+                  </span>
+                }
+                name="activite_entreprise"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="Activité principale"
+                />
+              </Form.Item>
+
+              {/* Catégorie socioprofessionnelle */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    CATÉGORIE SOCIOPROFESSIONNELLE*
+                  </span>
+                }
+                name="categorie_professionnelle"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Select
+                  className="w-full text-xs h-7"
+                  placeholder="-- Choisissez --"
+                >
+                  <Option value="agriculteur">Agriculteur</Option>
+                  <Option value="artisan">Artisan, commerçant</Option>
+                  <Option value="cadre">Cadre</Option>
+                  <Option value="prof_interm">Profession intermédiaire</Option>
+                  <Option value="employe">Employé</Option>
+                  <Option value="ouvrier">Ouvrier</Option>
+                  <Option value="retraite">Retraité</Option>
+                  <Option value="sans_activite">
+                    Sans activité professionnelle
+                  </Option>
+                </Select>
+              </Form.Item>
+
+              {/* Domaine d'activité */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    DOMAINE D'ACTIVITÉ*
+                  </span>
+                }
+                name="domaine_activite"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Select
+                  className="w-full text-xs h-7"
+                  placeholder="-- Choisissez --"
+                  showSearch
+                >
+                  <Option value="agriculture">Agriculture</Option>
+                  <Option value="industrie">Industrie</Option>
+                  <Option value="construction">Construction</Option>
+                  <Option value="commerce">Commerce</Option>
+                  <Option value="transport">Transport</Option>
+                  <Option value="information">Information/Communication</Option>
+                  <Option value="finance">Finance/Assurance</Option>
+                  <Option value="immobilier">Immobilier</Option>
+                  <Option value="scientifique">
+                    Activités scientifiques/techniques
+                  </Option>
+                  <Option value="administratif">
+                    Activités administratives
+                  </Option>
+                  <Option value="public">Administration publique</Option>
+                  <Option value="enseignement">Enseignement</Option>
+                  <Option value="sante">Santé/Social</Option>
+                  <Option value="art">Arts/Spectacles</Option>
+                  <Option value="autre">Autre</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">STATUT JURIDIQUE*</span>
+                }
+                name="statut_juridique"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Select
+                  className="w-full text-xs h-7"
+                  placeholder="-- Choisissez --"
+                >
+                  <Option value="sarl">SARL</Option>
+                  <Option value="eurl">EURL</Option>
+                  <Option value="sas">SAS</Option>
+                  <Option value="sasu">SASU</Option>
+                  <Option value="sa">SA</Option>
+                  <Option value="sci">SCI</Option>
+                  <Option value="micro">Micro-entreprise</Option>
+                  <Option value="ei">Entreprise individuelle</Option>
+                  <Option value="autre">Autre</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    DÉNOMINATION COMMERCIALE*
+                  </span>
+                }
+                name="denomination_commerciale"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="Nom commercial"
+                />
+              </Form.Item>
+
+              {/* Raison sociale */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">RAISON SOCIALE</span>
+                }
+                name="raison_sociale"
+                className="mb-0"
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="Raison sociale"
+                />
+              </Form.Item>
+
+              {/* Date de création */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">DATE DE CRÉATION</span>
+                }
+                name="date_creation"
+                className="mb-0"
+              >
+                <DatePicker
+                  className="w-full text-xs h-7"
+                  format="DD/MM/YYYY"
+                />
+              </Form.Item>
+
+              {/* SIRET */}
+              <Form.Item
+                label={<span className="text-xs font-medium">SIRET*</span>}
+                name="siret"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                  {
+                    pattern: /^\d{14}$/,
+                    message: "Le SIRET doit contenir 14 chiffres",
+                  },
+                ]}
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="Numéro SIRET (14 chiffres)"
+                />
+              </Form.Item>
+
+              {/* Forme juridique */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">FORME JURIDIQUE</span>
+                }
+                name="forme_juridique"
+                className="mb-0"
+              >
+                <Select
+                  className="w-full text-xs h-7"
+                  placeholder="-- Choisissez --"
+                >
+                  <Option value="sarl">SARL</Option>
+                  <Option value="eurl">EURL</Option>
+                  <Option value="sas">SAS</Option>
+                  <Option value="sa">SA</Option>
+                  <Option value="sci">SCI</Option>
+                  <Option value="ei">Entreprise individuelle</Option>
+                  <Option value="autre">Autre</Option>
+                </Select>
+              </Form.Item>
+
+              {/* Téléphone de l'entreprise */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    TÉLÉPHONE DE L'ENTREPRISE*
+                  </span>
+                }
+                name="telephone_entreprise"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <PhoneInput
+                  country={"fr"}
+                  inputClass="w-full text-xs h-7"
+                  containerClass="w-full"
+                />
+              </Form.Item>
+
+              {/* Email de l'entreprise */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    EMAIL DE L'ENTREPRISE*
+                  </span>
+                }
+                name="email_entreprise"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                  { type: "email", message: "Email non valide" },
+                ]}
+              >
+                <Input
+                  type="email"
+                  className="w-full text-xs h-7"
+                  placeholder="Email professionnel"
+                />
+              </Form.Item>
+
+              {/* Site internet */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">SITE INTERNET</span>
+                }
+                name="site_internet"
+                className="mb-0"
+                rules={[{ type: "url", message: "URL non valide" }]}
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="https://www.example.com"
+                />
+              </Form.Item>
+
+              {/* Code NAF */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">CODE NAF/APE*</span>
+                }
+                name="code_naf"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="Ex: 62.02A"
+                />
+              </Form.Item>
+
+              {/* IDCC */}
+              <Form.Item
+                label={<span className="text-xs font-medium">IDCC</span>}
+                name="idcc"
+                className="mb-0"
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="Identifiant de convention collective"
+                />
+              </Form.Item>
+
+              {/* Bénéficiaires effectifs */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    BÉNÉFICIAIRES EFFECTIFS
+                  </span>
+                }
+                name="beneficiaires_effectifs"
+                className="mb-0"
+              >
+                <Input.TextArea
+                  rows={3}
+                  className="w-full text-xs"
+                  placeholder="Liste des bénéficiaires effectifs"
+                />
+              </Form.Item>
+
+              {/* Chiffre d'affaires */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    CHIFFRE D'AFFAIRES (€)
+                  </span>
+                }
+                name="chiffre_affaires"
+                className="mb-0"
+              >
+                <InputNumber
+                  className="w-full text-xs h-7"
+                  formatter={(value) =>
+                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+                  }
+                  parser={(value) => value.replace(/\s/g, "")}
+                  min={0}
+                  placeholder="Montant en euros"
+                />
+              </Form.Item>
+
+              {/* Effectif */}
+              <Form.Item
+                label={<span className="text-xs font-medium">EFFECTIF</span>}
+                name="effectif"
+                className="mb-0"
+              >
+                <InputNumber
+                  className="w-full text-xs h-7"
+                  min={0}
+                  placeholder="Nombre d'employés"
+                />
+              </Form.Item>
+
+              {/* Période de clôture d'exercice */}
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">
+                    PÉRIODE DE CLÔTURE D'EXERCICE
+                  </span>
+                }
+                name="periode_cloture"
+                className="mb-0"
+              >
+                <Select
+                  className="w-full text-xs h-7"
+                  placeholder="-- Choisissez --"
+                >
+                  <Option value="31/12">31 décembre</Option>
+                  <Option value="30/06">30 juin</Option>
+                  <Option value="31/03">31 mars</Option>
+                  <Option value="30/09">30 septembre</Option>
+                  <Option value="autre">Autre</Option>
+                </Select>
+              </Form.Item>
+            </>
+
+            {/* === SÉCURITÉ SOCIALE === */}
+            <h2 className="text-sm font-semibold mt-6 mb-2">
+              SÉCURITÉ SOCIALE
+            </h2>
+
+            {/* Régime de sécurité sociale */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  RÉGIME DE SÉCURITÉ SOCIALE*
+                </span>
+              }
+              name="regime_securite_sociale"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+              >
+                <Option value="general">Régime général</Option>
+                <Option value="agricole">Régime agricole</Option>
+                <Option value="independant">Régime indépendant</Option>
+                <Option value="fonctionnaire">Fonction publique</Option>
+                <Option value="autre">Autre régime</Option>
+              </Select>
+            </Form.Item>
+
+            {/* Numéro de sécurité sociale */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">
+                  NUMÉRO DE SÉCURITÉ SOCIALE*
+                </span>
+              }
+              name="num_secu"
+              className="mb-0"
+              rules={[
+                { required: false, message: "Ce champ est obligatoire" },
+                {
+                  pattern:
+                    /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/,
+                  message: "Format invalide (15 chiffres + clé)",
+                },
+              ]}
+            >
+              <Input
+                className="w-full text-xs h-7"
+                placeholder="Numéro de sécurité sociale"
+              />
+            </Form.Item>
+
+            {/* === GESTION === */}
+            <h2 className="text-sm font-semibold mt-6 mb-2">GESTION</h2>
+
+            {/* Type d'origine */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">TYPE D'ORIGINE*</span>
+              }
+              name="type_origine"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+              >
+               <Option value="co_courtage">Co-courtage</Option>
+                <Option value="indicateur_affaires">
+                  Indicateur d'affaires
+                </Option>
+                <Option value="weedo_market">Weedo market</Option>
+                <Option value="recommandation">Recommandation</Option>
+                <Option value="reseaux_sociaux">Réseaux sociaux</Option>
+                <Option value="autre">Autre</Option>
+              </Select>
+            </Form.Item>
+ <Form.Item
+              label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
+              name="gestionnaire"
+              className="mb-0"
+            >
+              {loading ? (
+                <Input
+                  className="w-full text-xs h-7"
+                  placeholder="Chargement..."
+                  disabled
+                />
+              ) : (
+                <Input
+                  className="w-full text-xs h-7"
+                  value={
+                    gestionnaire
+                      ? `${
+                          gestionnaire.userType === "admin"
+                            ? gestionnaire.name
+                            : `${gestionnaire.nom} ${gestionnaire.prenom}`
+                        } (${
+                          gestionnaire.userType === "admin"
+                            ? "Admin"
+                            : "Commercial"
+                        })`
+                      : "Non spécifié"
+                  }
+                  disabled
+                />
+              )}
+            </Form.Item>
+
+            <Form.Item
+              label={<span className="text-xs font-medium">CRÉÉ PAR*</span>}
+              name="cree_par"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez un créateur --"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {users.map((user) => {
+                  const displayName =
+                    user.userType === "admin"
+                      ? user.name
+                      : `${user.nom} ${user.prenom}`;
+
+                  return (
+                    <Option
+                      key={`${user.userType}-${user._id}`}
+                      value={displayName}
+                    >
+                      {displayName} (
+                      {user.userType === "admin" ? "Admin" : "Commercial"})
+                    </Option>
+                  );
+                })}
+              </Select>
+            </Form.Item>
+
+            {/* Intermédiaire(s) */}
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">INTERMÉDIAIRE(S)</span>
+              }
+              name="intermediaire"
+              className="mb-0"
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez --"
+                mode="multiple"
+              >
+                <Option value="assureur">Assureur</Option>
+                <Option value="agent">Agent général</Option>
+                <Option value="courtier">Courtier</Option>
+              </Select>
+            </Form.Item>
+          </Form>
+          <Button
+            type="primary"
+            htmlType="submit"
+            className="w-full text-xs h-7 mt-2 mb-4"
+            onClick={() => form.submit()}
+          >
+            Enregistrer les modifications
+          </Button>
+        </div>
+      </Modal>
 
       {/* Main content with tabs */}
       <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" className="client-details-tabs">
@@ -312,29 +1297,19 @@ const ClientDetailPage = () => {
 
         {/* Other Tabs */}
         <TabPane tab="Devis" key="devis">
-          <div className="p-4">
-            <Text type="secondary">Contenu des devis à venir...</Text>
-          </div>
+          <DevisTabContent />
         </TabPane>
         <TabPane tab="Contrats" key="contrats">
-          <div className="p-4">
-            <Text type="secondary">Contenu des contrats à venir...</Text>
-          </div>
+          <ContratTabContent />
         </TabPane>
         <TabPane tab="Documents" key="documents">
-          <div className="p-4">
-            <Text type="secondary">Contenu des documents à venir...</Text>
-          </div>
+          <DocumentTabContent />
         </TabPane>
         <TabPane tab="Sinistres" key="sinistres">
-          <div className="p-4">
-            <Text type="secondary">Contenu des sinistres à venir...</Text>
-          </div>
+          <SinistreTabContent />
         </TabPane>
         <TabPane tab="Réclamations" key="reclamations">
-          <div className="p-4">
-            <Text type="secondary">Contenu des réclamations à venir...</Text>
-          </div>
+          <ReclamtionTabContent />
         </TabPane>
         <TabPane tab="Notes" key="notes">
                      <div className="p-4">
@@ -379,11 +1354,6 @@ const ClientDetailPage = () => {
                   )}
                 </div>
               </div>
-        </TabPane>
-        <TabPane tab="Activités" key="activites">
-          <div className="p-4">
-            <Text type="secondary">Contenu des activités à venir...</Text>
-          </div>
         </TabPane>
       </Tabs>
     </div>

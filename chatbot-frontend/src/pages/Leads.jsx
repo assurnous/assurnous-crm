@@ -17,26 +17,15 @@ import {
   InputNumber,
 } from "antd";
 import { useNavigate } from "react-router-dom";
-import {
-  DeleteOutlined,
-  CloseOutlined,
-} from "@ant-design/icons";
+import { DeleteOutlined, CloseOutlined } from "@ant-design/icons";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import ImportLeads from "../components/ImportLeads";
 
 const { Option } = Select;
 
 const Leads = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const showModal = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleCancel = () => {
-    setIsModalOpen(false);
-  };
-
   const [chatData, setChatData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,6 +37,8 @@ const Leads = () => {
   const [form] = Form.useForm();
   const [users, setUsers] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
+  const [isOpenModalImport, setIsOpenModalImport] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [filters, setFilters] = useState({
     gestionaire: "tous",
@@ -55,6 +46,22 @@ const Leads = () => {
     status: "tous",
     search: "",
   });
+
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
+
+  const showModalImport = () => {
+    setIsOpenModalImport(true);
+  };
+
+  const handleCancelImport = () => {
+    setIsOpenModalImport(false);
+  };
 
   const handleFilterChange = (filterName, value) => {
     const newFilters = {
@@ -68,8 +75,10 @@ const Leads = () => {
   const applyFilters = (filterValues) => {
     let result = [...chatData];
     if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-      result = result.filter((item) => 
-        item.gestionnaire?.toLowerCase() === filterValues.gestionnaire.toLowerCase()
+      result = result.filter(
+        (item) =>
+          item.gestionnaire?.toLowerCase() ===
+          filterValues.gestionnaire.toLowerCase()
       );
     }
 
@@ -92,14 +101,19 @@ const Leads = () => {
     // Apply search filter
     if (filterValues.search) {
       const searchTerm = filterValues.search.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.nom?.toLowerCase().includes(searchTerm) ||
-          item.prenom?.toLowerCase().includes(searchTerm) ||
-          item.email?.toLowerCase().includes(searchTerm) ||
-          item.portable?.includes(filterValues.search) ||
-          item.gestionnaire?.toLowerCase().includes(searchTerm)
-      );
+      result = result.filter((item) => {
+        // Client name (nom + prenom)
+        const clientName = `${item.nom || ''} ${item.prenom || ''}`.toLowerCase();
+        
+        // All searchable fields from your columns
+        return (
+          clientName.includes(searchTerm) ||
+          (item.categorie?.toLowerCase().includes(searchTerm)) ||
+          (item.portable?.toLowerCase().includes(searchTerm)) ||
+          (item.email?.toLowerCase().includes(searchTerm)) ||
+          (item.codepostal?.toLowerCase().includes(searchTerm))
+        );
+      });
     }
 
     setFilteredData(result);
@@ -160,7 +174,7 @@ const Leads = () => {
     setCurrentPage(value);
   };
   const handleLeadClick = (chatData) => {
-    navigate(`/lead/${chatData._id}`);
+    navigate(`/client/${chatData._id}`);
   };
 
   const totalPages = Math.ceil(chatData.length / pageSize);
@@ -170,7 +184,8 @@ const Leads = () => {
       try {
         const response = await axios.get("/data");
         setChatData(response.data.chatData);
-   
+        console.log("Fetched chat data:", response.data.chatData);
+
         if (activeFilter === "prospect") {
           setFilteredData(
             response.data.chatData.filter((item) => item.type === "prospect")
@@ -179,6 +194,8 @@ const Leads = () => {
           setFilteredData(
             response.data.chatData.filter((item) => item.type === "client")
           );
+        } else if (activeFilter === "Gelé") {
+          setFilteredData(response.data.chatData);
         } else if (activeFilter === "tous") {
           setFilteredData(response.data.chatData);
         }
@@ -190,21 +207,104 @@ const Leads = () => {
     };
 
     getUserData();
-  }, []);
+  }, [activeFilter, refreshTrigger]);
+
+  const handleImportSuccess = () => {
+    setIsOpenModalImport(false);
+    setRefreshTrigger((prev) => prev + 1);
+    message.success("Données importées avec succès");
+  };
+
+  const handleGestionnaireChange = async (selectedId, record) => {
+    try {
+      const selectedUser = users.find(user => user._id === selectedId);
+      const displayName = selectedUser 
+        ? selectedUser.userType === "admin" 
+          ? selectedUser.name 
+          : `${selectedUser.nom} ${selectedUser.prenom}`
+        : null;
+  
+      const response = await axios.put(
+        `/updateGestionnaireLead/${record._id}`,
+        {
+           gestionnaireId: selectedId || null,
+    gestionnaireName: displayName || null,
+    userType: selectedUser?.userType || null  // This is crucial
+        }
+      );
+  
+      // Update both states
+      setChatData(prev => prev.map(item => 
+        item._id === record._id 
+          ? { 
+              ...item, 
+              gestionnaire: selectedId ? { _id: selectedId } : null,
+              gestionnaireName: displayName 
+            } 
+          : item
+      ));
+      
+      setFilteredData(prev => prev.map(item => 
+        item._id === record._id 
+          ? { 
+              ...item, 
+              gestionnaire: selectedId ? { _id: selectedId } : null,
+              gestionnaireName: displayName 
+            } 
+          : item
+      ));
+  
+      console.log("Updated gestionnaire:", response.data);
+    } catch (error) {
+      console.error("Error updating gestionnaire:", error);
+      message.error("Failed to update gestionnaire");
+    }
+  };
+
+  // const handleGestionnaireChange = async (newGestionnaire, record) => {
+  //   try {
+  //     const response = await axios.put(
+  //       `/updateGestionnaireLead/${record._id}`,
+  //       {
+  //         gestionnaire: newGestionnaire,
+  //       }
+  //     );
+
+  //     // Update both states
+  //     setChatData((prev) =>
+  //       prev.map((item) =>
+  //         item._id === record._id
+  //           ? { ...item, gestionnaire: newGestionnaire }
+  //           : item
+  //       )
+  //     );
+  //     setFilteredData((prev) =>
+  //       prev.map((item) =>
+  //         item._id === record._id
+  //           ? { ...item, gestionnaire: newGestionnaire }
+  //           : item
+  //       )
+  //     );
+
+  //     console.log("Updated gestionnaire:", response.data);
+  //   } catch (error) {
+  //     console.error("Error updating gestionnaire:", error);
+  //   }
+  // };
 
   const handleStatusLeadChange = async (newStatus, record) => {
     try {
-      const validStatuses = ["prospect", "client"];
-      
+      const validStatuses = ["prospect", "client", "Gelé"];
+
       if (!validStatuses.includes(newStatus)) {
         console.error("Invalid status value");
         return;
       }
-  
+
       const response = await axios.put(`/updateStatusLead/${record._id}`, {
-        statut: newStatus  // Changed from statusLead to statut to match schema
+        statut: newStatus, // Changed from statusLead to statut to match schema
       });
-  
+
       // Update both states - changed 'type' to 'statut'
       setChatData((prev) =>
         prev.map((item) =>
@@ -216,7 +316,7 @@ const Leads = () => {
           item._id === record._id ? { ...item, statut: newStatus } : item
         )
       );
-  
+
       console.log("Updated status:", response.data);
     } catch (error) {
       console.error("Error updating status:", error);
@@ -286,27 +386,89 @@ const Leads = () => {
       render: (text) => text || "",
     },
     {
-      title: "STATUS",
+      title: "Statut",
       key: "statut",
       render: (text, record) => (
         <Select
           value={record.statut || "prospect"}
-          style={{ width: 90 }}
+          style={{
+            width: 90,
+            color: record.statut === "Gelé" ? "#ff4d4f" : "inherit",
+            fontWeight: record.statut === "Gelé" ? "bold" : "normal",
+          }}
           onChange={(value) => handleStatusLeadChange(value, record)}
         >
           <Option value="prospect">Prospect</Option>
           <Option value="client">Client</Option>
+          <Option value="Gelé" style={{ color: "#ff4d4f" }}>
+            Gelé
+          </Option>
         </Select>
       ),
     },
+
+    // {
+    //   title: "GESTIONNAIRE",
+    //   key: "gestionnaire",
+    //   render: (text, record) => (
+    //     <Select
+    //       value={record.gestionnaire || ""}
+    //       style={{ width: 180 }}
+    //       className="text-xs"
+    //       onChange={(value) => handleGestionnaireChange(value, record)}
+    //       showSearch
+    //       optionFilterProp="children"
+    //       filterOption={(input, option) =>
+    //         option.children.toLowerCase().includes(input.toLowerCase())
+    //       }
+    //       placeholder="-- Choisissez un gestionnaire --"
+    //     >
+    //       {users.map((user) => {
+    //         const displayName =
+    //           user.userType === "admin"
+    //             ? user.name
+    //             : `${user.nom} ${user.prenom}`;
+
+    //         return (
+    //           <Option key={`${user.userType}-${user._id}`} value={displayName}>
+    //             {displayName} (
+    //             {user.userType === "admin" ? "Admin" : "Commercial"})
+    //           </Option>
+    //         );
+    //       })}
+    //     </Select>
+    //   ),
+    // },
     {
-      title: "Gestionnaire",
-      dataIndex: "gestionnaire",
+      title: "GESTIONNAIRE",
       key: "gestionnaire",
       render: (text, record) => (
-        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
-          <div className="font-medium">{record.gestionnaire || ""}</div>
-        </div>
+        <Select
+          value={record.gestionnaire?._id || ""}
+          style={{ width: 180 }}
+          className="text-xs"
+          onChange={(value) => handleGestionnaireChange(value, record)}
+          showSearch
+          optionFilterProp="children"
+          filterOption={(input, option) =>
+            option.children.toLowerCase().includes(input.toLowerCase())
+          }
+          placeholder="-- Choisissez un gestionnaire --"
+        >
+          <Option value="">Non assigné</Option>
+          {users.map((user) => {
+            const displayName =
+              user.userType === "admin"
+                ? user.name
+                : `${user.nom} ${user.prenom}`;
+    
+            return (
+              <Option key={user._id} value={user._id}>
+                {displayName} ({user.userType === "admin" ? "Admin" : "Commercial"})
+              </Option>
+            );
+          })}
+        </Select>
       ),
     },
     {
@@ -340,13 +502,17 @@ const Leads = () => {
   return (
     <section>
       <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
-        <h2 className="text-xs sm:text-sm font-semibold text-purple-900 text-center md:text-left">
+        <h2 className="text-xs sm:text-sm font-semibold text-blue-900 text-center md:text-left">
           CLIENTS/PROSPECTS ({chatData.length})
         </h2>
 
         {/* Buttons container - column on mobile, row on desktop */}
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
-          <Button type="primary" className="w-full md:w-auto">
+          <Button
+            type="scondary"
+            className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold md:w-auto"
+            onClick={showModalImport}
+          >
             <div className="flex items-center justify-center gap-2">
               <span className="text-lg">+</span>
               <span className="text-[10px] sm:text-xs whitespace-nowrap">
@@ -356,8 +522,8 @@ const Leads = () => {
           </Button>
 
           <Button
-            type="primary"
-            className="w-full md:w-auto"
+            type="secondary"
+            className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold md:w-auto"
             onClick={showModal}
           >
             <div className="flex items-center justify-center gap-2">
@@ -376,34 +542,34 @@ const Leads = () => {
             <label className="block text-[12px] font-medium text-gray-700 mb-1">
               Gestionaire
             </label>
-          
-            <Select
-  className="w-full text-xs h-7"
-  placeholder="-- Choisissez le gestionnaire --"
-  showSearch
-  optionFilterProp="children"
-  filterOption={(input, option) =>
-    option.children.toLowerCase().includes(input.toLowerCase())
-  }
-  onChange={(value) => handleFilterChange("gestionnaire", value)}
->
-  <Option value="tous">Tous</Option>
-  {users.map((user) => {
-    const displayName =
-      user.userType === "admin"
-        ? user.name
-        : `${user.nom} ${user.prenom}`;
 
-    return (
-      <Option
-        key={user._id}
-        value={displayName}  // Store the exact format used in chatData
-      >
-        {displayName}
-      </Option>
-    );
-  })}
-</Select>
+            <Select
+              className="w-full text-xs h-7"
+              placeholder="-- Choisissez le gestionnaire --"
+              showSearch
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }
+              onChange={(value) => handleFilterChange("gestionnaire", value)}
+            >
+              <Option value="tous">Tous</Option>
+              {users.map((user) => {
+                const displayName =
+                  user.userType === "admin"
+                    ? user.name
+                    : `${user.nom} ${user.prenom}`;
+
+                return (
+                  <Option
+                    key={user._id}
+                    value={displayName} // Store the exact format used in chatData
+                  >
+                    {displayName}
+                  </Option>
+                );
+              })}
+            </Select>
           </div>
 
           <div>
@@ -479,11 +645,13 @@ const Leads = () => {
               title: (
                 <div className="flex flex-col items-center">
                   <div className="text-xs">{col.title}</div>
-             
                 </div>
               ),
             })),
           ]}
+          rowClassName={(record) =>
+            record.statut === "Gelé" ? "frozen-row" : ""
+          }
           dataSource={filteredData.slice(
             (currentPage - 1) * pageSize,
             currentPage * pageSize
@@ -503,8 +671,13 @@ const Leads = () => {
               `${range[0]}-${range[1]} of ${total} items`,
           }}
           rowKey={(record) => record._id}
+          onRow={(record) => ({
+            style: {
+              backgroundColor: record.statut === "Gelé" ? "#fff2f0" : "inherit",
+            },
+          })}
           bordered
-          className="custom-table text-xs sm:text-sm"
+          className="custom-table  text-xs sm:text-sm"
           // rowSelection={rowSelection}
           tableLayout="auto"
         />
@@ -568,7 +741,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">CATÉGORIE*</span>}
               name="categorie"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -592,7 +765,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">STATUS*</span>}
               name="statut"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -609,7 +782,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">CIVILITÉ*</span>}
               name="civilite"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -632,7 +805,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">NOM*</span>}
               name="nom"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input className="w-full text-xs h-7" placeholder="Nom" />
             </Form.Item>
@@ -656,7 +829,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">PRÉNOM*</span>}
               name="prenom"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input className="w-full text-xs h-7" placeholder="Prénom" />
             </Form.Item>
@@ -668,7 +841,7 @@ const Leads = () => {
               }
               name="date_naissance"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <DatePicker className="w-full text-xs h-7" format="DD/MM/YYYY" />
             </Form.Item>
@@ -680,7 +853,7 @@ const Leads = () => {
               }
               name="pays_naissance"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -735,7 +908,7 @@ const Leads = () => {
               }
               name="situation_famille"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -777,7 +950,7 @@ const Leads = () => {
               }
               name="numero_voie"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input
                 className="w-full text-xs h-7"
@@ -815,7 +988,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">CODE POSTAL*</span>}
               name="code_postal"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input className="w-full text-xs h-7" placeholder="Code postal" />
             </Form.Item>
@@ -825,7 +998,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">VILLE*</span>}
               name="ville"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input className="w-full text-xs h-7" placeholder="Ville" />
             </Form.Item>
@@ -839,7 +1012,7 @@ const Leads = () => {
               }
               name="bloctel"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Radio.Group>
                 <Radio value="oui">Oui</Radio>
@@ -857,14 +1030,14 @@ const Leads = () => {
               }
               name="portable"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <PhoneInput
                 country={"fr"}
                 inputClass="w-full text-xs h-7"
                 containerClass="w-full"
                 inputProps={{
-                  required: true,
+                  required: false,
                 }}
               />
             </Form.Item>
@@ -890,7 +1063,7 @@ const Leads = () => {
               name="email"
               className="mb-0"
               rules={[
-                { required: true, message: "Ce champ est obligatoire" },
+                { required: false, message: "Ce champ est obligatoire" },
                 { type: "email", message: "Email non valide" },
               ]}
             >
@@ -916,7 +1089,7 @@ const Leads = () => {
                 name="activite_entreprise"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Input
@@ -935,7 +1108,7 @@ const Leads = () => {
                 name="categorie_professionnelle"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Select
@@ -965,7 +1138,7 @@ const Leads = () => {
                 name="domaine_activite"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Select
@@ -1002,7 +1175,7 @@ const Leads = () => {
                 name="statut_juridique"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Select
@@ -1030,7 +1203,7 @@ const Leads = () => {
                 name="denomination_commerciale"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Input
@@ -1073,7 +1246,7 @@ const Leads = () => {
                 name="siret"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                   {
                     pattern: /^\d{14}$/,
                     message: "Le SIRET doit contenir 14 chiffres",
@@ -1118,7 +1291,7 @@ const Leads = () => {
                 name="telephone_entreprise"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <PhoneInput
@@ -1138,7 +1311,7 @@ const Leads = () => {
                 name="email_entreprise"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                   { type: "email", message: "Email non valide" },
                 ]}
               >
@@ -1172,7 +1345,7 @@ const Leads = () => {
                 name="code_naf"
                 className="mb-0"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Input
@@ -1281,7 +1454,7 @@ const Leads = () => {
               }
               name="regime_securite_sociale"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -1305,7 +1478,7 @@ const Leads = () => {
               name="num_secu"
               className="mb-0"
               rules={[
-                { required: true, message: "Ce champ est obligatoire" },
+                { required: false, message: "Ce champ est obligatoire" },
                 {
                   pattern:
                     /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/,
@@ -1322,24 +1495,21 @@ const Leads = () => {
             {/* === GESTION === */}
             <h2 className="text-sm font-semibold mt-6 mb-2">GESTION</h2>
 
-            {/* Type d'origine */}
             <Form.Item
-              label={
-                <span className="text-xs font-medium">TYPE D'ORIGINE*</span>
-              }
               name="type_origine"
-              className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              label={
+                <span className="text-xs font-medium">Type d'origin*</span>
+              }
+              className="w-full"
             >
-              <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
-              >
-                <Option value="web">Site web</Option>
-                <Option value="reseau">Réseaux sociaux</Option>
+              <Select placeholder="Choisissez" className="w-full">
+                <Option value="co_courtage">Co-courtage</Option>
+                <Option value="indicateur_affaires">
+                  Indicateur d'affaires
+                </Option>
+                <Option value="weedo_market">Weedo market</Option>
                 <Option value="recommandation">Recommandation</Option>
-                <Option value="salon">Salon/Événement</Option>
-                <Option value="publicite">Publicité</Option>
+                <Option value="reseaux_sociaux">Réseaux sociaux</Option>
                 <Option value="autre">Autre</Option>
               </Select>
             </Form.Item>
@@ -1348,7 +1518,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
               name="gestionnaire"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -1383,7 +1553,7 @@ const Leads = () => {
               label={<span className="text-xs font-medium">CRÉÉ PAR*</span>}
               name="cree_par"
               className="mb-0"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -1413,22 +1583,38 @@ const Leads = () => {
               </Select>
             </Form.Item>
 
-            {/* Intermédiaire(s) */}
+            {/* === INTERMEDIAIRE === */}
             <Form.Item
-              label={
-                <span className="text-xs font-medium">INTERMÉDIAIRE(S)</span>
-              }
+              label={<span className="text-xs font-medium">INTERMÉDIAIRE</span>}
               name="intermediaire"
               className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
-                mode="multiple"
+                placeholder="-- Choisissez un intermediaire--"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
               >
-                <Option value="assureur">Assureur</Option>
-                <Option value="agent">Agent général</Option>
-                <Option value="courtier">Courtier</Option>
+                {users.map((user) => {
+                  const displayName =
+                    user.userType === "admin"
+                      ? user.name
+                      : `${user.nom} ${user.prenom}`;
+
+                  return (
+                    <Option
+                      key={`${user.userType}-${user._id}`}
+                      value={displayName}
+                    >
+                      {displayName} (
+                      {user.userType === "admin" ? "Admin" : "Commercial"})
+                    </Option>
+                  );
+                })}
               </Select>
             </Form.Item>
           </Form>
@@ -1441,6 +1627,47 @@ const Leads = () => {
             Enregistrer
           </Button>
         </div>
+      </Modal>
+
+      <Modal
+        title={
+          <div className="bg-gray-100 p-3 -mx-6 -mt-6 flex justify-between items-center sticky top-0 z-10 border-b">
+            <span className="font-medium text-sm">
+              IMPORTER VOTRE BASE CLIENT/PROSPECT
+            </span>
+            <button
+              onClick={handleCancelImport}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
+            >
+              <CloseOutlined className="text-xs" />
+            </button>
+          </div>
+        }
+        open={isOpenModalImport}
+        onCancel={handleCancelImport}
+        footer={null}
+        width="50%"
+        style={{
+          position: "fixed",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          height: "100vh",
+          margin: 0,
+          padding: 0,
+          overflow: "hidden",
+        }}
+        bodyStyle={{
+          height: "calc(100vh - 49px)",
+          padding: 0,
+          margin: 0,
+        }}
+        maskStyle={{
+          backgroundColor: "rgba(0, 0, 0, 0.1)",
+        }}
+        closeIcon={null}
+      >
+        <ImportLeads onImportSuccess={handleImportSuccess} />
       </Modal>
     </section>
   );

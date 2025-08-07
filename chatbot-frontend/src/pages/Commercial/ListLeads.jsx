@@ -49,6 +49,7 @@ const ListLeads = () => {
     setIsModalOpen(false);
   };
 
+
   const handleFilterChange = (filterName, value) => {
     const newFilters = {
       ...filters,
@@ -100,16 +101,34 @@ const ListLeads = () => {
     }
 
     // Apply search filter
+    // if (filterValues.search) {
+    //   const searchTerm = filterValues.search;
+    //   result = result.filter(
+    //     (item) =>
+    //       item.email?.includes(searchTerm) ||
+    //       item.client?.includes(filterValues.search) ||
+    //       item.gestionnaire?.includes(searchTerm) ||
+    //       item.portable?.includes(searchTerm) ||
+    //       item.categorie?.includes(searchTerm) ||
+    //       item.codepostal?.includes(searchTerm)
+
+    //   );
+    // }
     if (filterValues.search) {
       const searchTerm = filterValues.search.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.nom?.toLowerCase().includes(searchTerm) ||
-          item.prenom?.toLowerCase().includes(searchTerm) ||
-          item.email?.toLowerCase().includes(searchTerm) ||
-          item.portable?.includes(filterValues.search) ||
-          item.gestionnaire?.toLowerCase().includes(searchTerm)
-      );
+      result = result.filter((item) => {
+        // Client name (nom + prenom)
+        const clientName = `${item.nom || ''} ${item.prenom || ''}`.toLowerCase();
+        
+        // All searchable fields from your columns
+        return (
+          clientName.includes(searchTerm) ||
+          (item.categorie?.toLowerCase().includes(searchTerm)) ||
+          (item.portable?.toLowerCase().includes(searchTerm)) ||
+          (item.email?.toLowerCase().includes(searchTerm)) ||
+          (item.codepostal?.toLowerCase().includes(searchTerm))
+        );
+      });
     }
 
     setFilteredData(result);
@@ -149,47 +168,90 @@ const ListLeads = () => {
     fetchUsers();
   }, []);
 
+  // const fetchClients = async () => {
+  //   const token = localStorage.getItem("token");
+  //   const decodedToken = jwtDecode(token); // Decode token to get user details
+  //   const userId = decodedToken?.userId; // Extract user ID
+  //   const userName = decodedToken?.name; // Extract full name
+
+  //   try {
+  //     setLoading(true);
+
+  //     // Fetch leads from backend
+  //     const response = await axios.get("/data", {
+  //       headers: { Authorization: `Bearer ${token}` },
+  //     });
+
+  //     // Ensure `allLeads` is an array
+  //     const allLeads = response.data?.chatData || [];
+
+
+  //     // Filter leads based on the current commercial's info
+  //     const filteredLeads = allLeads.filter((lead) => {
+  //       const commercial = lead.commercial || {};
+    
+  //       const decodedToken = jwtDecode(token);
+    
+  //       return (
+  //         commercial._id === userId && // Match ID
+  //         commercial.nom === lastName && // Match last name
+  //         commercial.prenom === firstName 
+         
+  //       );
+
+  //     });
+  //     setChatData(filteredLeads); // Update state with filtered leads
+  //   } catch (error) {
+  //     console.error("Error fetching leads:", error);
+  //     message.error("Failed to fetch leads");
+  //   } finally {
+  //     setLoading(false); // End loading state
+  //   }
+  // };
+
   const fetchClients = async () => {
     const token = localStorage.getItem("token");
-    const decodedToken = jwtDecode(token); // Decode token to get user details
-    const userId = decodedToken?.userId; // Extract user ID
-    const userName = decodedToken?.name; // Extract full name
-
+    const decodedToken = jwtDecode(token);
+    const userId = decodedToken?.userId;
+    const userRole = decodedToken?.role?.toLowerCase(); // or userType
+  
     try {
       setLoading(true);
-
-      // Fetch leads from backend
-      const response = await axios.get("/data", {
-        headers: { Authorization: `Bearer ${token}` },
+      
+      // Always fetch all clients (admin will use all, commercial will filter)
+      const response = await axios.get('/data', {
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      // Ensure `allLeads` is an array
+  
       const allLeads = response.data?.chatData || [];
+      console.log("All leads:", allLeads);
+  
 
-
-      // Filter leads based on the current commercial's info
-      const filteredLeads = allLeads.filter((lead) => {
-        const commercial = lead.commercial || {};
-        const clientcreatedByCommercial = lead.cree_par || {};
-        const decodedToken = jwtDecode(token);
-        const name = decodedToken?.name || "";
-        return (
-          commercial._id === userId && // Match ID
-          commercial.nom === lastName && // Match last name
-          commercial.prenom === firstName ||
-          clientcreatedByCommercial === name
-        );
-
+      const filteredLeads = allLeads.filter(lead => {
+        const isGestionnaire = 
+          (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
+          (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
+        
+        const isCommercial = 
+          lead.commercial?._id && lead.commercial._id.toString() === userId;
+        
+        return isGestionnaire || isCommercial;
       });
-      setChatData(filteredLeads); // Update state with filtered leads
+  
+      console.log("Filtered leads for commercial:", {
+        userId,
+        filteredCount: filteredLeads.length,
+        sampleLead: filteredLeads[0]
+      });
+  
+      setChatData(filteredLeads);
     } catch (error) {
       console.error("Error fetching leads:", error);
       message.error("Failed to fetch leads");
     } finally {
-      setLoading(false); // End loading state
+      setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchCommercials();
     fetchClients();
@@ -207,7 +269,7 @@ const ListLeads = () => {
   };
 
   const handleLeadClick = (chatData) => {
-    navigate(`/lead/${chatData._id}`);
+    navigate(`/client/${chatData._id}`);
   };
   const handleStatusLeadChange = async (newStatus, record) => {
     try {
@@ -307,16 +369,16 @@ const ListLeads = () => {
         </Select>
       ),
     },
-    {
-      title: "Gestionnaire",
-      dataIndex: "gestionnaire",
-      key: "gestionnaire",
-      render: (text, record) => (
-        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
-          <div className="font-medium">{record.gestionnaire || ""}</div>
-        </div>
-      ),
-    },
+    // {
+    //   title: "Gestionnaire",
+    //   dataIndex: "gestionnaire",
+    //   key: "gestionnaire",
+    //   render: (text, record) => (
+    //     <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+    //       <div className="font-medium">{record.gestionnaire || ""}</div>
+    //     </div>
+    //   ),
+    // },
   ];
 
   return (
@@ -346,7 +408,7 @@ const ListLeads = () => {
 
       <div className="p-4 bg-white mt-6 border-t rounded-md border-gray-200 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+          {/* <div>
             <label className="block text-[12px] font-medium text-gray-700 mb-1">
               Gestionaire
             </label>
@@ -378,24 +440,24 @@ const ListLeads = () => {
     );
   })}
 </Select>
-          </div>
+          </div> */}
 
           <div>
-            <label className="block text-[12px] font-medium text-gray-700 mb-1">
-              Catégorie
-            </label>
-            <Select
-              className="w-full"
-              placeholder="-- Choisissez --"
-              onChange={(value) => handleFilterChange("categorie", value)}
-              value={filters.categorie}
-            >
-              <Option value="tous">Tous</Option>
-              <Option value="particulier">Particulier</Option>
-              <Option value="professionnel">Professionnel</Option>
-              <Option value="entreprise">Entreprise</Option>
-            </Select>
-          </div>
+                   <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                     Catégorie
+                   </label>
+                   <Select
+                     className="w-full"
+                     placeholder="-- Choisissez --"
+                     onChange={(value) => handleFilterChange("categorie", value)}
+                     value={filters.categorie}
+                   >
+                     <Option value="tous">Tous</Option>
+                     <Option value="particulier">Particulier</Option>
+                     <Option value="professionnel">Professionnel</Option>
+                     <Option value="entreprise">Entreprise</Option>
+                   </Select>
+                 </div>
 
           <div>
             <label className="block text-[12px] font-medium text-gray-700 mb-1">
@@ -413,18 +475,18 @@ const ListLeads = () => {
             </Select>
           </div>
 
-          <div>
-            <label className="block text-[12px] font-medium text-gray-700 mb-1">
-              Recherche
-            </label>
-            <Input
-              placeholder="Rechercher..."
-              allowClear
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-              value={filters.search}
-              className="w-full"
-            />
-          </div>
+         <div>
+                   <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                     Recherche
+                   </label>
+                   <Input
+                     placeholder="Rechercher..."
+                     allowClear
+                     onChange={(e) => handleFilterChange("search", e.target.value)}
+                     value={filters.search}
+                     className="w-full"
+                   />
+                 </div>
         </div>
       </div>
       <div className="bg-white rounded-lg shadow-md w-full md:p-6 overflow-x-auto">
@@ -440,14 +502,14 @@ const ListLeads = () => {
               ),
             })),
           ]}
-          dataSource={chatData.slice(
+          dataSource={filteredData.slice(
             (currentPage - 1) * pageSize,
             currentPage * pageSize
           )}
           pagination={{
             current: currentPage,
             pageSize,
-            total: chatData.length,
+            total: filteredData.length,
             // onChange: (page) => setCurrentPage(page),
             onChange: (page, pageSize) => {
               setCurrentPage(page);

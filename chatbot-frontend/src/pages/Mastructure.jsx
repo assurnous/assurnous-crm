@@ -161,13 +161,13 @@ const Mastructure = () => {
           </TabPane>
 
           {/* Bordereaux Tab */}
-          <TabPane tab="Bordereaux" key="3">
+          {/* <TabPane tab="Bordereaux" key="3">
             <div className="mb-4">
               <span className="mr-2">Mois du bordereaux:</span>
               <Select placeholder="--Choisissez--" style={{ width: 200 }}>
                 <Option value="janvier">Janvier</Option>
                 <Option value="fevrier">Février</Option>
-                {/* Add more months as needed */}
+            
               </Select>
             </div>
             <Table 
@@ -186,7 +186,7 @@ const Mastructure = () => {
               locale={{ emptyText: 'Aucun bordereau enregistré' }}
               className="custom-table text-xs sm:text-sm"
             />
-          </TabPane>
+          </TabPane> */}
 
           {/* Documents Tab */}
           <TabPane tab="Autres documents" key="4">

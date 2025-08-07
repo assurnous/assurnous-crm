@@ -132,11 +132,30 @@ nav a {
   justify-content: center;
   margin-top: 20px;
 }
+/* For the entire row */
+.frozen-row {
+  background-color: #fff1f0; /* Light red background */
+}
 
+.frozen-row:hover td {
+  background-color: #ffccc7 !important; /* Darker red on hover */
+}
+
+/* For the Select component */
+.ant-select-selection-item[title="Gelé"] {
+  color: #ff4d4f !important;
+  font-weight: bold !important;
+}
+
+/* For the dropdown options */
+.ant-select-item-option[title="Gelé"] {
+  color: #ff4d4f !important;
+  font-weight: bold !important;
+}
 /* Custom styles for table */
 .custom-table .ant-table-thead > tr > th {
-  background-color: #2563eb; /* Tailwind's blue-600 */
-  color: #fff;
+  background-color: #facc15; /* Tailwind's blue-600 */
+  color: #000;
   font-weight: bold;
 }
 
@@ -381,11 +400,12 @@ nav a {
 
 /* Button styles */
 .add-button {
-  background-color: #1890ff;
-  border-color: #1890ff;
+  background-color: #1e40af;
+  border-color: #1e40af;
   border-radius: 6px;
   font-weight: 500;
 }
+
 
 .add-button:hover {
   background-color: #40a9ff;
@@ -686,4 +706,150 @@ nav a {
 
 .mastructure-logo-text {
   @apply text-gray-400 text-sm;
+}
+.catalogue-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.catalogue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.catalogue-title {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  font-weight: 700;
+  margin: 0;
+}
+
+.request-button {
+  background-color: #1890ff;
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+.tab-navigation {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e8e8e8;
+  gap: 10px;
+}
+
+.tab-button {
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #7f8c8d;
+  position: relative;
+  transition: all 0.3s ease;
+  border-radius: 4px 4px 0 0;
+}
+
+.tab-button.active {
+  color: #1890ff;
+  background-color: #f0f7ff;
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background-color: #1890ff;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.item-card {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  height: 90px; /* Reduced card height */
+  display: flex;
+  align-items: center;
+}
+
+.item-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.item-content {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.item-label {
+  font-size: 0.9rem;
+  margin: 0;
+  color: #2c3e50;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item-value {
+  align-self: flex-start;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+@media (max-width: 768px) {
+  .catalogue-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .tab-navigation {
+    overflow-x: auto;
+    padding-bottom: 5px;
+  }
+  
+  .tab-button {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+  }
+  
+  .items-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .item-card {
+    height: 80px;
+  }
 }

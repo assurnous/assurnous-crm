@@ -18,7 +18,8 @@ import { CloseOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
-import moment from "moment";
+import { useNavigate } from "react-router-dom";
+import { ASSUREURS } from "../constants";
 
 const { Option } = Select;
 
@@ -28,7 +29,9 @@ const Reclamations = () => {
   const [loading, setLoading] = useState(false);
   const [pageSize, setPageSize] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
+  const navigate = useNavigate();
   const [allReclamations, setAllReclamations] = useState([]);
+  const [showOtherServiceInput, setShowOtherServiceInput] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -137,31 +140,45 @@ const Reclamations = () => {
     setEditingRecord(null);
   };
 
+  
   useEffect(() => {
     const fetchReclamations = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
+      
       setLoading(true);
       try {
-        const response = await axios.get("/reclamations");
-        const decodedToken = token ? jwtDecode(token) : null;
+        const decodedToken = jwtDecode(token);
         const currentUserId = decodedToken?.userId;
-        const role = decodedToken?.role;
-        if (role === "Admin") {
-          setAllReclamations(response.data.data || []);
+        const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+  
+        // Fetch all reclamations
+        const response = await axios.get("/reclamations");
+        const allReclamations = response.data.data || [];
+  
+        // Filter based on role
+        let filteredData;
+        if (isAdmin) {
+          // Admins see all reclamations
+          filteredData = allReclamations;
+        } else {
+          // Commercials only see their own reclamations
+          filteredData = allReclamations.filter(
+            reclamation => reclamation.session?.toString() === currentUserId
+          );
         }
-
-        const filteredData = response.data.data.filter(
-          (reclamation) => reclamation.session === currentUserId
-        );
+  
         setAllReclamations(filteredData);
        
+        
       } catch (error) {
         console.error("Error fetching reclamations:", error);
+        message.error("Erreur lors du chargement des réclamations");
       } finally {
         setLoading(false);
       }
     };
+  
     fetchReclamations();
   }, [refreshTrigger]);
 
@@ -194,6 +211,7 @@ const Reclamations = () => {
       existe_crm: record.existe_crm || "oui",
       assureur: record.assureur,
       motif: record.motif,
+      leadId: record.lead || record.leadId || null,
       service_concerne: record.service_concerne,
       prise_en_charge_par: record.prise_en_charge_par,
       niveau_traitement: record.niveau_traitement,
@@ -231,12 +249,17 @@ const Reclamations = () => {
         message.error("Utilisateur non authentifié");
         return;
       }
+      const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'admin';
+      const sessionId = decodedToken.userId;
+      const sessionModel = isAdmin ? 'Admin' : 'Commercial';
 
       const formData = {
         ...values,
-        session: decodedToken?.userId || decodedToken?.commercialId,
+        session: sessionId,
+        sessionModel: sessionModel,
         leadId: selectedLeadId,
       };
+      console.log("Form Data:", formData);
 
       if (editingRecord) {
         const response = await axios.put(
@@ -275,7 +298,19 @@ const Reclamations = () => {
       console.error(error);
     }
   };
-
+  
+  const showDeleteConfirm = (id) => {
+    Modal.confirm({
+      title: "Confirmer la suppression",
+      content: "Êtes-vous sûr de vouloir supprimer le sinistre ?",
+      okText: "Oui",
+      okType: "danger",
+      cancelText: "Non",
+      onOk() {
+        return handleDelete(id);
+      },
+    });
+  }
   const handleDelete = async (record) => {
     try {
       const respoanse = await axios.delete(`/reclamations/${record._id}`);
@@ -352,21 +387,41 @@ const Reclamations = () => {
     }
   };
 
+  const handleLeadClick = (leadId) => {
+    navigate(`/client/${leadId}`);
+  };
+
   const columns = [
     {
       title: "N° réclamation",
       dataIndex: "numero_reclamation",
       key: "numero_reclamation",
     },
+    // {
+    //   title: "Client",
+    //   key: "client",
+    //   render: (_, record) =>
+    //     record.existe_crm === "oui"
+    //       ? record.nom_reclamant
+    //       : `${record.nom_reclamant_input || ""} ${
+    //           record.prenom_reclamant_input || ""
+    //         }`.trim(),
+    // },
     {
       title: "Client",
       key: "client",
-      render: (_, record) =>
-        record.existe_crm === "oui"
-          ? record.nom_reclamant
-          : `${record.nom_reclamant_input || ""} ${
-              record.prenom_reclamant_input || ""
-            }`.trim(),
+      render: (_, record) => (
+        <span 
+          onClick={() => handleLeadClick(record.leadId)}
+          style={{ cursor: 'pointer', color: '#1890ff' }}
+        >
+          {record.existe_crm === "oui"
+            ? record.nom_reclamant
+            : `${record.nom_reclamant_input || ""} ${
+                record.prenom_reclamant_input || ""
+              }`.trim()}
+        </span>
+      ),
     },
     {
       title: "Motif",
@@ -419,7 +474,7 @@ const Reclamations = () => {
               type="text"
               danger
               icon={<DeleteOutlined />}
-              onClick={() => handleDelete(record)}
+              onClick={() => showDeleteConfirm(record)}
             />
           </Tooltip>
         </Space>
@@ -431,14 +486,14 @@ const Reclamations = () => {
     <section className="container mx-auto">
       <div className="mb-12 md:p-1 p-1">
         <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
-          <h2 className="text-xs sm:text-sm font-semibold text-purple-900 text-center md:text-left">
+          <h2 className="text-xs sm:text-sm font-semibold text-blue-900 text-center md:text-left">
             RECLAMTIONS ({allReclamations.length})
           </h2>
 
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
             <Button
-              type="primary"
-              className="w-full md:w-auto"
+              type="secondary"
+              className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold md:w-auto"
               onClick={showModal}
             >
               <div className="flex items-center justify-center gap-2">
@@ -475,18 +530,67 @@ const Reclamations = () => {
                 placeholder="-- Choisissez --"
                 onChange={(value) => handleFilterChange("motif", value)}
                 value={filters.motif}
+                allowClear
               >
                 <Option value="tous">Tous</Option>
-                <Option value="refus_indemnisation">
-                  Refus d'indemnisation
-                </Option>
-                <Option value="delai_indemnisation">
-                  Délai d'indemnisation
-                </Option>
-                <Option value="modification_contrat">
-                  Modification de contrat
-                </Option>
-                <Option value="autre">Autre motif</Option>
+                <Select.OptGroup label="Souscription">
+                  <Option value="demarchage">Démarchage</Option>
+                  <Option value="engagement_conteste">
+                    Engagement contesté
+                  </Option>
+                  <Option value="documents_contractuels">
+                    Documents Contractuels
+                  </Option>
+                  <Option value="abus_faiblesse">Abus de Faiblesse</Option>
+                  <Option value="premier_contrat_non_resilie">
+                    1er contrat non résilié
+                  </Option>
+                  <Option value="signature_contrat">
+                    Signature du contrat
+                  </Option>
+                </Select.OptGroup>
+
+                {/* Gestion du contrat */}
+                <Select.OptGroup label="Gestion du contrat">
+                  <Option value="delai_traitement">Délai de traitement</Option>
+                  <Option value="teletransmission">Télétransmission</Option>
+                  <Option value="carte_tiers_payant">Carte Tiers Payant</Option>
+                  <Option value="espace_client">Espace client</Option>
+                  <Option value="documents_contractuels_gestion">
+                    Documents contractuels
+                  </Option>
+                  <Option value="mecintentement_general">
+                    Mécontentement général
+                  </Option>
+                </Select.OptGroup>
+
+                {/* Indemnisation/Prestation */}
+                <Select.OptGroup label="Indemnisation/Prestation">
+                  <Option value="garantie">Garantie</Option>
+                  <Option value="prestations">Prestations</Option>
+                  <Option value="liquidation_professionnel_sante">
+                    Liquidation Professionnel de Santé
+                  </Option>
+                  <Option value="mecintentement_general_indemnisation">
+                    Mécontentement général
+                  </Option>
+                </Select.OptGroup>
+
+                {/* Tarification */}
+                <Select.OptGroup label="Tarification">
+                  <Option value="cotisations">Cotisations</Option>
+                  <Option value="reglement_cotisation">
+                    Réglement Cotisation
+                  </Option>
+                  <Option value="tarif">Tarif</Option>
+                </Select.OptGroup>
+
+                {/* Fin du contrat */}
+                <Select.OptGroup label="Fin du contrat">
+                  <Option value="resiliation">Résiliation</Option>
+                  <Option value="renonciation">Rénonciation</Option>
+                  <Option value="resiliation_deces">Résiliation Décès</Option>
+                </Select.OptGroup>
               </Select>
             </div>
 
@@ -497,13 +601,17 @@ const Reclamations = () => {
               </label>
               <Select
                 className="w-full"
+                allowClear
                 placeholder="-- Choisissez --"
                 onChange={(value) => handleFilterChange("assureur", value)}
                 value={filters.assureur}
               >
-                <Option value="tous">Tous</Option>
-                <Option value="axa">AXA</Option>
-                <Option value="swisslife">SwissLife</Option>
+                    <Option value="tous">Tous les risques</Option>
+                    {ASSUREURS.map(assureur => (
+          <Option key={assureur.value} value={assureur.value}>
+            {assureur.label}
+          </Option>
+        ))}
               </Select>
             </div>
 
@@ -517,11 +625,15 @@ const Reclamations = () => {
                 placeholder="-- Choisissez --"
                 onChange={(value) => handleFilterChange("issue", value)}
                 value={filters.issue}
+                allowClear
               >
                 <Option value="tous">Tous</Option>
-                <Option value="resolue">Résolue</Option>
-                <Option value="non_resolue">Non résolue</Option>
-                <Option value="en_attente">En attente</Option>
+                <Option value="defavorable">Défavorable</Option>
+                <Option value="defense_portefeuille">
+                  Défense de portefeuille
+                </Option>
+                <Option value="favorable">Favorable</Option>
+                <Option value="partielle">Partielle</Option>
               </Select>
             </div>
 
@@ -533,15 +645,28 @@ const Reclamations = () => {
               <Select
                 className="w-full"
                 placeholder="-- Choisissez --"
+                allowClear
                 onChange={(value) =>
                   handleFilterChange("statut_reclamant", value)
                 }
                 value={filters.statut_reclamant}
               >
                 <Option value="tous">Tous</Option>
-                <Option value="particulier">Particulier</Option>
-                <Option value="professionnel">Professionnel</Option>
-                <Option value="entreprise">Entreprise</Option>
+                <Option value="ancient_client" label="Ancient client">
+                  Ancient client
+                </Option>
+                <Option value="ayant_droit" label="Ayant-droit">
+                  Ayant-droit
+                </Option>
+                <Option value="beneficiaire" label="Bénéficiaire">
+                  Bénéficiaire
+                </Option>
+                <Option value="client" label="Client">
+                  Client
+                </Option>
+                <Option value="prospect" label="Prospect">
+                  Prospect
+                </Option>
               </Select>
             </div>
 
@@ -678,9 +803,10 @@ const Reclamations = () => {
                 className="w-full text-xs h-7"
                 placeholder="-- Choisissez --"
               >
-                <Option value="email">Email</Option>
+                <Option value="courrier">Courrier</Option>
+                <Option value="mail">Mail</Option>
+                <Option value="oral">Oral</Option>
                 <Option value="telephone">Téléphone</Option>
-                <Option value="autre">Autre</Option>
               </Select>
             </Form.Item>
 
@@ -703,22 +829,15 @@ const Reclamations = () => {
                 showSearch
                 optionFilterProp="children"
               >
-                {users.map((user) => {
-                  const displayName =
-                    user.userType === "admin"
-                      ? user.name
-                      : `${user.nom} ${user.prenom}`;
-
-                  return (
-                    <Option
-                      key={`${user.userType}-${user._id}`}
-                      value={displayName}
-                    >
-                      {displayName} (
-                      {user.userType === "admin" ? "Admin" : "Commercial"})
-                    </Option>
-                  );
-                })}
+                <Option value="acpr">ACPR</Option>
+                <Option value="association_consommateurs">
+                  Association de consommateurs
+                </Option>
+                <Option value="avocat">Avocat</Option>
+                <Option value="cnil">CNIL</Option>
+                <Option value="ddpp">DDPP</Option>
+                <Option value="mandataire">Mandataire</Option>
+                <Option value="reclamant">Réclamant</Option>
               </Select>
             </Form.Item>
 
@@ -734,9 +853,21 @@ const Reclamations = () => {
                 className="w-full text-xs h-7"
                 placeholder="-- Choisissez --"
               >
-                <Option value="particulier">Particulier</Option>
-                <Option value="professionnel">Professionnel</Option>
-                <Option value="entreprise">Entreprise</Option>
+                <Option value="ancient_client" label="Ancient client">
+                  Ancient client
+                </Option>
+                <Option value="ayant_droit" label="Ayant-droit">
+                  Ayant-droit
+                </Option>
+                <Option value="beneficiaire" label="Bénéficiaire">
+                  Bénéficiaire
+                </Option>
+                <Option value="client" label="Client">
+                  Client
+                </Option>
+                <Option value="prospect" label="Prospect">
+                  Prospect
+                </Option>
               </Select>
             </Form.Item>
 
@@ -820,12 +951,12 @@ const Reclamations = () => {
               name="assureur"
               rules={[{ required: true, message: "Ce champ est obligatoire" }]}
             >
-              <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
-              >
-                <Option value="axa">AXA</Option>
-                <Option value="swisslife">SwissLife</Option>
+              <Select placeholder="-- Choisissez --" className="w-full">
+                {ASSUREURS.map((assureur) => (
+                  <Option key={assureur.value} value={assureur.value}>
+                    {assureur.label}
+                  </Option>
+                ))}
               </Select>
             </Form.Item>
 
@@ -837,68 +968,67 @@ const Reclamations = () => {
               <Select
                 className="w-full text-xs h-7"
                 placeholder="-- Choisissez --"
+                showSearch
+                optionFilterProp="children"
               >
-                {/* Dommages et sinistres */}
-                <Option value="refus_indemnisation">
-                  Refus d'indemnisation
-                </Option>
-                <Option value="delai_indemnisation">
-                  Délai d'indemnisation trop long
-                </Option>
-                <Option value="montant_indemnisation">
-                  Montant d'indemnisation insuffisant
-                </Option>
-                <Option value="sinistre_non_couvert">
-                  Sinistre non couvert
-                </Option>
+                <Select.OptGroup label="Souscription">
+                  <Option value="demarchage">Démarchage</Option>
+                  <Option value="engagement_conteste">
+                    Engagement contesté
+                  </Option>
+                  <Option value="documents_contractuels">
+                    Documents Contractuels
+                  </Option>
+                  <Option value="abus_faiblesse">Abus de Faiblesse</Option>
+                  <Option value="premier_contrat_non_resilie">
+                    1er contrat non résilié
+                  </Option>
+                  <Option value="signature_contrat">
+                    Signature du contrat
+                  </Option>
+                </Select.OptGroup>
 
-                {/* Contrats et résiliations */}
-                <Option value="resiliation">Problème de résiliation</Option>
-                <Option value="modification_contrat">
-                  Modification de contrat
-                </Option>
-                <Option value="erreur_contrat">Erreur dans le contrat</Option>
+                {/* Gestion du contrat */}
+                <Select.OptGroup label="Gestion du contrat">
+                  <Option value="delai_traitement">Délai de traitement</Option>
+                  <Option value="teletransmission">Télétransmission</Option>
+                  <Option value="carte_tiers_payant">Carte Tiers Payant</Option>
+                  <Option value="espace_client">Espace client</Option>
+                  <Option value="documents_contractuels_gestion">
+                    Documents contractuels
+                  </Option>
+                  <Option value="mecintentement_general">
+                    Mécontentement général
+                  </Option>
+                </Select.OptGroup>
 
-                {/* Paiements et primes */}
-                <Option value="augmentation_prime">
-                  Augmentation injustifiée de prime
-                </Option>
-                <Option value="paiement_non_credite">
-                  Paiement non crédité
-                </Option>
-                <Option value="prelevement_irregulier">
-                  Prélèvement irrégulier
-                </Option>
+                {/* Indemnisation/Prestation */}
+                <Select.OptGroup label="Indemnisation/Prestation">
+                  <Option value="garantie">Garantie</Option>
+                  <Option value="prestations">Prestations</Option>
+                  <Option value="liquidation_professionnel_sante">
+                    Liquidation Professionnel de Santé
+                  </Option>
+                  <Option value="mecintentement_general_indemnisation">
+                    Mécontentement général
+                  </Option>
+                </Select.OptGroup>
 
-                {/* Service client */}
-                <Option value="absence_contact">
-                  Absence de contact/retour
-                </Option>
-                <Option value="information_erronnee">
-                  Information erronnée
-                </Option>
-                <Option value="service_non_conforme">
-                  Service non conforme
-                </Option>
+                {/* Tarification */}
+                <Select.OptGroup label="Tarification">
+                  <Option value="cotisations">Cotisations</Option>
+                  <Option value="reglement_cotisation">
+                    Réglement Cotisation
+                  </Option>
+                  <Option value="tarif">Tarif</Option>
+                </Select.OptGroup>
 
-                {/* Assurance auto spécifique */}
-                <Option value="expertise_contentieux">
-                  Contentieux expertise auto
-                </Option>
-                <Option value="vehicule_remplacement">
-                  Véhicule de remplacement
-                </Option>
-
-                {/* Assurance habitation */}
-                <Option value="degats_des_eaux">Dégâts des eaux</Option>
-                <Option value="vol_habilitation">Vol sans habilitation</Option>
-
-                {/* Divers */}
-                <Option value="erreur_admin">Erreur administrative</Option>
-                <Option value="donnees_personnelles">
-                  Problème données personnelles
-                </Option>
-                <Option value="autre">Autre motif</Option>
+                {/* Fin du contrat */}
+                <Select.OptGroup label="Fin du contrat">
+                  <Option value="resiliation">Résiliation</Option>
+                  <Option value="renonciation">Rénonciation</Option>
+                  <Option value="resiliation_deces">Résiliation Décès</Option>
+                </Select.OptGroup>
               </Select>
             </Form.Item>
 
@@ -907,29 +1037,26 @@ const Reclamations = () => {
               name="service_concerne"
               rules={[{ required: true, message: "Ce champ est obligatoire" }]}
             >
-              {/* <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
-              >
-                <Option value="sav">SAV</Option>
-                <Option value="support">Support</Option>
-                <Option value="commercial">Commercial</Option>
-              </Select> */}
               <Select
                 className="w-full text-xs h-7 flex"
                 placeholder="-- Sélectionnez --"
                 mode="single"
                 optionLabelProp="label"
+                onChange={(value) => {
+                  setShowOtherServiceInput(value === "autre");
+                }}
                 tagRender={({ label, value, closable, onClose }) => (
                   <Tag
                     color={
-                      value === "souscription"
+                      value === "assureur"
                         ? "blue"
-                        : value === "sinistres"
-                        ? "red"
-                        : value === "relation_client"
+                        : value === "cabinet"
                         ? "green"
-                        : "orange"
+                        : value === "courtier"
+                        ? "orange"
+                        : value === "partenaire"
+                        ? "purple"
+                        : "gray"
                     }
                     closable={closable}
                     onClose={onClose}
@@ -939,53 +1066,69 @@ const Reclamations = () => {
                   </Tag>
                 )}
               >
-                {/* Insurance-specific departments */}
-                <Option value="souscription" label="Souscription">
+                <Option value="assureur" label="Assureur">
                   <Space>
                     <Tag color="blue" style={{ borderRadius: 12 }}>
-                      Souscription
+                      Assureur
                     </Tag>
-                    <span>Création/modification contrats</span>
+                    <span>Service de l'assureur</span>
                   </Space>
                 </Option>
 
-                <Option value="sinistres" label="Sinistres">
-                  <Space>
-                    <Tag color="red" style={{ borderRadius: 12 }}>
-                      Sinistres
-                    </Tag>
-                    <span>Gestion des déclarations</span>
-                  </Space>
-                </Option>
-
-                <Option value="relation_client" label="Relation Client">
+                <Option value="cabinet" label="Cabinet">
                   <Space>
                     <Tag color="green" style={{ borderRadius: 12 }}>
-                      Relation Client
+                      Cabinet
                     </Tag>
-                    <span>Service après-vente</span>
+                    <span>Service du cabinet</span>
                   </Space>
                 </Option>
 
-                <Option value="paiements" label="Paiements">
+                <Option value="courtier" label="Courtier du cabinet">
                   <Space>
                     <Tag color="orange" style={{ borderRadius: 12 }}>
-                      Paiements
+                      Courtier
                     </Tag>
-                    <span>Primes & facturation</span>
+                    <span>Courtier du cabinet</span>
                   </Space>
                 </Option>
 
-                <Option value="expertise" label="Expertise">
+                <Option value="partenaire" label="Partenaire">
                   <Space>
                     <Tag color="purple" style={{ borderRadius: 12 }}>
-                      Expertise
+                      Partenaire
                     </Tag>
-                    <span>Évaluation sinistres</span>
+                    <span>Service partenaire</span>
+                  </Space>
+                </Option>
+
+                <Option value="autre" label="Autre">
+                  <Space>
+                    <Tag color="gray" style={{ borderRadius: 12 }}>
+                      Autre
+                    </Tag>
+                    <span>Autre service</span>
                   </Space>
                 </Option>
               </Select>
             </Form.Item>
+            {showOtherServiceInput && (
+              <Form.Item
+                name="autre_service"
+                label="Précisez*"
+                rules={[
+                  {
+                    required: true,
+                    message: "Le champ autre service est obligatoire",
+                  },
+                ]}
+              >
+                <Input
+                  placeholder="Précisez le service"
+                  className="w-full text-xs h-7"
+                />
+              </Form.Item>
+            )}
 
             <Form.Item
               label="Pris en charge par"
@@ -994,10 +1137,29 @@ const Reclamations = () => {
             >
               <Select
                 className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
+                placeholder="-- Choisissez un créateur --"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
               >
-                <Option value="agent1">Agent 1</Option>
-                <Option value="agent2">Agent 2</Option>
+                {users.map((user) => {
+                  const displayName =
+                    user.userType === "admin"
+                      ? user.name
+                      : `${user.nom} ${user.prenom}`;
+
+                  return (
+                    <Option
+                      key={`${user.userType}-${user._id}`}
+                      value={displayName}
+                    >
+                      {displayName} (
+                      {user.userType === "admin" ? "Admin" : "Commercial"})
+                    </Option>
+                  );
+                })}
               </Select>
             </Form.Item>
 
@@ -1010,9 +1172,10 @@ const Reclamations = () => {
                 className="w-full text-xs h-7"
                 placeholder="-- Choisissez --"
               >
-                <Option value="niveau1">Niveau 1</Option>
-                <Option value="niveau2">Niveau 2</Option>
-                <Option value="niveau3">Niveau 3</Option>
+                <Option value="1">1</Option>
+                <Option value="2">2</Option>
+                <Option value="2S">2S</Option>
+                <Option value="3">3</Option>
               </Select>
             </Form.Item>
 
@@ -1044,9 +1207,12 @@ const Reclamations = () => {
                 className="w-full text-xs h-7"
                 placeholder="-- Choisissez --"
               >
-                <Option value="resolue">Résolue</Option>
-                <Option value="en_attente">En attente</Option>
-                <Option value="non_resolue">Non résolue</Option>
+                <Option value="defavorable">Défavorable</Option>
+                <Option value="defense_portefeuille">
+                  Défense de portefeuille
+                </Option>
+                <Option value="favorable">Favorable</Option>
+                <Option value="partielle">Partielle</Option>
               </Select>
             </Form.Item>
           </Form>

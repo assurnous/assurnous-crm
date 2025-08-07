@@ -22,7 +22,8 @@ import {
   faHandHoldingUsd,
   faUserMd,
   faBuilding,
-  faUsers
+  faUsers,
+ 
 } from "@fortawesome/free-solid-svg-icons";
 import { UserOutlined } from "@ant-design/icons";
 import { Layout, Menu, Divider, Avatar } from "antd";
@@ -169,7 +170,7 @@ const SideBar = () => {
           style={{ fontSize: "18px", marginRight: "2px" }}
         />
       ),
-      label: "Ma Marketplace",
+      label: "Mes partenaires",
       children: [
         {
           key: "/catalogue",
@@ -179,7 +180,7 @@ const SideBar = () => {
               style={{ fontSize: "18px", marginRight: "2px" }}
             />
           ),
-          label: "Mon catalogue",
+          label: "Compagnies",
           role: ["Admin", "Commercial"],
         },
         {
@@ -193,17 +194,17 @@ const SideBar = () => {
           label: "Mes devis",
           role: ["Admin", "Commercial"],
         },
-        {
-          key: "/tarification",
-          icon: (
-            <FontAwesomeIcon
-              icon={faCalculator} // Example icon for tarification
-              style={{ fontSize: "18px", marginRight: "2px" }}
-            />
-          ),
-          label: "Ma tarification",
-          role: ["Admin", "Commercial"],
-        }
+        // {
+        //   key: "/tarification",
+        //   icon: (
+        //     <FontAwesomeIcon
+        //       icon={faCalculator} // Example icon for tarification
+        //       style={{ fontSize: "18px", marginRight: "2px" }}
+        //     />
+        //   ),
+        //   label: "Ma tarification",
+        //   role: ["Admin", "Commercial"],
+        // }
       ],
     },
 
@@ -215,7 +216,7 @@ const SideBar = () => {
           style={{ fontSize: "18px", marginRight: "2px" }}
         />
       ),
-      label: "Coffre fort conformité",
+      label: "Conformité",
       children: [
         {
           key: "/Liste-de-conformité",
@@ -228,31 +229,31 @@ const SideBar = () => {
           label: "Liste de conformité",
           role: ["Admin", "Commercial"],
         },
-        {
-          key: "/Guide-de-conformité",
-          icon: (
-            <FontAwesomeIcon
-              icon={faBook} // Represents a guide/reference book
-              style={{ fontSize: "18px", marginRight: "2px" }}
-            />
-          ),
-          label: "Guide de conformité",
-          role: ["Admin", "Commercial"],
-        },
+        // {
+        //   key: "/Guide-de-conformité",
+        //   icon: (
+        //     <FontAwesomeIcon
+        //       icon={faBook} // Represents a guide/reference book
+        //       style={{ fontSize: "18px", marginRight: "2px" }}
+        //     />
+        //   ),
+        //   label: "Guide de conformité",
+        //   role: ["Admin", "Commercial"],
+        // },
       
       ],
     },
-    {
-      key: "/Mes-comissions",
-      icon: (
-        <FontAwesomeIcon
-          icon={faHandHoldingUsd} // Represents money/commissions
-          style={{ fontSize: "18px", marginRight: "2px" }}
-        />
-      ),
-      label: "Mes commissions",
-      role: ["Admin"],
-    },
+    // {
+    //   key: "/Mes-comissions",
+    //   icon: (
+    //     <FontAwesomeIcon
+    //       icon={faHandHoldingUsd} // Represents money/commissions
+    //       style={{ fontSize: "18px", marginRight: "2px" }}
+    //     />
+    //   ),
+    //   label: "Mes commissions",
+    //   role: ["Admin"],
+    // },
     {
       key: "/agenda",
       icon: (
@@ -266,14 +267,14 @@ const SideBar = () => {
     },
 
     {
-      key: "moncabinet",
+      key: "structure",
       icon: (
         <FontAwesomeIcon
-          icon={faUserMd} // you can change this icon to any other fitting one
+          icon={faShieldAlt} // you can change this icon to any other fitting one
           style={{ fontSize: "18px", marginRight: "2px" }}
         />
       ),
-      label: "Mon Cabinet",
+      label: "Gestion",
       role: ["Admin"],
       children: [
         {
@@ -356,7 +357,7 @@ const SideBar = () => {
       width={210}
     >
       <div
-        className="absolute top-4 right-0 cursor-pointer text-purple-900 text-xl"
+        className="absolute top-4 right-0 cursor-pointer text-blue-800 text-xl"
         onClick={onClickHandler}
       >
         <FontAwesomeIcon icon={faCaretLeft} />
@@ -370,7 +371,7 @@ const SideBar = () => {
       >
         <Avatar
           src={profileImage}
-          className="bg-purple-900 text-white text-lg rounded-md font-bold cursor-pointer hover:shadow-lg transition-all duration-300"
+          className="bg-yellow-400 text-white text-lg rounded-md font-bold cursor-pointer hover:shadow-lg transition-all duration-300"
           size={30}
         >
           {!profileImage &&
@@ -407,7 +408,7 @@ const SideBar = () => {
                   className={
                     isActive(child.key)
                       ? "bg-white text-gray-600"
-                      : "hover:bg-purple-900 hover:text-white"
+                      : "hover:bg-blue-800 hover:text-white"
                   }
                 >
                   {child.label}
@@ -421,7 +422,7 @@ const SideBar = () => {
               className={
                 isActive(item.key)
                   ? "bg-white text-gray-600"
-                  : "hover:bg-purple-900 hover:text-white"
+                  : "hover:bg-blue-800 hover:text-white"
               }
             >
               {item.label}
