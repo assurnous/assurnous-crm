@@ -7,7 +7,7 @@ const documentSchema = new mongoose.Schema({
   category: { 
     type: String, 
     required: true,
-    enum: ['documents-courtier', 'documents-interlocuteurs', 'procedures-internes', 'archives']
+    enum: ['documents-courtier', 'conventions-partenaire', 'procedures-internes', 'archives']
   },
   size: { type: Number, required: true },
   type: { type: String, required: true },

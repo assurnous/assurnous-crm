@@ -366,7 +366,7 @@ const DocumentList = () => {
   const categories = [
     { value: "all", label: "Tous les documents" },
     { value: "documents-courtier", label: "Documents courtier" },
-    { value: "documents-interlocuteurs", label: "Documents Interlocuteurs" },
+    { value: "conventions-partenaire", label: "Conventions partenaires" },
     { value: "procedures-internes", label: "Procédures internes" },
     { value: "archives", label: "Archives" },
   ];
