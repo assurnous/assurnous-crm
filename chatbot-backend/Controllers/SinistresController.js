@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const Sinistre = require("../Models/SinistreSchema");
+const Sinistre = require("../Models/sinistreSchema"); // Ensure the correct path to your Sinistre model
 
 class SinistresController {
   static async getAllSinistres(req, res) {
