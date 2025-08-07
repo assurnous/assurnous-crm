@@ -116,7 +116,8 @@ nav a {
 }
 
 .ant-table-thead > tr > th {
-  background-color: #fafafa;
+  /* background-color: #fafafa; */
+  background-color: #facc15;
   color: #333;
   font-weight: bold;
   text-align: center;

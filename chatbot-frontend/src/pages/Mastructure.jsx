@@ -136,7 +136,7 @@ const Mastructure = () => {
           </TabPane>
 
           {/* Codes Assureurs Tab */}
-          <TabPane tab="Codes assureurs" key="2">
+          {/* <TabPane tab="Codes assureurs" key="2">
             <div className="mb-4 flex justify-end">
               <Button type="primary" icon={<PlusOutlined />}>
                 AJOUTER UN CODE ASSUREUR EXTERNE
@@ -158,7 +158,7 @@ const Mastructure = () => {
               locale={{ emptyText: 'Aucun code assureur enregistré' }}
               className="custom-table text-xs sm:text-sm"
             />
-          </TabPane>
+          </TabPane> */}
 
           {/* Bordereaux Tab */}
           {/* <TabPane tab="Bordereaux" key="3">

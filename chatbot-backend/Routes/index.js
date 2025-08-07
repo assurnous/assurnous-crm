@@ -18,6 +18,7 @@ const fileController = require('../Controllers/fileController');
 const ContratController = require('../Controllers/ContratController');
 const DocumentController = require('../Controllers/documentController');
 const ListConfimiteController = require('../Controllers/ListConfimiteController');
+const CredentialController = require('../Controllers/credentialController');
 
 
 
@@ -190,6 +191,11 @@ router.post('/document', uploads.single('document'), ListConfimiteController.upl
 router.get('/document', ListConfimiteController.getDocuments);
 router.get('/document/:id/download', ListConfimiteController.downloadDocument);
 router.delete('/document/:id', ListConfimiteController.deleteDocument);
+
+
+router.post('/credential', CredentialController.createCredential);
+router.get('/credential', CredentialController.getAllCredentials);
+router.put('/credential/:id', CredentialController.updateCredentialById);
 
 
 

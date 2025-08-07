@@ -5,7 +5,7 @@ import { faLock, faEnvelope, faEye, faEyeSlash } from "@fortawesome/free-solid-s
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { UserContext } from "../UserContext";
-// import logo from "../assets/images/chatbot-logo.png";
+import assurnous from "../assets/assurnous.jpeg";
 
 const SignIn = () => {
   const [email, setEmail] = useState("");
@@ -54,10 +54,17 @@ const SignIn = () => {
 
   return (
     <>
-      <section className="relative w-full min-h-screen bg-[#1C1C1C]">
-          <div className="flex justify-center  items-center px-6 py-16  h-full">
-          <div className="bg-white rounded-lg h-full shadow-md p-6 space-y-4 md:space-y-6 sm:p-8 z-10 relative" style={{ maxWidth: "500px", width: "100%", heigth: "100%" }}>
-         
+      <section className="relative w-full min-h-screen bg-black flex flex-col items-center justify-center px-6 py-12">
+        {/* Logo positioned above the form container */}
+        <div className="mb-8 flex justify-center">
+          <img 
+            src={assurnous} 
+            alt="Assurnous Logo" 
+            className="h-[200px] object-contain"  // Adjust height as needed
+          />
+        </div>
+            
+            <div className="bg-white rounded-lg shadow-md p-8 space-y-6 w-full max-w-md">
           <h1 className="text-2xl font-bold text-black text-center">Connectez-vous à votre compte</h1>
           <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -104,19 +111,19 @@ const SignIn = () => {
                 <span className="text-sm font-medium text-purple-900 hover:underline">Mot de passe oublié?</span>
               </Link> */}
             </div>
-            <button type="submit" className="w-full text-white bg-purple-900 hover:bg-purple-500 focus:ring-4 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
+            <button type="submit" className="w-full text-white bg-yellow-400 hover:bg-yellow-500 focus:ring-4 font-medium rounded-lg text-sm px-5 py-2.5 text-center">
               Se connecter
             </button>
           </form>
 
-          <p className="text-sm font-light text-gray-500 text-center">
+          {/* <p className="text-sm font-light text-gray-500 text-center">
             Vous n'avez pas de compte ?{" "}
             <Link to="/SignUp" className="font-medium text-purple-900 hover:underline">
               Inscrivez-vous
             </Link>
-          </p> 
+          </p>  */}
         </div>
-      </div>
+  
       </section>
     </>
   );
