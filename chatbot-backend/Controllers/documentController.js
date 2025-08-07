@@ -1,8 +1,7 @@
-// controllers/documentController.js
-const Document = require("../models/documentSchema");
-const Chat = require("../Models/LeadsSchema");
+
 const { bucket } = require("../firebase-storage");
 const mongoose = require("mongoose");
+const Document = require("../Models/documentSchema");
 
 // Upload document to Firebase Storage (same as before)
 const uploadToFirebase = async (file) => {
