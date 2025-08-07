@@ -55,7 +55,7 @@ const DocumentTabContent = () => {
       setDocuments(response.data);
       setFilteredDocuments(response.data);
     } catch (error) {
-      message.error("Failed to fetch documents");
+      // message.error("Failed to fetch documents");
       console.error("Error fetching documents:", error);
     } finally {
       setLoading(false);
