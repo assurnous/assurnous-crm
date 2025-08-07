@@ -1,54 +1,66 @@
 const mongoose = require('mongoose');
 
 const sinistreSchema = new mongoose.Schema({
-  // Information section
+  // === INFORMATION ===
   numeroSinistre: {
     type: String,
     required: true,
     unique: true
   },
 
-  // Sinistre section
+  // === LE SINISTRE ===
   sinistreExist: {
     type: String,
     enum: ['oui', 'non'],
     required: true
   },
-  sinistreSelect: {
-    type: String,
+  
+  // When sinistré exists in CRM
+  sinistreId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Chat',
     required: function() { return this.sinistreExist === 'oui'; }
+  },
+  
+  // When sinistré doesn't exist in CRM
+  sinistreNom: {
+    type: String,
+    required: function() { return this.sinistreExist === 'non'; }
+  },
+  sinistrePrenom: {
+    type: String,
+    required: function() { return this.sinistreExist === 'non'; }
   },
   sinistreInput: {
     type: String,
     required: function() { return this.sinistreExist === 'non'; }
   },
 
-  // Contract section
+  // Contract information
   contratExist: {
     type: String,
     enum: ['oui', 'non'],
-    required: true
+    required: false
   },
-  contratSelect: {
-    type: String,
+  contratId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Contrat',
     required: function() { return this.contratExist === 'oui'; }
   },
-  contratInput: {
+  contratNumber: {
     type: String,
     required: function() { return this.contratExist === 'non'; }
   },
 
-  // Details
+  // === DÉTAIL DU SINISTRE ===
   risque: {
     type: String,
-    required: true
+    required: true,
   },
   assureur: {
     type: String,
-    required: true
+    required: true,
   },
-
-  // Détail du sinistre
   dateSinistre: {
     type: Date,
     required: true
@@ -59,12 +71,13 @@ const sinistreSchema = new mongoose.Schema({
   },
   statutSinistre: {
     type: String,
-    enum: ['ouvert', 'ferme', 'attente'],
-    required: true
+    required: true,
+    enum: ['en_cours', 'clo', 'reouvert']
   },
   typeSinistre: {
     type: String,
-    required: true
+    required: true,
+    enum: ['dommage_corporel', 'dommage_materiel', 'dommage_corporel_matériel']
   },
   responsabilite: {
     type: String,
@@ -76,18 +89,58 @@ const sinistreSchema = new mongoose.Schema({
   },
   delegation: {
     type: String,
-    enum: ['oui', 'non'],
-    required: true
+    required: true,
+    enum: ['oui', 'non']
   },
   expert: {
     type: String
   },
-  gestionnaire: {
-    type: String,
-    required: true
-  },
+    // session: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "Commercial",
+    //   required: false, // If this is optional, you can make it not required
+    // },
+    // session: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   ref: "Admin", // Referring to the Commercial model
+    //   required: false, // If this is optional, you can make it not required
+    // },
 
-  // Timestamps and references
+    // session: {
+    //   type: mongoose.Schema.Types.ObjectId,
+    //   refPath: 'sessionModel', // Dynamic reference
+    //   required: false,
+    // },
+    // sessionModel: {
+    //   type: String,
+    //   enum: ['Admin', 'Commercial'],
+    //   required: false,
+    // },
+    session: {
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'sessionModel',
+      required: false,
+      validate: {
+        validator: function(v) {
+          // Skip validation if null
+          if (v === null) return true;
+          
+          // Check if valid ObjectId
+          if (!mongoose.Types.ObjectId.isValid(v)) return false;
+          
+          // Check if reference exists
+          return mongoose.model(this.sessionModel).exists({ _id: v });
+        },
+        message: props => `Invalid reference: ${props.value} for model ${this.sessionModel}`
+      }
+    },
+    sessionModel: {
+      type: String,
+      enum: ['Admin', 'Commercial'],
+      required: function() { return this.session !== null; }
+    },
+
+  // Metadata
   createdAt: {
     type: Date,
     default: Date.now
@@ -100,18 +153,31 @@ const sinistreSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-    session: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Commercial", // Referring to the Commercial model
-      required: false, // If this is optional, you can make it not required
-    },
-    session: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Admin", // Referring to the Commercial model
-      required: false, // If this is optional, you can make it not required
-    },
-    leadId: { type: mongoose.Schema.Types.ObjectId, ref: "Chat" },
-}, { timestamps: true });
+  leadId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Chat',
+    required: false
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// Virtuals for populated data
+sinistreSchema.virtual('sinistreDetails', {
+  ref: 'Chat',
+  localField: 'sinistreId',
+  foreignField: '_id',
+  justOne: true
+});
+
+sinistreSchema.virtual('contratDetails', {
+  ref: 'Contrat',
+  localField: 'contratId',
+  foreignField: '_id',
+  justOne: true
+});
 
 const Sinistre = mongoose.model('Sinistre', sinistreSchema);
 

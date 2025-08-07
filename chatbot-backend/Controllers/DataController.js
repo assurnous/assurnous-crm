@@ -1,6 +1,8 @@
 const Chat = require("../Models/LeadsSchema");
 const mongoose = require("mongoose");
 const Ticket = require("../Models/ticketModel");
+const Commercial = require("../Models/commercialModel");
+const Admin = require("../Models/adminModel");
 
 class DataController {
   
@@ -21,7 +23,11 @@ class DataController {
   static async getdata(req, res) {
     try {
       // Retrieve all chat documents from the database
-      const chatData = await Chat.find();
+      const chatData = await Chat.find().populate({
+        path: 'gestionnaire',
+        select: 'nom prenom email name',
+        options: { strictPopulate: false }  // This allows the reference to either model
+      })
 
       // Send the chat data back to the client
       res.status(200).json({ chatData });
@@ -33,7 +39,6 @@ class DataController {
   static async getdataById(req, res) {
     try {
       const { id } = req.params;
-      // console.log("id", id)
       const chat = await Chat.findById(id);
 
       if (!chat) {
@@ -238,7 +243,7 @@ static async updateStatusLead(req, res) {
   const { statut } = req.body; // Changed from statusLead to statut
 
   // Validate the new status value - removed "nouveau" since it's not an option
-  const validStatuses = ["prospect", "client"];
+  const validStatuses = ["prospect", "client", "Gelé"];
   if (!validStatuses.includes(statut)) {
     return res.status(400).json({ error: "Invalid status value" });
   }
@@ -262,7 +267,76 @@ static async updateStatusLead(req, res) {
   }
 }
 
+// static async updateGestionnaireLead(req, res) {
+//   const { id } = req.params;
+//   const { gestionnaire } = req.body;
 
+//   try {
+//     const updatedLead = await Chat.findByIdAndUpdate(
+//       id,
+//       { gestionnaire },
+//       { new: true }
+//     );
+
+//     if (!updatedLead) {
+//       return res.status(404).json({ error: "Lead not found" });
+//     }
+
+//     res.status(200).json(updatedLead);
+//   } catch (error) {
+//     console.error("Error updating lead gestionnaire:", error);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// }
+
+
+static async updateGestionnaireLead(req, res) {
+  const { id } = req.params;
+  const { gestionnaireId, gestionnaireName, userType } = req.body;
+
+  try {
+      // Verify user exists
+      if (gestionnaireId) {
+          const Model = mongoose.model(userType === 'admin' ? 'Admin' : 'Commercial');
+          const user = await Model.findById(gestionnaireId);
+          
+          if (!user) {
+              return res.status(404).json({ error: `${userType} not found` });
+          }
+      }
+
+      const updateData = {
+          gestionnaire: gestionnaireId || null,
+          gestionnaireName: gestionnaireName || null,
+          gestionnaireModel: gestionnaireId ? (userType === 'admin' ? 'Admin' : 'Commercial') : null
+      };
+
+      const updatedLead = await Chat.findByIdAndUpdate(
+          id,
+          updateData,
+          { new: true }
+      ).populate({
+          path: 'gestionnaire',
+          select: 'name nom prenom email'
+      });
+
+      if (!updatedLead) {
+          return res.status(404).json({ error: "Lead not found" });
+      }
+
+      res.status(200).json(updatedLead);
+  } catch (error) {
+      console.error("Update error:", {
+          error: error.message,
+          userType,
+          gestionnaireId
+      });
+      res.status(500).json({ 
+          error: "Internal server error",
+          details: error.message
+      });
+  }
+}
   static deleteComment = async (req, res) => {
     const { id, commentId } = req.params;
   
@@ -302,13 +376,13 @@ static async updateStatusLead(req, res) {
             phone: { $in: leads.map(l => l.phone) } 
         }).select('phone -_id').lean();
 
-        if (existingPhones.length > 0) {
-            const existingPhoneNumbers = existingPhones.map(l => l.phone);
-            return res.status(400).json({
-                message: 'Some phone numbers already exist in database',
-                duplicatePhones: existingPhoneNumbers
-            });
-        }
+        // if (existingPhones.length > 0) {
+        //     const existingPhoneNumbers = existingPhones.map(l => l.phone);
+        //     return res.status(400).json({
+        //         message: 'Some phone numbers already exist in database',
+        //         duplicatePhones: existingPhoneNumbers
+        //     });
+        // }
 
         // Step 4: Import with transaction for atomicity
         const session = await mongoose.startSession();

@@ -28,8 +28,6 @@ class AuthenticationController {
   static async login(req, res) {
    
     try {
-      console.log("Request body:", req.body);
-
       const manager = await ManagerSchema.findOne({ email: req.body.email });
       if (manager) {
         const match = await debugBcrypt(req.body.password, manager.password);

@@ -305,8 +305,7 @@ try {
   
 
     // Convert string ID to ObjectId explicitly
-    const com = await Command.findById(new mongoose.Types.ObjectId(commandId));
-    console.log('com', com)
+    const com = await Command.findById(new mongoose.Types.ObjectId(commandId))
 
     if (!com) {
       return res.status(404).json({ message: "Produit non trouvé." });

@@ -1,137 +1,3 @@
-// const mongoose = require("mongoose");
-
-// const commentSchema = new mongoose.Schema({
-//   text: { type: String, required: true },
-//   addedBy: {
-//     name: { type: String, required: true }, // Ensure `name` is marked as required
-//   },
-//   addedAt: { type: Date, default: Date.now },
-// });
-
-// const chatSchema = new mongoose.Schema(
-//   {
-//     nom: {
-//       type: String,
-//       // required: true,
-//     },
-//     codepostal: {
-//       type: String,
-//     },
-//     address: {
-//       type: String,
-//     },
-//     ville: {
-//       type: String,
-//     },
-//     document: {
-//       type: String,
-//     },
-
-//     email: {
-//       type: String,
-//       // required: true,
-//       match: /.+\@.+\..+/, // Basic email format validation
-//     },
-//     email1: {
-//       type: String,
-//       // required: true,
-//       match: /.+\@.+\..+/,
-//     },
-//     phone: {
-//       type: String,
-//       required: false,
-//       default: "",
-//       // unique: true,
-//     },
-//     // phone1: {
-//     //   type: String,
-//     //   required: false,
-//     //   default: "",
-//     //   // unique: true,
-//     // },
-//     phoneFix: {
-//       type: String,
-//       default: "",
-//     },
-//     prestation: {
-//       type: String,
-//       default: "",
-//     },
-//     societe: {
-//       type: String,
-//       default: "",
-//     },
-
-//     siret: {
-//       type: Number,
-//       default: "",
-//     },
-//     reglement: {
-//       type: String,
-//       default: "",
-//     },
-//     date: {
-//       type: String,
-//       required: false,
-//     },
-
-//     initial: {
-//       type: String,
-//       required: false,
-//     },
-//     type_propriété: {
-//       type: String,
-//       required: false,
-//     },
-//     logement: {
-//       type: String,
-//       required: false,
-//     },
-//     détails_logement: {
-//       type: String,
-//       required: false,
-//     },
-//     request_hot_water: {
-//       type: String,
-//       required: false,
-//     },
-//     request_heating_system: {
-//       type: String,
-//       required: false,
-//     },
-//     facture: {
-//       type: String,
-//       required: false,
-//     },
-
-//     type: { type: String, default: "prospect" },
-//     // phone1: { type: String, default: "" },
-//     // email1: { type: String, default: "" },
-//     commentaires: [commentSchema],
-//     commercial: { type: mongoose.Schema.Types.ObjectId, ref: "Commercial" },
-//     // manager: { type: mongoose.Schema.Types.ObjectId, ref: "Manager" },
-//   },
-//   { timestamps: true }
-// );
-
-// const Chat = mongoose.model("Chat", chatSchema);
-
-// module.exports = Chat;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 const mongoose = require("mongoose");
 
 const commentSchema = new mongoose.Schema({
@@ -154,7 +20,7 @@ const chatSchema = new mongoose.Schema(
     statut: {
       type: String,
       required: true,
-      enum: ["client", "prospect"],
+      enum: ["client", "prospect", "Gelé"],
     },
     civilite: {
       type: String,
@@ -175,18 +41,18 @@ const chatSchema = new mongoose.Schema(
     },
     date_naissance: {
       type: Date,
-      required: true,
+      required: false,
     },
     pays_naissance: {
       type: String,
-      required: true,
+      required: false,
       enum: ["france", "belgique", "suisse", "autre"],
     },
     code_postal_naissance: String,
     commune_naissance: String,
     situation_famille: {
       type: String,
-      required: true,
+      required: false,
       enum: ["celibataire", "marie", "pacsé", "divorce", "veuf", "concubinage"],
     },
     enfants_charge: Number,
@@ -194,33 +60,33 @@ const chatSchema = new mongoose.Schema(
     // ===== ADDRESS INFORMATION =====
     numero_voie: {
       type: String,
-      required: true,
+      required: false,
     },
     complement_adresse: String,
     lieu_dit: String,
     code_postal: {
       type: String,
-      required: true,
+      required: false,
     },
     ville: {
       type: String,
-      required: true,
+      required: false,
     },
     bloctel: {
       type: String,
-      required: true,
+      required: false,
       enum: ["oui", "non"],
     },
 
     // ===== CONTACT INFORMATION =====
     portable: {
       type: String,
-      required: true,
+      required: false,
     },
     fixe: String,
     email: {
       type: String,
-      required: true,
+      required: false,
       match: /.+\@.+\..+/,
     },
 
@@ -246,12 +112,14 @@ const chatSchema = new mongoose.Schema(
     // Fields specific to entreprise
     statut_juridique: {
       type: String,
-      required: function() { return this.categorie === 'entreprise'; },
+      validation: function() { return this.categorie === 'entreprise'; },
+      required: false,
       enum: ["sarl", "eurl", "sas", "sasu", "sa", "sci", "micro", "ei", "autre"]
     },
     denomination_commerciale: {
       type: String,
-      required: function() { return this.categorie === 'entreprise'; }
+      validation: function() { return this.categorie === 'entreprise'; },
+      required: false,
     },
     raison_sociale: String,
     date_creation: Date,
@@ -275,7 +143,8 @@ const chatSchema = new mongoose.Schema(
     },
     email_entreprise: {
       type: String,
-      required: function() { return this.categorie !== 'particulier'; },
+      required: false,
+      validation: function() { return this.categorie !== 'particulier'; },
       match: /.+\@.+\..+/
     },
     site_internet: {
@@ -303,12 +172,12 @@ const chatSchema = new mongoose.Schema(
     // ===== SOCIAL SECURITY INFORMATION =====
     regime_securite_sociale: {
       type: String,
-      required: true,
+      required: false,
       enum: ["general", "agricole", "independant", "fonctionnaire", "autre"]
     },
     num_secu: {
       type: String,
-      required: true,
+      required: false,
       validate: {
         validator: function(v) {
           return /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/.test(v);
@@ -316,24 +185,52 @@ const chatSchema = new mongoose.Schema(
         message: props => `${props.value} n'est pas un numéro de sécurité sociale valide!`
       }
     },
+    documents: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Document'
+    }],
 
     // ===== MANAGEMENT INFORMATION =====
     type_origine: {
       type: String,
-      required: true,
-      enum: ["web", "reseau", "recommandation", "salon", "publicite", "autre"]
+      required: false,
+      enum: [
+        "Co-courtage",
+        "Indicateur d'affaires",
+        "Weedo market",
+        "Recommandation",
+        "Réseaux sociaux",
+        "Autre"
+    ]
     },
-    gestionnaire: {
+    gestionnaire: { 
+      type: mongoose.Schema.Types.ObjectId,
+      refPath: 'gestionnaireModel'  // This will determine which model to use
+    },
+    gestionnaireModel: {
       type: String,
-      required: true
+      enum: ['Admin', 'Commercial'],
+      required: false
+    },
+    gestionnaireName: {
+      type: String,
+      required: false
+    },
+   
+    cree_par: {
+      type: mongoose.Schema.Types.ObjectId, // Change from String to ObjectId
+      ref: "Commercial",
+      required: false
     },
     cree_par: {
-      type: String,
-      required: true,
+      type: mongoose.Schema.Types.ObjectId, // Change from String to ObjectId
+      ref: "Admin",
+      required: false
     },
+
     intermediaire: [{
       type: String,
-      enum: ["partenaire1", "partenaire2", "agent", "courtier"]
+      required: false,
     }],
   },
   

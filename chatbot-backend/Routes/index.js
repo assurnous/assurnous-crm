@@ -1,4 +1,5 @@
 const { Router } = require('express');
+const multer = require('multer');
 const AppController = require('../Controllers/AppController');
 const AuthenticationController = require('../Controllers/AuthenticationController');
 const DataController = require('../Controllers/DataController');
@@ -12,6 +13,13 @@ const ReclamationsController = require('../Controllers/ReclamationsController');
 const SinistresController = require('../Controllers/SinistresController');
 const verifyToken = require('../middleware/verifyToken');
 const PdfController = require('../Controllers/pdfController');
+const DevisController = require('../Controllers/DevisController');
+const fileController = require('../Controllers/fileController');
+const ContratController = require('../Controllers/ContratController');
+const DocumentController = require('../Controllers/documentController');
+
+
+
 const router = Router();
 
 router.get("/", AppController.test);
@@ -54,6 +62,7 @@ router.put('/lead/:id', DataController.updateDataById);
 router.delete("/lead/:id", DataController.deleteDataById);
 router.get("/search", DataController.searchData);
 router.put('/updateStatusLead/:id', DataController.updateStatusLead);
+router.put('/updateGestionnaireLead/:id', DataController.updateGestionnaireLead);
 router.put('/add-comment/:id', DataController.addComment);
 router.delete('/lead/:id/delete-comment/:commentId', DataController.deleteComment);
 
@@ -125,6 +134,48 @@ router.get('/sinistres', SinistresController.getAllSinistres);
 router.get('/sinistres/:id', SinistresController.getSinistreById);
 router.put('/sinistres/:id', SinistresController.updateSinistreById);
 router.delete('/sinistres/:id', SinistresController.deleteSinistreById);
+
+
+router.post('/devis', DevisController.createDevis);
+router.get('/devis/:id', verifyToken, DevisController.getDevisById);
+router.get('/devis', DevisController.getAllDevis);
+router.put('/devis/:devisId', DevisController.updateDevisById);
+router.delete('/devis/:id', DevisController.deleteDevisById);
+
+
+router.post('/contrat', ContratController.createContrat);
+router.get('/contrat/:id', verifyToken, ContratController.getContratById);
+router.get('/contrat', ContratController.getAllContrats);
+router.put('/contrat/:contratId', ContratController.updateContratById);
+router.delete('/contrat/:id', ContratController.deleteContratById);
+
+
+
+
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB
+    },
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF files are allowed'), false);
+      }
+    }
+  });
+  
+router.post('/files/upload', upload.single('document'), (req, res, next) => {
+    next();
+  }, fileController.uploadFile);
+  
+  router.post('/files/attach-to-devis', fileController.attachDocumentToDevis);
+
+
+router.post('/documents/:id', upload.single('file'), DocumentController.createDocument);
+router.get('/:id',  DocumentController.getChatDocuments);
+router.get('/:id/references/:family', DocumentController.getChatReferenceOptions);
 
 
 

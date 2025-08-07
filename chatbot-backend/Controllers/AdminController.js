@@ -28,7 +28,6 @@ class AdminController {
     static async getAllAdmins(req, res) {
         try {
             const admins = await Admin.find();
-            console.log("admins", admins);
             res.status(200).json(admins);
         } catch (error) {
             res.status(500).json({ message: 'Error: ' + error.message });

@@ -1,6 +1,4 @@
-// Load environment variables from .env file
 require('dotenv').config();
-
 const admin = require('firebase-admin');
 
 const serviceAccount = {
@@ -18,7 +16,7 @@ const serviceAccount = {
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: "goko-app.appspot.com"
+  storageBucket: "assurnous-cbcd1.firebasestorage.app"
 });
 
 const bucket = admin.storage().bucket();
