@@ -16,7 +16,7 @@ const PdfController = require('../Controllers/pdfController');
 const DevisController = require('../Controllers/DevisController');
 const fileController = require('../Controllers/fileController');
 const ContratController = require('../Controllers/ContratController');
-const DocumentController = require('../Controllers/documentController');
+// const DocumentController = require('../Controllers/documentController');
 
 
 
@@ -173,9 +173,9 @@ router.post('/files/upload', upload.single('document'), (req, res, next) => {
   router.post('/files/attach-to-devis', fileController.attachDocumentToDevis);
 
 
-router.post('/documents/:id', upload.single('file'), DocumentController.createDocument);
-router.get('/:id',  DocumentController.getChatDocuments);
-router.get('/:id/references/:family', DocumentController.getChatReferenceOptions);
+// router.post('/documents/:id', upload.single('file'), DocumentController.createDocument);
+// router.get('/:id',  DocumentController.getChatDocuments);
+// router.get('/:id/references/:family', DocumentController.getChatReferenceOptions);
 
 
 
