@@ -173,7 +173,7 @@ const DocumentTabContent = () => {
   };
 
   const handleUploadSuccess = (uploadResponse) => {
-    console.log("Upload success:", uploadResponse);
+
     setUploadedDocument({
       file: uploadResponse.file,
       name: uploadResponse.name,

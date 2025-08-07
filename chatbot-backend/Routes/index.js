@@ -17,6 +17,7 @@ const DevisController = require('../Controllers/DevisController');
 const fileController = require('../Controllers/fileController');
 const ContratController = require('../Controllers/ContratController');
 const DocumentController = require('../Controllers/documentController');
+const ListConfimiteController = require('../Controllers/ListConfimiteController');
 
 
 
@@ -178,6 +179,17 @@ router.post('/documents/:id', upload.single('file'), DocumentController.createDo
 router.get('/documents/:id',  DocumentController.getChatDocuments);
 router.get('/:id/references/:family', DocumentController.getChatReferenceOptions);
 router.delete('/documents/:id', DocumentController.deleteDocument);
+
+const uploads = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  }
+});
+router.post('/document', uploads.single('document'), ListConfimiteController.uploadDocument);
+router.get('/document', ListConfimiteController.getDocuments);
+router.get('/document/:id/download', ListConfimiteController.downloadDocument);
+router.delete('/document/:id', ListConfimiteController.deleteDocument);
 
 
 
