@@ -16,9 +16,9 @@ import {
   EyeOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
-import FileUpload from "./FileUpload";
 import axios from "axios";
 import { useParams } from "react-router-dom";
+import UploadDocument from "./UploadDocument";
 
 const { Option } = Select;
 
@@ -30,7 +30,8 @@ const DocumentTabContent = () => {
   const [form] = Form.useForm();
   const [selectedFamily, setSelectedFamily] = useState("");
   const [selectedType, setSelectedType] = useState("");
-  const [fileObject, setFileObject] = useState(null); 
+  const [pageSize, setPageSize] = useState(30);
+  const [currentPage, setCurrentPage] = useState(1);
   const [referenceOptions, setReferenceOptions] = useState([]);
   const [loadingReferences, setLoadingReferences] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,9 +43,9 @@ const DocumentTabContent = () => {
 
   // API endpoints for each document family
   const apiEndpoints = {
-    devis: '/contrat',
-    reclamation: '/reclamations',
-    sinistre: '/sinistres/',
+    devis: "/contrat",
+    reclamation: "/reclamations",
+    sinistre: "/sinistres/",
   };
 
   // Fetch documents for this lead
@@ -171,102 +172,159 @@ const DocumentTabContent = () => {
     });
   };
 
+  const handleUploadSuccess = (uploadResponse) => {
+    console.log("Upload success:", uploadResponse);
+    setUploadedDocument({
+      file: uploadResponse.file,
+      name: uploadResponse.name,
+      url: uploadResponse.url,
+      // Include any other fields from the response
+      ...uploadResponse,
+    });
+  };
+
   const handleFormSubmit = async (values) => {
     try {
-      if (!uploadedDocument || !uploadedDocument.url) {
+      if (!uploadedDocument) {
         message.error("Veuillez télécharger un document valide");
         return;
       }
   
-      const formData = new FormData();
-      formData.append("family", values.family);
-      formData.append("type", values.type);
-      
-      if (values.referenceNumber) {
-        formData.append("referenceNumber", values.referenceNumber);
-      }
-      if (values.documentName) {
-        formData.append("documentName", values.documentName);
-      }
-      
-      // Since we already uploaded to Firebase, we can just send the URL
-      formData.append("firebaseUrl", uploadedDocument.url);
-      
-      // Optional: Include the dummy file if your backend requires it
-      if (uploadedDocument.file) {
-        formData.append("file", uploadedDocument.file);
-      }
-      console.log('Submitting form with data:', {
+      const payload = {
         family: values.family,
         type: values.type,
-        referenceNumber: values.referenceNumber,
-        documentName: values.documentName,
+        referenceNumber: values.referenceNumber || null,
+        documentName: values.documentName || null,
+        firebaseUrl: uploadedDocument.url,
+        file: uploadedDocument.file,
+      };
+  
+      const formData = new FormData();
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
       });
-      console.log('formData:', formData);
-
+  
       setLoading(true);
       const response = await axios.post(`/documents/${id}`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      console.log("Document upload response:", response.data);
-
-      // Update state optimistically
-      setDocuments(prev => [...prev, response.data]);
-      setFilteredDocuments(prev => [...prev, response.data]);
-      
+  
+      // Update state with the complete document data from the response
+      const newDocument = {
+        ...response.data.data,
+        _id: response.data.data._id, // Ensure _id is included
+        key: response.data.data._id, // Add key property for table rowKey
+      };
+  
+      setDocuments(prev => [...prev, newDocument]);
+      setFilteredDocuments(prev => [...prev, newDocument]);
+  
       message.success("Document ajouté avec succès");
       handleCancel();
     } catch (error) {
       console.error("Error submitting form:", error);
-      console.error("Error details:", error.response?.data);
-      
       message.error(
-        error.response?.data?.message || 
-        "Erreur lors de l'envoi du document"
+        error.response?.data?.message || "Erreur lors de l'envoi du document"
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // Modify how we handle upload success
-  // const handleUploadSuccess = (documentInfo) => {
-  //   console.log('Upload success:', documentInfo);
-  //   // Ensure we're storing the file object properly
-  //   setUploadedDocument({
-  //     file: documentInfo.file, // This should be the actual File object
-  //     name: documentInfo.name,
-  //     url: documentInfo.url
-  //   });
-  // };
-  const handleUploadSuccess = (firebaseResponse) => {
-    console.log('Upload success response:', firebaseResponse);
-    
-    // Store both the Firebase URL and create a dummy file object
-    setUploadedDocument({
-      name: firebaseResponse.name || firebaseResponse.fileName,
-      url: firebaseResponse.url,
-      // Create a minimal file-like object for form submission
-      file: new File([""], firebaseResponse.name || "document.pdf", {
-        type: 'application/pdf'
-      })
+  const handleDeleteDocument = async (documentId) => {
+    Modal.confirm({
+      title: 'Confirmer la suppression',
+      content: 'Êtes-vous sûr de vouloir supprimer ce document?',
+      okText: 'Oui',
+      cancelText: 'Non',
+      onOk: async () => {
+        try {
+          await axios.delete(`/documents/${documentId}`);
+          
+          // Option 1: Optimistic update
+          setDocuments(prev => prev.filter(doc => doc._id !== documentId));
+          setFilteredDocuments(prev => prev.filter(doc => doc._id !== documentId));
+          
+          // Option 2: Or refresh the full list (more reliable)
+          // await fetchDocuments();
+          
+          message.success("Document supprimé avec succès");
+        } catch (error) {
+          console.error("Error deleting document:", error);
+          message.error("Erreur lors de la suppression du document");
+        }
+      }
     });
   };
- 
+  // const handleFormSubmit = async (values) => {
+  //   try {
+  //     if (!uploadedDocument) {
+  //       message.error("Veuillez télécharger un document valide");
+  //       return;
+  //     }
 
-  const handleDeleteDocument = async (key) => {
-    try {
-      await axios.delete(`/documents/${key}`);
-      setDocuments(documents.filter((doc) => doc.key !== key));
-      setFilteredDocuments(filteredDocuments.filter((doc) => doc.key !== key));
-      message.success("Document supprimé avec succès");
-    } catch (error) {
-      message.error("Erreur lors de la suppression du document");
-      console.error("Error deleting document:", error);
-    }
-  };
+  //     const payload = {
+  //       family: values.family,
+  //       type: values.type,
+  //       referenceNumber: values.referenceNumber,
+  //       documentName: values.documentName,
+  //       firebaseUrl: uploadedDocument.url,
+  //       // Include the file only if backend expects it
+  //       file: uploadedDocument.file,
+  //     };
+
+  //     const formData = new FormData();
+  //     Object.entries(payload).forEach(([key, value]) => {
+  //       if (value !== undefined && value !== null) {
+  //         formData.append(key, value);
+  //       }
+  //     });
+  //     console.log("Submitting form data:", formData);
+  //     console.log("Form values:", values);
+  //     console.log("Uploaded document:", uploadedDocument);
+  //     console.log("payload:", payload);
+
+  //     setLoading(true);
+  //     const response = await axios.post(`/documents/${id}`, formData, {
+  //       headers: {
+  //         "Content-Type": "multipart/form-data",
+  //       },
+  //     });
+  //     console.log("Document upload response:", response.data);
+
+  //     // Update state optimistically
+  //     setDocuments((prev) => [...prev, response.data]);
+  //     setFilteredDocuments((prev) => [...prev, response.data]);
+
+  //     message.success("Document ajouté avec succès");
+  //     handleCancel();
+  //   } catch (error) {
+  //     console.error("Error submitting form:", error);
+  //     console.error("Error details:", error.response?.data);
+
+  //     message.error(
+  //       error.response?.data?.message || "Erreur lors de l'envoi du document"
+  //     );
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // const handleDeleteDocument = async (key) => {
+  //   try {
+  //     await axios.delete(`/documents/${key}`);
+  //     setDocuments(documents.filter((doc) => doc.key !== key));
+  //     setFilteredDocuments(filteredDocuments.filter((doc) => doc.key !== key));
+  //     message.success("Document supprimé avec succès");
+  //   } catch (error) {
+  //     message.error("Erreur lors de la suppression du document");
+  //     console.error("Error deleting document:", error);
+  //   }
+  // };
 
   const handleSearch = (field, value) => {
     const newSearchParams = { ...searchParams, [field]: value };
@@ -274,9 +332,11 @@ const DocumentTabContent = () => {
 
     const filtered = documents.filter((doc) => {
       return (
-        (!newSearchParams.documentType || doc.type === newSearchParams.documentType) &&
+        (!newSearchParams.documentType ||
+          doc.type === newSearchParams.documentType) &&
         (!newSearchParams.referenceNumber ||
-          (doc.referenceNumber && doc.referenceNumber.includes(newSearchParams.referenceNumber)))
+          (doc.referenceNumber &&
+            doc.referenceNumber.includes(newSearchParams.referenceNumber)))
       );
     });
     setFilteredDocuments(filtered);
@@ -355,9 +415,14 @@ const DocumentTabContent = () => {
               onChange={(value) => handleSearch("documentType", value)}
               value={searchParams.documentType}
             >
-              {Object.values(documentTypes).flat().filter((v, i, a) => a.indexOf(v) === i).map(type => (
-                <Option key={type} value={type}>{type}</Option>
-              ))}
+              {Object.values(documentTypes)
+                .flat()
+                .filter((v, i, a) => a.indexOf(v) === i)
+                .map((type) => (
+                  <Option key={type} value={type}>
+                    {type}
+                  </Option>
+                ))}
             </Select>
           </div>
 
@@ -375,8 +440,34 @@ const DocumentTabContent = () => {
       </div>
 
       <Table
-        columns={columns}
-        dataSource={filteredDocuments}
+        columns={[
+          ...columns.map((col) => ({
+            ...col,
+            title: (
+              <div className="flex flex-col items-center">
+                <div className="text-xs">{col.title}</div>
+              </div>
+            ),
+          })),
+        ]}
+        dataSource={filteredDocuments.slice(
+          (currentPage - 1) * pageSize,
+          currentPage * pageSize
+        )}
+        pagination={{
+          current: currentPage,
+          pageSize,
+          total: filteredDocuments.length,
+          // onChange: (page) => setCurrentPage(page),
+          onChange: (page, pageSize) => {
+            setCurrentPage(page);
+            setPageSize(pageSize);
+          },
+          showSizeChanger: true,
+          pageSizeOptions: ["10", "20", "30", "50", "100"],
+          showTotal: (total, range) =>
+            `${range[0]}-${range[1]} of ${total} items`,
+        }}
         loading={loading}
         bordered
         rowKey="_id"
@@ -418,7 +509,12 @@ const DocumentTabContent = () => {
         }}
         closeIcon={null}
       >
-        <Form form={form} layout="vertical" className="p-4" onFinish={handleFormSubmit}>
+        <Form
+          form={form}
+          layout="vertical"
+          className="p-4"
+          onFinish={handleFormSubmit}
+        >
           <Form.Item
             name="family"
             label="Famille de document"
@@ -465,7 +561,7 @@ const DocumentTabContent = () => {
                 <Input placeholder="Entrez la référence du document" />
               ) : (
                 <Spin spinning={loadingReferences}>
-                  <Select
+                  {/* <Select
                     placeholder={`Sélectionnez ${getReferenceLabel(
                       selectedFamily
                     )}`}
@@ -492,7 +588,14 @@ const DocumentTabContent = () => {
                         {option.contractNumber ? ` - ${option.contractNumber}` : ""}
                       </Option>
                     ))}
-                  </Select>
+                  </Select> */}
+                  <Input
+                    placeholder={`Entrez ${getReferenceLabel(selectedFamily)}`}
+                    onChange={(e) =>
+                      handleSearch("referenceNumber", e.target.value)
+                    }
+                    value={searchParams.referenceNumber}
+                  />
                 </Spin>
               )}
             </Form.Item>
@@ -516,7 +619,9 @@ const DocumentTabContent = () => {
           <Form.Item
             name="document"
             label="Choisissez un document"
-            rules={[{ required: false, message: "Un document est obligatoire" }]}
+            rules={[
+              { required: false, message: "Un document est obligatoire" },
+            ]}
           >
             {uploadedDocument ? (
               <div className="flex items-center gap-2">
@@ -538,26 +643,21 @@ const DocumentTabContent = () => {
                 </Button>
               </div>
             ) : (
-              <FileUpload  
-              onUploadSuccess={(firebaseResponse) => {
-                // The FileUpload sends response.data.document
-                handleUploadSuccess({
-                  file: firebaseResponse.file,  // Make sure this is included in the response
-                  name: firebaseResponse.name,
-                  url: firebaseResponse.url
-                });
-              }}
-            
+              <UploadDocument
+                onUploadSuccess={(firebaseResponse) => {
+                  // The FileUpload sends response.data.document
+                  handleUploadSuccess({
+                    file: firebaseResponse.file, // Make sure this is included in the response
+                    name: firebaseResponse.name,
+                    url: firebaseResponse.url,
+                  });
+                }}
               />
             )}
           </Form.Item>
         </Form>
         <div className="flex justify-start mt-4 p-4 border-t">
-          <Button
-            type="primary"
-            onClick={() => form.submit()}
-
-          >
+          <Button type="primary" onClick={() => form.submit()}>
             Ajouter le document
           </Button>
         </div>

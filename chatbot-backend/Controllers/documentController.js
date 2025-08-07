@@ -30,9 +30,13 @@ class DocumentController {
   // Create a new document for a specific chat/client
   static async createDocument(req, res) {
     try {
-      const { family, type, referenceNumber, documentName, contractId, claimId } = req.body;
-      const { id: chatId } = req.params; // Changed to match frontend
+      const { family, type, referenceNumber, documentName } = req.body;
+      const { id } = req.params; 
       const file = req.file;
+
+      console.log("Received file:", file);
+      console.log("Request body:", req.body);
+      console.log("Chat ID:", id);
   
       if (!file) {
         return res.status(400).json({ 
@@ -41,37 +45,40 @@ class DocumentController {
         });
       }
   
-      // Verify chat exists
-      const chat = await Chat.findById(chatId);
-      if (!chat) {
-        return res.status(404).json({ 
+      // Validate file type
+      if (file.mimetype !== 'application/pdf') {
+        return res.status(400).json({
           success: false,
-          message: "Lead not found" 
+          message: "Only PDF files are allowed"
         });
       }
   
-      // Upload to Firebase Storage
-      const { url, name } = await uploadToFirebase(file);
+      // Upload to Firebase
+      const firebaseResponse = await uploadToFirebase(file);
   
       const newDocument = new Document({
         family,
         type,
-        referenceNumber: family === "client" && type !== "Autre document" ? 
-          null : referenceNumber,
-        documentName: type === "Autre document" ? documentName : null,
-        firebaseStorageUrl: url,
-        originalFileName: name,
-        uploadedBy: req.user.id,
-        chat: chatId,
-        ...(family === "devis" && { contract: contractId }),
-        ...(family === "reclamation" && { claim: claimId }),
+        referenceNumber: referenceNumber || undefined,
+        documentName: documentName || undefined,
+        firebaseStorageUrl: firebaseResponse.url,
+        originalFileName: firebaseResponse.name,
+        chat: id
       });
   
       await newDocument.save();
       
       res.status(201).json({
         success: true,
-        data: newDocument
+        data: {
+          _id: newDocument._id,
+          family: newDocument.family,
+          type: newDocument.type,
+          referenceNumber: newDocument.referenceNumber,
+          documentName: newDocument.documentName,
+          firebaseStorageUrl: newDocument.firebaseStorageUrl,
+          uploadDate: newDocument.uploadDate
+        }
       });
       
     } catch (error) {
@@ -94,10 +101,7 @@ class DocumentController {
       if (type) filter.type = type;
 
       const documents = await Document.find(filter)
-        .populate("uploadedBy", "name email")
-        .populate("chat", "name") // Populate chat info
         .populate("contract", "referenceNumber")
-        .populate("claim", "referenceNumber")
         .sort({ uploadDate: -1 });
 
       res.json(documents);
@@ -146,7 +150,33 @@ class DocumentController {
     }
   }
 
-  // Other methods (getDocument, deleteDocument) remain the same as before
+  // Delete a document
+static async deleteDocument(req, res) {
+  try {
+    const { id } = req.params;
+    
+    // First get the document to delete (for Firebase cleanup if needed)
+    const document = await Document.findById(id);
+    if (!document) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Document not found" 
+      });
+    }
+    await Document.findByIdAndDelete(id);
+
+    res.json({
+      success: true,
+      message: "Document deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting document:", error);
+    res.status(500).json({ 
+      success: false,
+      message: error.message || "Failed to delete document"
+    });
+  }
+}
 }
 
 module.exports = DocumentController;

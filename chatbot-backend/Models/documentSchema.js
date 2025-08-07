@@ -11,16 +11,29 @@ const documentSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // referenceNumber: {
+  //   type: String,
+  //   required: function() {
+  //     return this.family !== 'client' || this.type === 'Autre document';
+  //   }
+  // },
   referenceNumber: {
     type: String,
     required: function() {
-      return this.family !== 'client' || this.type === 'Autre document';
+      // Only require referenceNumber for:
+      // - Non-client documents
+      // - OR client documents of type "Autre document"
+      if (this.family === 'client') {
+        return this.type === 'Autre document';
+      }
+      // For devis, reclamation, sinistre, autres - make optional
+      return false;
     }
   },
   lead: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Chat',
-    required: true
+    required: false
   },
   documentName: {
     type: String,
@@ -39,11 +52,6 @@ const documentSchema = new mongoose.Schema({
   uploadDate: {
     type: Date,
     default: Date.now
-  },
-  uploadedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
   },
 
   contract: {
