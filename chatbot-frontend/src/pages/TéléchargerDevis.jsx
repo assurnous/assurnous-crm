@@ -80,34 +80,33 @@ const applyFilters = (filterValues) => {
     });
   }
   
+if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
+  result = result.filter(devis => {
+    // Find the user object that matches the selected ID
+    const user = users.find(u => u._id === filterValues.gestionnaire);
+    if (!user) return false;
+    
+    // Construct the display name to match against
+    const displayName = user.userType === "admin" 
+      ? user.name 
+      : `${user.nom} ${user.prenom}`;
+    
+    // Check all possible locations for the gestionnaire name
+    return (
+      devis.lead?.gestionnaireName === displayName ||  // From lead object
+      devis.gestionnaire === displayName ||            // Direct property
+      devis.session?.name === displayName              // From session
+    );
+  });
+}
 
-
-
-  // Gestionnaire filter (matches by user ID)
-  if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-    result = result.filter(devis => {
-      // Find the user object that matches this gestionnaire
-      const user = users.find(u => u._id === filterValues.gestionnaire);
-      if (!user) return false;
-      
-      // Construct the display name to match against devis.gestionnaire
-      const displayName = user.userType === "admin" 
-        ? user.name 
-        : `${user.nom} ${user.prenom}`;
-      
-      return devis.gestionnaire === displayName;
-    });
-  }
-
-  if (filterValues.categorie && filterValues.categorie !== "tous") {
-    result = result.filter(contrat => {
-      const client = clients.find(c => 
-        contrat.clientId.includes(c.nom) || 
-        contrat.clientId.includes(c.prenom)
-      );
-      return client?.categorie === filterValues.categorie;
-    });
-  }
+// In your applyFilters function, modify the categorie filter to:
+if (filterValues.categorie && filterValues.categorie !== "tous") {
+  result = result.filter(devis => {
+    // Access the categorie from the formatted data
+    return devis.categorie === filterValues.categorie;
+  });
+}
   // Risque filter
   if (filterValues.risque) {
     result = result.filter(devis => devis.risque === filterValues.risque);
@@ -124,17 +123,25 @@ const applyFilters = (filterValues) => {
   }
   
 
-  // Search filter
-  if (filterValues.search) {
-    const searchTerm = filterValues.search.toLowerCase();
-    result = result.filter(devis => {
-      return (
-        (devis.numero_devis && devis.numero_devis.toLowerCase().includes(searchTerm)) ||
-        (devis.clientId && devis.clientId.toLowerCase().includes(searchTerm)) ||
-        (devis.gestionnaire && devis.gestionnaire.toLowerCase().includes(searchTerm))
-      );
-    });
-  }
+// Updated search filter
+if (filterValues.search) {
+  const searchTerm = filterValues.search.toLowerCase();
+  result = result.filter(devis => {
+    // Get the lead data from the original record
+    const lead = devis.originalData?.lead;
+    
+    // Construct client name from lead or use clientId as fallback
+    const clientName = lead 
+      ? `${lead.nom || ''} ${lead.prenom || ''}`.trim().toLowerCase()
+      : (devis.clientId || '').toLowerCase();
+    
+    // Check both devis number and client name
+    return (
+      (devis.numero_devis && devis.numero_devis.toLowerCase().includes(searchTerm)) ||
+      (clientName && clientName.includes(searchTerm))
+    );
+  });
+}
 
   setFilteredDevis(result);
 };
@@ -152,7 +159,6 @@ const applyFilters = (filterValues) => {
         
       } catch (error) {
         console.error("Error fetching clients data:", error);
-        message.error("Erreur lors du chargement des clients");
         setClients([]);
       } finally {
         setClientLoading(false);
@@ -214,14 +220,18 @@ const formatDevisItem = (devis) => ({
 const handleFormSubmit = async (values) => {
   const token = localStorage.getItem("token");
   const decodedToken = token ? jwtDecode(token) : null;
-  const currentUserId = decodedToken?.userId;
+  const isAdmin =
+  decodedToken.role === "Admin" || decodedToken.role === "admin";
+const sessionId = decodedToken.userId;
+const sessionModel = isAdmin ? "Admin" : "Commercial";
   
   try {
     // Prepare form data with document if exists
     const formData = {
       ...values,
       documents: uploadedDocument ? [uploadedDocument] : [],
-      session: currentUserId,
+      session: sessionId,
+      sessionModel: sessionModel,
       lead: selectedLeadId,
     };
 
@@ -295,7 +305,7 @@ useEffect(() => {
       } else {
         // Commercials only see their own devis
         filteredData = allDevis.filter(
-          devis => devis.session?.toString() === currentUserId
+          devis => devis.session?._id?.toString() === currentUserId
         );
       }
 
@@ -303,7 +313,8 @@ useEffect(() => {
       const formattedData = filteredData?.map(devis => ({
         key: devis._id,
         numero_devis: devis.numero_devis || "N/A",
-        gestionnaire: devis.gestionnaire || (devis.lead?.gestionnaire || "N/A"),
+        gestionnaire:  devis.lead?.gestionnaireName ||  
+        "N/A",
         risque: devis.risque || "N/A",
         assureur: devis.assureur || "N/A",
         statut: devis.statut || "N/A",
@@ -312,7 +323,8 @@ useEffect(() => {
         originalData: devis,
         documents: devis.documents || [],
         intermediaire: devis.intermediaire || "N/A",
-        clientId: devis.clientId || "N/A", 
+        clientId: devis.clientId || "N/A",
+        categorie: devis?.lead?.categorie || "N/A",  // This is correct
       }));
 
       setDevisData(formattedData);
@@ -320,7 +332,6 @@ useEffect(() => {
 
     } catch (error) {
       console.error("Error fetching devis:", error.response?.data || error.message);
-      message.error("Erreur lors du chargement des devis");
     } finally {
       setLoading(false);
     }
@@ -361,10 +372,17 @@ useEffect(() => {
   fetchUsers();
 }, []);
 
-const handleLeadClick = (leadId) => {
-  navigate(`/client/${leadId}`);
+const handleLeadClick = (lead) => {
+  // Extract the ID from the lead object
+  const leadId = lead?._id || lead?.id;
+  if (leadId) {
+    navigate(`/client/${leadId}`);
+  } else {
+    console.error("No lead ID found:", lead);
+    // Optionally show an error message to the user
+    message.error("Could not navigate to client details");
+  }
 };
-
 const columns = [
   {
     title: "N° devis",
@@ -376,30 +394,48 @@ const columns = [
     title: "Client",
     dataIndex: "clientId",
     key: "clientId",
-    render: (clientId, record) => (
-      <Button 
-        type="link" 
-        onClick={() => handleLeadClick(record.originalData.lead)}
-        style={{ padding: 0 }}
-      >
-        {clientId || "N/A"}
-      </Button>
-    ),
+    render: (clientId, record) => {
+      // Get the lead data - checking multiple possible locations
+      const lead = record.originalData?.lead || 
+                  record.lead || 
+                  record.leadId || 
+                  record.sinistreDetails;
+      
+      // Extract name components with fallbacks
+      const lastName = lead?.nom || "N/A";
+      const firstName = lead?.prenom || "";
+      
+      return (
+        <Button 
+          type="link" 
+          onClick={() => handleLeadClick(lead)}
+          style={{ padding: 0 }}
+        >
+          {`${lastName} ${firstName}`.trim()}
+        </Button>
+      );
+    },
   },
   {
     title: "Gestionnaire",
     dataIndex: "gestionnaire",
     key: "gestionnaire",
-    render: (gestionnaire, record) => (
-      <>
-        {gestionnaire}
-        {userRole === "Admin" && (
-          <div style={{ fontSize: 12, color: "#666" }}>
-            {record.originalData.session?.email}
-          </div>
-        )}
-      </>
-    ),
+    render: (gestionnaireId, record) => {
+      // Get the name from the most reliable source in your data structure
+      const gestionnaireName = 
+      record.originalData?.session?.name ||          // From populated session
+      record.originalData?.lead?.gestionnaireName || // From lead
+      record.originalData?.intermediaire ||          // From intermediaire
+      "N/A";// Final fallback
+  
+      return (
+        <h1 
+          style={{ padding: 0 }}
+        >
+          {gestionnaireName}
+        </h1>
+      );
+    },
   },
   {
     title: "Risque",
@@ -453,6 +489,13 @@ const columns = [
     title: "Date d'effet",
     dataIndex: "date_effet",
     key: "date_effet",
+    render: (date) => {
+      if (!date) return "N/A";
+      const d = new Date(date);
+      return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}/${d.getFullYear()}`;
+    },
   },
   {
     title: "Actions",
@@ -549,7 +592,7 @@ setUploadedDocument(documentList[0] || null);
 const showDeleteConfirm = (id) => {
   Modal.confirm({
     title: "Confirmer la suppression",
-    content: "Êtes-vous sûr de vouloir supprimer le contrat?",
+    content: "Êtes-vous sûr de vouloir supprimer le devis?",
     okText: "Oui",
     okType: "danger",
     cancelText: "Non",
@@ -571,9 +614,6 @@ const deleteDevis = async (id) => {
     message.success("Devis supprimé avec succès");
   } catch (error) {
     console.error("Error deleting devis:", error);
-    message.error(
-      error.response?.data?.message || "Erreur lors de la suppression"
-    );
   }
 };
 
@@ -673,6 +713,7 @@ const deleteDevis = async (id) => {
               <Select
                 className="w-full"
                 allowClear
+                showSearch
                 placeholder="-- Choisissez --"
                 onChange={(value) => handleFilterChange("risque", value)}
               >
@@ -693,6 +734,7 @@ const deleteDevis = async (id) => {
               </label>
               <Select
               allowClear
+              showSearch
                 className="w-full"
                 placeholder="-- Choisissez --"
                 onChange={(value) => handleFilterChange("assureur", value)}

@@ -72,7 +72,6 @@ const DocumentTabContent = () => {
       const response = await axios.get(apiEndpoints[selectedFamily]);
       setReferenceOptions(response.data);
     } catch (error) {
-      message.error(`Failed to fetch ${selectedFamily} options`);
       console.error(`Error fetching ${selectedFamily} options:`, error);
     } finally {
       setLoadingReferences(false);
@@ -186,7 +185,6 @@ const DocumentTabContent = () => {
   const handleFormSubmit = async (values) => {
     try {
       if (!uploadedDocument) {
-        message.error("Veuillez télécharger un document valide");
         return;
       }
   
@@ -197,6 +195,7 @@ const DocumentTabContent = () => {
         documentName: values.documentName || null,
         firebaseUrl: uploadedDocument.url,
         file: uploadedDocument.file,
+        lead: id,
       };
   
       const formData = new FormData();
@@ -227,9 +226,6 @@ const DocumentTabContent = () => {
       handleCancel();
     } catch (error) {
       console.error("Error submitting form:", error);
-      message.error(
-        error.response?.data?.message || "Erreur lors de l'envoi du document"
-      );
     } finally {
       setLoading(false);
     }
@@ -255,76 +251,11 @@ const DocumentTabContent = () => {
           message.success("Document supprimé avec succès");
         } catch (error) {
           console.error("Error deleting document:", error);
-          message.error("Erreur lors de la suppression du document");
+      
         }
       }
     });
   };
-  // const handleFormSubmit = async (values) => {
-  //   try {
-  //     if (!uploadedDocument) {
-  //       message.error("Veuillez télécharger un document valide");
-  //       return;
-  //     }
-
-  //     const payload = {
-  //       family: values.family,
-  //       type: values.type,
-  //       referenceNumber: values.referenceNumber,
-  //       documentName: values.documentName,
-  //       firebaseUrl: uploadedDocument.url,
-  //       // Include the file only if backend expects it
-  //       file: uploadedDocument.file,
-  //     };
-
-  //     const formData = new FormData();
-  //     Object.entries(payload).forEach(([key, value]) => {
-  //       if (value !== undefined && value !== null) {
-  //         formData.append(key, value);
-  //       }
-  //     });
-  //     console.log("Submitting form data:", formData);
-  //     console.log("Form values:", values);
-  //     console.log("Uploaded document:", uploadedDocument);
-  //     console.log("payload:", payload);
-
-  //     setLoading(true);
-  //     const response = await axios.post(`/documents/${id}`, formData, {
-  //       headers: {
-  //         "Content-Type": "multipart/form-data",
-  //       },
-  //     });
-  //     console.log("Document upload response:", response.data);
-
-  //     // Update state optimistically
-  //     setDocuments((prev) => [...prev, response.data]);
-  //     setFilteredDocuments((prev) => [...prev, response.data]);
-
-  //     message.success("Document ajouté avec succès");
-  //     handleCancel();
-  //   } catch (error) {
-  //     console.error("Error submitting form:", error);
-  //     console.error("Error details:", error.response?.data);
-
-  //     message.error(
-  //       error.response?.data?.message || "Erreur lors de l'envoi du document"
-  //     );
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  // const handleDeleteDocument = async (key) => {
-  //   try {
-  //     await axios.delete(`/documents/${key}`);
-  //     setDocuments(documents.filter((doc) => doc.key !== key));
-  //     setFilteredDocuments(filteredDocuments.filter((doc) => doc.key !== key));
-  //     message.success("Document supprimé avec succès");
-  //   } catch (error) {
-  //     message.error("Erreur lors de la suppression du document");
-  //     console.error("Error deleting document:", error);
-  //   }
-  // };
 
   const handleSearch = (field, value) => {
     const newSearchParams = { ...searchParams, [field]: value };
@@ -411,6 +342,7 @@ const DocumentTabContent = () => {
             <div className="text-xs font-medium mb-1">Type de document</div>
             <Select
               placeholder="-- Choisissez --"
+              allowClear
               style={{ width: 150 }}
               onChange={(value) => handleSearch("documentType", value)}
               value={searchParams.documentType}
@@ -428,10 +360,10 @@ const DocumentTabContent = () => {
 
           <div>
             <div className="text-xs font-medium mb-1">
-              N° contrat / N° devis
+              N° (contrat, devis, réclamation, sinistre)
             </div>
             <Input
-              placeholder="N° contrat / N° devis"
+              placeholder="N° de référence"
               onChange={(e) => handleSearch("referenceNumber", e.target.value)}
               value={searchParams.referenceNumber}
             />

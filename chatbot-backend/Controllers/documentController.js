@@ -62,7 +62,7 @@ class DocumentController {
         documentName: documentName || undefined,
         firebaseStorageUrl: firebaseResponse.url,
         originalFileName: firebaseResponse.name,
-        chat: id
+        lead: id
       });
   
       await newDocument.save();
@@ -90,48 +90,50 @@ class DocumentController {
   }
 
   // Get all documents for a specific chat/client
-  static async getChatDocuments(req, res) {
-    try {
-      const { chatId } = req.params;
-      const { family, type } = req.query;
+  // static async getChatDocuments(req, res) {
+  //   try {
+  //     const { id } = req.params;
+  //     const { family, type } = req.query;
+  //     console.log("Fetching documents for chat ID:", id);
+  //     console.log("Query parameters:", req.query);
 
-      const filter = { chat: chatId };
-      if (family) filter.family = family;
-      if (type) filter.type = type;
+  //     const filter = { chat: id };
+  //     if (family) filter.family = family;
+  //     if (type) filter.type = type;
 
-      const documents = await Document.find(filter)
-        .populate("contract", "referenceNumber")
-        .sort({ uploadDate: -1 });
+  //     const documents = await Document.find(filter)
+  //       .populate("contract", "referenceNumber")
+  //       .sort({ uploadDate: -1 });
 
-      res.json(documents);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
-    }
-  }
+  //     res.json(documents);
+  //   } catch (error) {
+  //     res.status(500).json({ error: error.message });
+  //   }
+  // }
 
   // Get reference options for a specific chat
   static async getChatReferenceOptions(req, res) {
     try {
-      const { chatId, family } = req.params;
+      const { id, family } = req.params;
       let options = [];
 
       switch (family) {
         case "devis":
           options = await mongoose
             .model("Contract")
-            .find({ chat: chatId })
+            .find({ chat: id })
             .select("referenceNumber");
           break;
         case "reclamation":
           options = await mongoose
             .model("Claim")
-            .find({ chat: chatId })
+            .find({ chat: id })
             .select("referenceNumber");
           break;
         case "sinistre":
           options = await mongoose
             .model("Incident")
-            .find({ chat: chatId })
+            .find({ chat: id })
             .select("referenceNumber");
           break;
         default:
@@ -150,11 +152,57 @@ class DocumentController {
   }
 
   // Delete a document
+// static async deleteDocument(req, res) {
+//   try {
+//     const { id } = req.params;
+    
+//     // First get the document to delete (for Firebase cleanup if needed)
+//     const document = await Document.findById(id);
+//     if (!document) {
+//       return res.status(404).json({ 
+//         success: false,
+//         message: "Document not found" 
+//       });
+//     }
+//     await Document.findByIdAndDelete(id);
+
+//     res.json({
+//       success: true,
+//       message: "Document deleted successfully"
+//     });
+//   } catch (error) {
+//     console.error("Error deleting document:", error);
+//     res.status(500).json({ 
+//       success: false,
+//       message: error.message || "Failed to delete document"
+//     });
+//   }
+// }
+
+// In getChatDocuments controller
+static async getChatDocuments(req, res) {
+  try {
+    const { id } = req.params;
+    const { family, type } = req.query;
+    
+    const filter = { lead: id }; // Changed from chat to lead
+    if (family) filter.family = family;
+    if (type) filter.type = type;
+
+    const documents = await Document.find(filter)
+      .sort({ uploadDate: -1 });
+
+    res.json(documents);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+// Enhanced deleteDocument with Firebase cleanup
 static async deleteDocument(req, res) {
   try {
     const { id } = req.params;
     
-    // First get the document to delete (for Firebase cleanup if needed)
     const document = await Document.findById(id);
     if (!document) {
       return res.status(404).json({ 
@@ -162,6 +210,12 @@ static async deleteDocument(req, res) {
         message: "Document not found" 
       });
     }
+    
+    // Delete from Firebase
+    const filePath = document.firebaseStorageUrl
+      .replace(`https://storage.googleapis.com/${bucket.name}/`, '');
+    await bucket.file(filePath).delete();
+    
     await Document.findByIdAndDelete(id);
 
     res.json({

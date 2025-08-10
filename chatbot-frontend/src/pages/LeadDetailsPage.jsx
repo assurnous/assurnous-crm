@@ -4,10 +4,7 @@ import axios from "axios";
 import { Tabs, Button, Card, Select, DatePicker, Form, Descriptions, InputNumber, Radio, Tag, Space, Typography, Input, Modal } from "antd";
 import { 
   EditOutlined, 
-  PlusOutlined, 
-  UserAddOutlined,
   MailOutlined,
-  PhoneOutlined,
   HomeOutlined,
   IdcardOutlined,
   ShopOutlined,
@@ -96,33 +93,28 @@ const ClientDetailPage = () => {
       }
     } catch (error) {
       console.error("Error adding comment:", error);
-      alert("Could not add comment, please try again.");
     }
   };
-
-
   useEffect(() => {
     const fetchClient = async () => {
       try {
         const response = await axios.get(`/lead/${id}`);
-        setClient(response.data.chat);
-        console.log("Client data:", response.data.chat);
+        const clientData = response.data.chat;
+        setClient(clientData);
         setLoading(false);
+        
         if (isModalOpen) {
           form.setFieldsValue({
-            ...response.data.chat,
-            date_naissance: response.data.chat.date_naissance 
-              ? dayjs(response.data.chat.date_naissance) 
+            ...clientData,
+            date_naissance: clientData.date_naissance 
+              ? dayjs(clientData.date_naissance) 
               : null,
-            date_creation: response.data.chat.date_creation 
-              ? dayjs(response.data.chat.date_creation) 
+            date_creation: clientData.date_creation 
+              ? dayjs(clientData.date_creation) 
               : null,
-          });
-        }
-        if (client?.gestionnaire) {
-          setGestionnaire(client.gestionnaire);
-          form.setFieldsValue({
-            gestionnaire: client.gestionnaire._id || client.gestionnaire,
+            gestionnaire: clientData.gestionnaire, // Just store the ID directly
+            gestionnaireModel: clientData.gestionnaireModel,
+            gestionnaireName: clientData.gestionnaireName
           });
         }
       } catch (error) {
@@ -130,9 +122,42 @@ const ClientDetailPage = () => {
         setLoading(false);
       }
     };
-
+  
     fetchClient();
   }, [id]);
+
+  // useEffect(() => {
+  //   const fetchClient = async () => {
+  //     try {
+  //       const response = await axios.get(`/lead/${id}`);
+  //       setClient(response.data.chat);
+  //       console.log("Client data:", response.data.chat);
+  //       setLoading(false);
+  //       if (isModalOpen) {
+  //         form.setFieldsValue({
+  //           ...response.data.chat,
+  //           date_naissance: response.data.chat.date_naissance 
+  //             ? dayjs(response.data.chat.date_naissance) 
+  //             : null,
+  //           date_creation: response.data.chat.date_creation 
+  //             ? dayjs(response.data.chat.date_creation) 
+  //             : null,
+  //         });
+  //       }
+  //       if (client?.gestionnaireName) {
+  //         setGestionnaire(client.gestionnaireName);
+  //         form.setFieldsValue({
+  //           gestionnaire:  client.gestionnaireName,
+  //         });
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching client details:", error);
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchClient();
+  // }, [id]);
 
     const handleEdit = async (formData) => {
     try {
@@ -144,7 +169,6 @@ const ClientDetailPage = () => {
       }
     } catch (error) {
       console.error("Error saving changes:", error);
-      alert("Error saving changes, please try again.");
     }
   };
 
@@ -166,7 +190,6 @@ const ClientDetailPage = () => {
       }
     } catch (error) {
       console.error("Error deleting comment:", error);
-      alert("Could not delete comment, please try again.");
     }
   };
 
@@ -241,20 +264,6 @@ const ClientDetailPage = () => {
       <span className="hidden xs:inline">Modifier</span>
       <span className="xs:hidden">Modif.</span>
     </Button>
-    {/* <Button 
-      icon={<PlusOutlined />}
-      className="text-xs sm:text-sm"
-    >
-      <span className="hidden sm:inline">Ajouter un événement</span>
-      <span className="sm:hidden">Événement</span>
-    </Button>
-    <Button 
-      icon={<UserAddOutlined />}
-      className="text-xs sm:text-sm"
-    >
-      <span className="hidden sm:inline">Ajouter un connecté</span>
-      <span className="sm:hidden">Connecté</span>
-    </Button> */}
   </Space>
 </div>
 
@@ -313,7 +322,7 @@ const ClientDetailPage = () => {
 
             {/* Catégorie */}
             <Form.Item
-              label={<span className="text-xs font-medium">CATÉGORIE*</span>}
+              label={<span className="text-xs font-medium">CATÉGORIE</span>}
               name="categorie"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -337,7 +346,7 @@ const ClientDetailPage = () => {
 
             {/* Statut */}
             <Form.Item
-              label={<span className="text-xs font-medium">STATUS*</span>}
+              label={<span className="text-xs font-medium">STATUS</span>}
               name="statut"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -354,7 +363,7 @@ const ClientDetailPage = () => {
 
             {/* Civilité */}
             <Form.Item
-              label={<span className="text-xs font-medium">CIVILITÉ*</span>}
+              label={<span className="text-xs font-medium">CIVILITÉ</span>}
               name="civilite"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -377,7 +386,7 @@ const ClientDetailPage = () => {
 
             {/* Nom */}
             <Form.Item
-              label={<span className="text-xs font-medium">NOM*</span>}
+              label={<span className="text-xs font-medium">NOM</span>}
               name="nom"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -401,7 +410,7 @@ const ClientDetailPage = () => {
 
             {/* Prénom */}
             <Form.Item
-              label={<span className="text-xs font-medium">PRÉNOM*</span>}
+              label={<span className="text-xs font-medium">PRÉNOM</span>}
               name="prenom"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -412,7 +421,7 @@ const ClientDetailPage = () => {
             {/* Date de naissance */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">DATE DE NAISSANCE*</span>
+                <span className="text-xs font-medium">DATE DE NAISSANCE</span>
               }
               name="date_naissance"
               className="mb-0"
@@ -424,7 +433,7 @@ const ClientDetailPage = () => {
             {/* Pays de naissance */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">PAYS DE NAISSANCE*</span>
+                <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
               }
               name="pays_naissance"
               className="mb-0"
@@ -478,7 +487,7 @@ const ClientDetailPage = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  SITUATION FAMILIALE*
+                  SITUATION FAMILIALE
                 </span>
               }
               name="situation_famille"
@@ -520,7 +529,7 @@ const ClientDetailPage = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  N° ET LIBELLÉ DE LA VOIE*
+                  N° ET LIBELLÉ DE LA VOIE
                 </span>
               }
               name="numero_voie"
@@ -560,7 +569,7 @@ const ClientDetailPage = () => {
 
             {/* Code postal */}
             <Form.Item
-              label={<span className="text-xs font-medium">CODE POSTAL*</span>}
+              label={<span className="text-xs font-medium">CODE POSTAL</span>}
               name="code_postal"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -570,7 +579,7 @@ const ClientDetailPage = () => {
 
             {/* Ville */}
             <Form.Item
-              label={<span className="text-xs font-medium">VILLE*</span>}
+              label={<span className="text-xs font-medium">VILLE</span>}
               name="ville"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -582,7 +591,7 @@ const ClientDetailPage = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  INSCRIT SUR BLOCTEL*
+                  INSCRIT SUR BLOCTEL
                 </span>
               }
               name="bloctel"
@@ -601,7 +610,7 @@ const ClientDetailPage = () => {
             {/* Téléphone portable */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">TÉLÉPHONE PORTABLE*</span>
+                <span className="text-xs font-medium">TÉLÉPHONE PORTABLE</span>
               }
               name="portable"
               className="mb-0"
@@ -634,7 +643,7 @@ const ClientDetailPage = () => {
 
             {/* Email */}
             <Form.Item
-              label={<span className="text-xs font-medium">EMAIL*</span>}
+              label={<span className="text-xs font-medium">EMAIL</span>}
               name="email"
               className="mb-0"
               rules={[
@@ -658,7 +667,7 @@ const ClientDetailPage = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    ACTIVITÉ DE L'ENTREPRISE*
+                    ACTIVITÉ DE L'ENTREPRISE
                   </span>
                 }
                 name="activite_entreprise"
@@ -677,7 +686,7 @@ const ClientDetailPage = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    CATÉGORIE SOCIOPROFESSIONNELLE*
+                    CATÉGORIE SOCIOPROFESSIONNELLE
                   </span>
                 }
                 name="categorie_professionnelle"
@@ -707,7 +716,7 @@ const ClientDetailPage = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    DOMAINE D'ACTIVITÉ*
+                    DOMAINE D'ACTIVITÉ
                   </span>
                 }
                 name="domaine_activite"
@@ -745,7 +754,7 @@ const ClientDetailPage = () => {
 
               <Form.Item
                 label={
-                  <span className="text-xs font-medium">STATUT JURIDIQUE*</span>
+                  <span className="text-xs font-medium">STATUT JURIDIQUE</span>
                 }
                 name="statut_juridique"
                 className="mb-0"
@@ -772,7 +781,7 @@ const ClientDetailPage = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    DÉNOMINATION COMMERCIALE*
+                    DÉNOMINATION COMMERCIALE
                   </span>
                 }
                 name="denomination_commerciale"
@@ -817,15 +826,15 @@ const ClientDetailPage = () => {
 
               {/* SIRET */}
               <Form.Item
-                label={<span className="text-xs font-medium">SIRET*</span>}
+                label={<span className="text-xs font-medium">SIRET</span>}
                 name="siret"
                 className="mb-0"
                 rules={[
                   { required: false, message: "Ce champ est obligatoire" },
-                  {
-                    pattern: /^\d{14}$/,
-                    message: "Le SIRET doit contenir 14 chiffres",
-                  },
+                  // {
+                  //   pattern: /^\d{14}$/,
+                  //   message: "Le SIRET doit contenir 14 chiffres",
+                  // },
                 ]}
               >
                 <Input
@@ -860,7 +869,7 @@ const ClientDetailPage = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    TÉLÉPHONE DE L'ENTREPRISE*
+                    TÉLÉPHONE DE L'ENTREPRISE
                   </span>
                 }
                 name="telephone_entreprise"
@@ -880,7 +889,7 @@ const ClientDetailPage = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    EMAIL DE L'ENTREPRISE*
+                    EMAIL DE L'ENTREPRISE
                   </span>
                 }
                 name="email_entreprise"
@@ -915,7 +924,7 @@ const ClientDetailPage = () => {
               {/* Code NAF */}
               <Form.Item
                 label={
-                  <span className="text-xs font-medium">CODE NAF/APE*</span>
+                  <span className="text-xs font-medium">CODE NAF/APE</span>
                 }
                 name="code_naf"
                 className="mb-0"
@@ -1024,7 +1033,7 @@ const ClientDetailPage = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  RÉGIME DE SÉCURITÉ SOCIALE*
+                  RÉGIME DE SÉCURITÉ SOCIALE
                 </span>
               }
               name="regime_securite_sociale"
@@ -1047,18 +1056,18 @@ const ClientDetailPage = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  NUMÉRO DE SÉCURITÉ SOCIALE*
+                  NUMÉRO DE SÉCURITÉ SOCIALE
                 </span>
               }
               name="num_secu"
               className="mb-0"
               rules={[
                 { required: false, message: "Ce champ est obligatoire" },
-                {
-                  pattern:
-                    /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/,
-                  message: "Format invalide (15 chiffres + clé)",
-                },
+                // {
+                //   pattern:
+                //     /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/,
+                //   message: "Format invalide (15 chiffres + clé)",
+                // },
               ]}
             >
               <Input
@@ -1073,7 +1082,7 @@ const ClientDetailPage = () => {
             {/* Type d'origine */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">TYPE D'ORIGINE*</span>
+                <span className="text-xs font-medium">TYPE D'ORIGINE</span>
               }
               name="type_origine"
               className="mb-0"
@@ -1093,40 +1102,30 @@ const ClientDetailPage = () => {
                 <Option value="autre">Autre</Option>
               </Select>
             </Form.Item>
- <Form.Item
-              label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
-              name="gestionnaire"
-              className="mb-0"
-            >
-              {loading ? (
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="Chargement..."
-                  disabled
-                />
-              ) : (
-                <Input
-                  className="w-full text-xs h-7"
-                  value={
-                    gestionnaire
-                      ? `${
-                          gestionnaire.userType === "admin"
-                            ? gestionnaire.name
-                            : `${gestionnaire.nom} ${gestionnaire.prenom}`
-                        } (${
-                          gestionnaire.userType === "admin"
-                            ? "Admin"
-                            : "Commercial"
-                        })`
-                      : "Non spécifié"
-                  }
-                  disabled
-                />
-              )}
-            </Form.Item>
+         <Form.Item
+  label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+  className="mb-0"
+>
+  <Input
+    className="w-full text-xs h-7"
+    value={client?.gestionnaireName || "Non spécifié"}
+    disabled
+  />
+</Form.Item>
+
+{/* Hidden fields for form submission */}
+<Form.Item name="gestionnaire" noStyle>
+  <Input type="hidden" />
+</Form.Item>
+<Form.Item name="gestionnaireModel" noStyle>
+  <Input type="hidden" />
+</Form.Item>
+<Form.Item name="gestionnaireName" noStyle>
+  <Input type="hidden" />
+</Form.Item>
 
             <Form.Item
-              label={<span className="text-xs font-medium">CRÉÉ PAR*</span>}
+              label={<span className="text-xs font-medium">CRÉÉ PAR</span>}
               name="cree_par"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -1160,23 +1159,40 @@ const ClientDetailPage = () => {
             </Form.Item>
 
             {/* Intermédiaire(s) */}
-            <Form.Item
-              label={
-                <span className="text-xs font-medium">INTERMÉDIAIRE(S)</span>
-              }
-              name="intermediaire"
-              className="mb-0"
-            >
-              <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
-                mode="multiple"
-              >
-                <Option value="assureur">Assureur</Option>
-                <Option value="agent">Agent général</Option>
-                <Option value="courtier">Courtier</Option>
-              </Select>
-            </Form.Item>
+             <Form.Item
+                          label={<span className="text-xs font-medium">INTERMÉDIAIRE</span>}
+                          name="intermediaire"
+                          className="mb-0"
+                          rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+                        >
+                          <Select
+                            className="w-full text-xs h-7"
+                            placeholder="-- Choisissez un intermediaire--"
+                            showSearch
+                            optionFilterProp="children"
+                            filterOption={(input, option) =>
+                              option.children.toLowerCase().includes(input.toLowerCase())
+                            }
+                          >
+                            {users.map((user) => {
+                              const displayName =
+                                user.userType === "admin"
+                                  ? user.name
+                                  : `${user.nom} ${user.prenom}`;
+            
+                              return (
+                                <Option
+                                  key={`${user.userType}-${user._id}`}
+                                  value={displayName}
+                                >
+                                  {displayName} (
+                                  {user.userType === "admin" ? "Admin" : "Commercial"})
+                                </Option>
+                              );
+                            })}
+                          </Select>
+                        </Form.Item>
+      
           </Form>
           <Button
             type="primary"
@@ -1318,7 +1334,7 @@ const ClientDetailPage = () => {
                    placeholder="Ajouter une note..."
                    value={newComment}
                    onChange={(e) => setNewComment(e.target.value)}
-                   className="flex-1"
+                   className="flex-1 p-4"
                  />
                  <Button
                    type="primary"

@@ -94,16 +94,16 @@ const chatSchema = new mongoose.Schema(
     // Fields for both professionnel and entreprise
     activite_entreprise: {
       type: String,
-      required: function() { return this.categorie !== 'particulier'; }
+      // required: function() { return this.categorie !== 'particulier'; }
     },
     categorie_professionnelle: {
       type: String,
-      required: function() { return this.categorie !== 'particulier'; },
+      // required: function() { return this.categorie !== 'particulier'; },
       enum: ["agriculteur", "artisan", "cadre", "prof_interm", "employe", "ouvrier", "retraite", "sans_activite"]
     },
     domaine_activite: {
       type: String,
-      required: function() { return this.categorie !== 'particulier'; },
+      // required: function() { return this.categorie !== 'particulier'; },
       enum: ["agriculture", "industrie", "construction", "commerce", "transport", "information", 
              "finance", "immobilier", "scientifique", "administratif", "public", "enseignement", 
              "sante", "art", "autre"]
@@ -112,26 +112,26 @@ const chatSchema = new mongoose.Schema(
     // Fields specific to entreprise
     statut_juridique: {
       type: String,
-      validation: function() { return this.categorie === 'entreprise'; },
+      // validation: function() { return this.categorie === 'entreprise'; },
       required: false,
       enum: ["sarl", "eurl", "sas", "sasu", "sa", "sci", "micro", "ei", "autre"]
     },
     denomination_commerciale: {
       type: String,
-      validation: function() { return this.categorie === 'entreprise'; },
+      // validation: function() { return this.categorie === 'entreprise'; },
       required: false,
     },
     raison_sociale: String,
     date_creation: Date,
     siret: {
       type: String,
-      required: function() { return this.categorie === 'entreprise'; },
-      validate: {
-        validator: function(v) {
-          return /^\d{14}$/.test(v);
-        },
-        message: props => `${props.value} n'est pas un numéro SIRET valide!`
-      }
+      // required: function() { return this.categorie === 'entreprise'; },
+      // validate: {
+      //   validator: function(v) {
+      //     return /^\d{14}$/.test(v);
+      //   },
+      //   message: props => `${props.value} n'est pas un numéro SIRET valide!`
+      // }
     },
     forme_juridique: {
       type: String,
@@ -139,26 +139,26 @@ const chatSchema = new mongoose.Schema(
     },
     telephone_entreprise: {
       type: String,
-      required: function() { return this.categorie !== 'particulier'; }
+      // required: function() { return this.categorie !== 'particulier'; }
     },
     email_entreprise: {
       type: String,
       required: false,
-      validation: function() { return this.categorie !== 'particulier'; },
+      // validation: function() { return this.categorie !== 'particulier'; },
       match: /.+\@.+\..+/
     },
     site_internet: {
       type: String,
-      validate: {
-        validator: function(v) {
-          return /^(http|https):\/\/[^ "]+$/.test(v);
-        },
-        message: props => `${props.value} n'est pas une URL valide!`
-      }
+      // validate: {
+      //   validator: function(v) {
+      //     return /^(http|https):\/\/[^ "]+$/.test(v);
+      //   },
+      //   message: props => `${props.value} n'est pas une URL valide!`
+      // }
     },
     code_naf: {
       type: String,
-      required: function() { return this.categorie !== 'particulier'; }
+      // required: function() { return this.categorie !== 'particulier'; }
     },
     idcc: String,
     beneficiaires_effectifs: String,
@@ -178,12 +178,12 @@ const chatSchema = new mongoose.Schema(
     num_secu: {
       type: String,
       required: false,
-      validate: {
-        validator: function(v) {
-          return /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/.test(v);
-        },
-        message: props => `${props.value} n'est pas un numéro de sécurité sociale valide!`
-      }
+      // validate: {
+      //   validator: function(v) {
+      //     return /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/.test(v);
+      //   },
+      //   message: props => `${props.value} n'est pas un numéro de sécurité sociale valide!`
+      // }
     },
     documents: [{
       type: mongoose.Schema.Types.ObjectId,
@@ -194,18 +194,19 @@ const chatSchema = new mongoose.Schema(
     type_origine: {
       type: String,
       required: false,
-      enum: [
-        "Co-courtage",
-        "Indicateur d'affaires",
-        "Weedo market",
-        "Recommandation",
-        "Réseaux sociaux",
-        "Autre"
-    ]
+    //   enum: [
+    //     "Co-courtage",
+    //     "Indicateur d'affaires",
+    //     "Weedo market",
+    //     "Recommandation",
+    //     "Réseaux sociaux",
+    //     "Autre"
+    // ]
     },
+
     gestionnaire: { 
       type: mongoose.Schema.Types.ObjectId,
-      refPath: 'gestionnaireModel'  // This will determine which model to use
+      refPath: 'gestionnaireModel' 
     },
     gestionnaireModel: {
       type: String,
@@ -217,21 +218,19 @@ const chatSchema = new mongoose.Schema(
       required: false
     },
    
+    // cree_par: {
+    //   type: mongoose.Schema.Types.ObjectId, // Change from String to ObjectId
+    //   ref: "Commercial",
+    //   required: false
+    // },
     cree_par: {
-      type: mongoose.Schema.Types.ObjectId, // Change from String to ObjectId
-      ref: "Commercial",
-      required: false
-    },
-    cree_par: {
-      type: mongoose.Schema.Types.ObjectId, // Change from String to ObjectId
-      ref: "Admin",
-      required: false
+      type: String,
     },
 
-    intermediaire: [{
+    intermediaire: {
       type: String,
       required: false,
-    }],
+    },
   },
   
   

@@ -10,13 +10,13 @@ const DocUpload = ({ onUploadSuccess }) => {
     const beforeUpload = (file) => {
       const isPDF = file.type === 'application/pdf';
       if (!isPDF) {
-        message.error('You can only upload PDF files!');
+        message.error("Vous ne pouvez télécharger que des fichiers PDF !");
         return false;
       }
       
       const isLt10M = file.size / 1024 / 1024 < 10;
       if (!isLt10M) {
-        message.error('File must be smaller than 10MB!');
+        message.error("Le fichier doit être inférieur à 10 Mo !");
         return false;
       }
       

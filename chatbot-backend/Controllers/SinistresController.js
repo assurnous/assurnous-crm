@@ -10,8 +10,7 @@ class SinistresController {
         .populate({
           path: "session",
           options: { strictPopulate: false }, // Let refPath handle the model
-        });
-      console.log("Fetched sinistres:", sinistres);
+        }).sort({ date_creation: -1 });
 
       res
         .status(200)
@@ -31,8 +30,6 @@ class SinistresController {
 
   static async createSinistre(req, res) {
     try {
-      console.log("Raw received data:", req.body);
-
       // Verify session model matches the actual user type
       if (req.body.session) {
         const UserModel = mongoose.model(req.body.sessionModel);
@@ -56,6 +53,7 @@ class SinistresController {
       };
 
       const data = await Sinistre.create(dataToSave);
+      console.log("Created sinistre:", data);
       res.status(201).json({ message: "Sinistre created successfully", data });
     } catch (error) {
       console.error("Creation error:", {
@@ -72,6 +70,7 @@ class SinistresController {
   // Get all sinistres for a specific lead
   static async getSinistreById(req, res) {
     const { id } = req.params;
+    console.log("Fetching sinistre for lead ID:", id);
     // Get user info from headers instead of body
     const userId = req.headers["x-user-id"];
     const role = req.headers["x-user-role"];
@@ -84,26 +83,24 @@ class SinistresController {
         });
       }
 
-      const query = { leadId: id };
+      const query = { $or: [{ leadId: id }, { sinistreId: id }] };
 
       if (role !== "admin") {
         query.session = userId;
       }
 
-      const devis = await Sinistre.find(query)
+      const sinistre = await Sinistre.find(query)
         .populate("leadId")
         .populate({
           path: "session",
           options: { strictPopulate: false }, // Let refPath handle the model
         })
-        .populate("sinistreDetails")
-        .populate("contratDetails")
-        .sort({ date_creation: -1 });
-      console.log("Fetched devis:", devis);
+        .sort({ date_creation: -1 });   
+        console.log("Fetched sinistre:", sinistre);  
 
       res.status(200).json({
         success: true,
-        data: devis,
+        data: sinistre,
       });
     } catch (error) {
       console.error("Error fetching lead devis:", error);

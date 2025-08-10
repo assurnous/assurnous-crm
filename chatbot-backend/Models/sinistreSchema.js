@@ -2,17 +2,19 @@ const mongoose = require('mongoose');
 
 const sinistreSchema = new mongoose.Schema({
   // === INFORMATION ===
-  numeroSinistre: {
+
+  numeroSinistre: {  // new
     type: String,
     required: true,
-    unique: true
   },
+
+ 
 
   // === LE SINISTRE ===
   sinistreExist: {
     type: String,
     enum: ['oui', 'non'],
-    required: true
+    // required: true
   },
   
   // When sinistré exists in CRM
@@ -55,67 +57,54 @@ const sinistreSchema = new mongoose.Schema({
   // === DÉTAIL DU SINISTRE ===
   risque: {
     type: String,
-    required: true,
+    // required: true,
   },
   assureur: {
     type: String,
-    required: true,
+    // required: true,
   },
   dateSinistre: {
     type: Date,
-    required: true
+    // required: true
   },
   dateDeclaration: {
     type: Date,
-    required: true
+    // required: true
   },
   statutSinistre: {
     type: String,
-    required: true,
+    // required: true,
     enum: ['en_cours', 'clo', 'reouvert']
   },
   typeSinistre: {
     type: String,
-    required: true,
+    // required: true,
     enum: ['dommage_corporel', 'dommage_materiel', 'dommage_corporel_matériel']
   },
   responsabilite: {
     type: String,
-    required: true
+    // required: true
   },
   montantSinistre: {
     type: Number,
-    required: true
+    // required: true
+  },
+  
+  coordonnees_expert: {
+    type: String,
+    // required: true
   },
   delegation: {
     type: String,
-    required: true,
+    // required: true,
     enum: ['oui', 'non']
   },
-  expert: {
-    type: String
-  },
-    // session: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Commercial",
-    //   required: false, // If this is optional, you can make it not required
-    // },
-    // session: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   ref: "Admin", // Referring to the Commercial model
-    //   required: false, // If this is optional, you can make it not required
-    // },
 
-    // session: {
-    //   type: mongoose.Schema.Types.ObjectId,
-    //   refPath: 'sessionModel', // Dynamic reference
-    //   required: false,
-    // },
-    // sessionModel: {
-    //   type: String,
-    //   enum: ['Admin', 'Commercial'],
-    //   required: false,
-    // },
+  gestionnaire: {
+    type: String,
+     required: [false, 'Le gestionnaire est obligatoire']
+   },
+   
     session: {
       type: mongoose.Schema.Types.ObjectId,
       refPath: 'sessionModel',

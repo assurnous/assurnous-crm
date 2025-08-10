@@ -379,7 +379,7 @@ const DocumentList = () => {
       setDocuments(response.data);
       setFilteredDocuments(response.data); // Initialize filtered documents
     } catch (error) {
-      message.error("Échec du chargement des documents");
+
       console.error("Error fetching documents:", error);
     } finally {
       setLoading(false);
@@ -402,7 +402,6 @@ const DocumentList = () => {
   const handleFormSubmit = async (values) => {
     try {
       if (!uploadedDocument) {
-        message.error("Please upload a document");
         return;
       }
   
@@ -429,7 +428,6 @@ const DocumentList = () => {
       fetchDocuments();
     } catch (error) {
       console.error("Error uploading document:", error.response?.data || error.message);
-      message.error("Échec de l'ajout du document");
     }
   }
   const handleDelete = async (id) => {
@@ -439,7 +437,6 @@ const DocumentList = () => {
       message.success("Document supprimé avec succès");
     } catch (error) {
       console.error("Error deleting document:", error);
-      message.error("Échec de la suppression du document");
     }
   };
 

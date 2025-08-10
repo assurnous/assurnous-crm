@@ -245,6 +245,7 @@ const ListLeads = () => {
       });
   
       setChatData(filteredLeads);
+      setFilteredData(filteredLeads);
     } catch (error) {
       console.error("Error fetching leads:", error);
       message.error("Failed to fetch leads");

@@ -35,13 +35,14 @@ const ContratTabContent = () => {
   const [loading, setLoading] = useState(true);
   const { id } = useParams();
   const [contratData, setContratData] = useState([]);
-  const [gestionnaire, setGestionnaire] = useState(null);
+
   const [uploadedDocument, setUploadedDocument] = useState(null);
   const [pageSize, setPageSize] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
   const [filteredContrat, setFilteredContrat] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingRecord, setEditingRecord] = useState(null);
+  const [client, setClient] = useState(null);
 
   const token = localStorage.getItem("token");
   const decodedToken = token ? jwtDecode(token) : null;
@@ -60,42 +61,45 @@ const ContratTabContent = () => {
     }
   };
 
-  // Fetch chat data on component mount
+
   useEffect(() => {
     const fetchChatData = async () => {
       try {
         const response = await axios.get(`/lead/${id}`);
         const chatData = response.data.chat;
-
-        if (chatData?.gestionnaire) {
-          setGestionnaire(chatData.gestionnaire);
-          form.setFieldsValue({
-            gestionnaire: chatData.gestionnaire._id || chatData.gestionnaire,
-          });
-        }
+        console.log("Fetched chat data:", chatData);
+        setClient(response.data);
+  
+        form.setFieldsValue({
+          gestionnaire: chatData.gestionnaire,
+          gestionnaireModel: chatData.gestionnaireModel,
+          gestionnaireName: chatData.gestionnaireName
+        });
       } catch (error) {
         console.error("Error fetching chat data:", error);
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchChatData();
-  }, [id, form, users]);
+  }, [id, form, users, isModalOpen]);
 
-
+  
   const showModal = () => {
     setEditingRecord(null); 
     setUploadedDocument(null); 
     form.resetFields();
-    if (gestionnaire) {
-      form.setFieldsValue({
-        gestionnaire: gestionnaire._id || gestionnaire
-      });
-    }
-    setIsModalOpen(true); 
+    
+    // Initialize gestionnaire fields with client data
+    form.setFieldsValue({
+      gestionnaire: client?.chat?.gestionnaire, // The ID
+      gestionnaireModel: client?.chat?.gestionnaireModel, // "Admin"
+      gestionnaireName: client?.chat?.gestionnaireName // Display name
+    });
+    
+    setIsModalOpen(true);
   };
-  
 
   const handleCancel = () => {
     form.resetFields();
@@ -108,7 +112,7 @@ const ContratTabContent = () => {
   const formatContratItem = (contrat) => ({
     key: contrat._id,
     contractNumber: contrat.contractNumber,
-    gestionnaire: contrat.lead?.gestionnaire || "N/A",
+    gestionnaire: contrat?.gestionnaireName || "N/A",
     riskType: contrat.riskType,
     insurer: contrat.insurer,
     status: contrat.status,
@@ -127,19 +131,36 @@ const ContratTabContent = () => {
     documents: contrat.documents || [],
   });
   const handleFormSubmit = async (values) => {
+    console.log("Form values:", values);
     const token = localStorage.getItem("token");
     const decodedToken = token ? jwtDecode(token) : null;
-    const currentUserId = decodedToken?.userId;
+    // const currentUserId = decodedToken?.userId;
+
+    const isAdmin =
+    decodedToken.role === "Admin" || decodedToken.role === "admin";
+  const sessionId = decodedToken.userId;
+  const sessionModel = isAdmin ? "Admin" : "Commercial";
     
     try {
       // Prepare form data with document if exists
       const formData = {
         ...values,
         documents: uploadedDocument ? [uploadedDocument] : [],
-        gestionnaire: gestionnaire.name || gestionnaire._id,
-        session: currentUserId,
+        gestionnaire: values.gestionnaire,
+      gestionnaireModel: values.gestionnaireModel,
+      gestionnaireName: values.gestionnaireName,
+        session: sessionId,
+        sessionModel: sessionModel,
         lead: id,
       };
+      if (values.changeStatus === 'oui') {
+        await axios.put(`/updateStatusLead/${id}`, {
+          statut: 'client' // Change status to 'client'
+        });
+        
+        // Update local state if needed
+        setClient(prev => ({ ...prev, statut: 'client' }));
+      }
   
       let response;
       
@@ -172,7 +193,7 @@ const ContratTabContent = () => {
       setIsModalOpen(false);
       }
   
-      setRefreshTrigger(prev => prev + 1);
+      // setRefreshTrigger(prev => prev + 1);
       form.resetFields();
       setIsModalOpen(false);
       setEditingRecord(null);
@@ -208,24 +229,23 @@ const ContratTabContent = () => {
         const formattedData = response.data.data.map((contrat, index) => ({
           key: contrat._id,
           contractNumber: contrat.contractNumber,
-          gestionnaire: contrat.lead.gestionnaire,
           riskType: contrat.riskType,
           insurer: contrat.insurer,
           status: contrat.status,
           source: contrat.type_origine,
           prime: contrat.prime,
           paymentMethod: contrat.paymentMethod,
-            changeStatus: contrat.changeStatus,
-            anniversary: contrat.anniversary,
-            paymentType: contrat.paymentType,
-            cree_par: contrat.cree_par,
-
+          changeStatus: contrat.changeStatus,
+          anniversary: contrat.anniversary,
+          paymentType: contrat.paymentType,
+          cree_par: contrat.cree_par,
           date_effet: contrat.effectiveDate
             ? new Date(contrat.effectiveDate).toLocaleDateString()
             : "N/A",
           originalData: contrat,
           documents: contrat.documents || [],
           intermediaire: contrat.intermediaire || "N/A",
+          gestionnaire: contrat.lead?.gestionnaireName || contrat.session?.name || "N/A",
         }));
         setContratData(formattedData);
         setFilteredContrat(formattedData); 
@@ -293,11 +313,6 @@ const ContratTabContent = () => {
       render: (gestionnaire, record) => (
         <>
           {gestionnaire}
-          {userRole === "Admin" && (
-            <div style={{ fontSize: 12, color: "#666" }}>
-              {record.originalData.session?.email}
-            </div>
-          )}
         </>
       ),
     },
@@ -399,6 +414,7 @@ const ContratTabContent = () => {
     },
   ];
 
+
 const handleEdit = (record) => {
   setEditingRecord(record);
   setIsModalOpen(true);
@@ -435,13 +451,15 @@ const handleEdit = (record) => {
     commissionRate: record.originalData?.commissionRate,
     brokerageFees: record.originalData?.brokerageFees,
     recurrentCommission: record.originalData?.recurrentCommission,
+    gestionnaire: record.originalData?.gestionnaire, // ID
+    gestionnaireModel: record.originalData?.gestionnaireModel, // "Admin"
+    gestionnaireName: record.originalData?.gestionnaireName,
     
     // Dates
     effectiveDate: record.originalData?.effectiveDate 
       ? dayjs(record.originalData.effectiveDate)
       : null,
     cree_par: record.originalData?.cree_par,
-    gestionnaire: record.originalData?.lead.gestionnaire,
     intermediaire: record.originalData?.intermediaire,
     
     document: documentList[0] || null
@@ -450,7 +468,6 @@ const handleEdit = (record) => {
   // Set uploaded document state
   setUploadedDocument(documentList[0] || null);
 };
-
 
 
  
@@ -480,9 +497,7 @@ const handleEdit = (record) => {
       message.success("Contrat supprimé avec succès");
     } catch (error) {
       console.error("Error deleting contrat:", error);
-      message.error(
-        error.response?.data?.message || "Erreur lors de la suppression"
-      );
+    
     }
   };
 
@@ -755,72 +770,28 @@ const handleEdit = (record) => {
                         <Option value="autre">Autre</Option>
                       </Select>
                     </Form.Item>
-         
-          <Form.Item
-                        label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
-                        name="gestionnaire"
-                        className="mb-0"
-                      >
-                        {loading ? (
-                          <Input
-                            className="w-full text-xs h-7"
-                            placeholder="Chargement..."
-                            disabled
-                          />
-                        ) : (
-                          <Input
-                            className="w-full text-xs h-7"
-                            value={
-                              gestionnaire
-                                ? `${
-                                    gestionnaire.userType === "admin"
-                                      ? gestionnaire.name
-                                      : `${gestionnaire.nom} ${gestionnaire.prenom}`
-                                  } (${
-                                    gestionnaire.userType === "admin"
-                                      ? "Admin"
-                                      : "Commercial"
-                                  })`
-                                : "Non spécifié"
-                            }
-                            disabled
-                          />
-                        )}
-                      </Form.Item>
-          
-            <Form.Item
-                         label={<span className="text-xs font-medium">CRÉÉ PAR*</span>}
-                         name="cree_par"
-                         className="mb-0"
-                         rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-                       >
-                         <Select
-                           className="w-full text-xs h-7"
-                           placeholder="-- Choisissez un créateur --"
-                           showSearch
-                           optionFilterProp="children"
-                           filterOption={(input, option) =>
-                             option.children.toLowerCase().includes(input.toLowerCase())
-                           }
-                         >
-                           {users.map((user) => {
-                             const displayName =
-                               user.userType === "admin"
-                                 ? user.name
-                                 : `${user.nom} ${user.prenom}`;
-           
-                             return (
-                               <Option
-                                 key={`${user.userType}-${user._id}`}
-                                 value={displayName}
-                               >
-                                 {displayName} (
-                                 {user.userType === "admin" ? "Admin" : "Commercial"})
-                               </Option>
-                             );
-                           })}
-                         </Select>
-                       </Form.Item>
+                    {/* Display only - shows gestionnaire name */}
+                    <Form.Item
+  label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+  className="mb-0"
+>
+  <Input
+    className="w-full text-xs h-7"
+    value={form.getFieldValue('gestionnaireName') || "Non spécifié"}
+    disabled
+  />
+</Form.Item>
+
+{/* Hidden fields for actual form submission */}
+<Form.Item name="gestionnaire" noStyle>
+  <Input type="hidden" />
+</Form.Item>
+<Form.Item name="gestionnaireModel" noStyle>
+  <Input type="hidden" />
+</Form.Item>
+<Form.Item name="gestionnaireName" noStyle>
+  <Input type="hidden" />
+</Form.Item>
         
 
        <Form.Item

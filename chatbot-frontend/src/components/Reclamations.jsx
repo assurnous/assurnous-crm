@@ -164,7 +164,7 @@ const Reclamations = () => {
         } else {
           // Commercials only see their own reclamations
           filteredData = allReclamations.filter(
-            reclamation => reclamation.session?.toString() === currentUserId
+            reclamation => reclamation.session?._id.toString() === currentUserId
           );
         }
   
@@ -173,7 +173,6 @@ const Reclamations = () => {
         
       } catch (error) {
         console.error("Error fetching reclamations:", error);
-        message.error("Erreur lors du chargement des réclamations");
       } finally {
         setLoading(false);
       }
@@ -246,7 +245,6 @@ const Reclamations = () => {
       const decodedToken = token ? jwtDecode(token) : null;
 
       if (!decodedToken) {
-        message.error("Utilisateur non authentifié");
         return;
       }
       const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'admin';
@@ -290,11 +288,6 @@ const Reclamations = () => {
       form.resetFields();
       setEditingRecord(null);
     } catch (error) {
-      message.error(
-        editingRecord
-          ? "Erreur lors de la mise à jour de la réclamation"
-          : "Erreur lors de l'ajout de la réclamation"
-      );
       console.error(error);
     }
   };
@@ -322,7 +315,6 @@ const Reclamations = () => {
       }
     } catch (error) {
       console.error("Error deleting record:", error);
-      message.error("Erreur lors de la suppression de la réclamation");
     }
   };
 
@@ -387,7 +379,16 @@ const Reclamations = () => {
     }
   };
 
-  const handleLeadClick = (leadId) => {
+  const handleLeadClick = (lead) => {
+    // Extract ID whether we get the full object or just the ID
+    const leadId = lead?._id || lead;
+    
+    if (!leadId) {
+      console.error("No lead ID provided for navigation");
+      message.error("Could not navigate to client details");
+      return;
+    }
+    
     navigate(`/client/${leadId}`);
   };
 
@@ -397,31 +398,60 @@ const Reclamations = () => {
       dataIndex: "numero_reclamation",
       key: "numero_reclamation",
     },
-    // {
-    //   title: "Client",
-    //   key: "client",
-    //   render: (_, record) =>
-    //     record.existe_crm === "oui"
-    //       ? record.nom_reclamant
-    //       : `${record.nom_reclamant_input || ""} ${
-    //           record.prenom_reclamant_input || ""
-    //         }`.trim(),
-    // },
     {
       title: "Client",
       key: "client",
-      render: (_, record) => (
-        <span 
-          onClick={() => handleLeadClick(record.leadId)}
-          style={{ cursor: 'pointer', color: '#1890ff' }}
-        >
-          {record.existe_crm === "oui"
-            ? record.nom_reclamant
-            : `${record.nom_reclamant_input || ""} ${
-                record.prenom_reclamant_input || ""
-              }`.trim()}
-        </span>
-      ),
+      render: (_, record) => {
+        // For non-CRM cases (existe_crm="non")
+        if (record.existe_crm === "non") {
+          const fullName = `${record.nom_reclamant_input || ''} ${record.prenom_reclamant_input || ''}`.trim();
+          return (
+            <span style={{ cursor: 'default' }}>  {/* No click for non-CRM cases */}
+              {fullName || 'N/A'}
+            </span>
+          );
+        }
+        
+        // For CRM cases (existe_crm="oui")
+        if (record.leadId && typeof record.leadId === 'object') {
+          // Case 1: leadId has nom/prenom
+          if (record.leadId.nom) {
+            const fullName = `${record.leadId.nom} ${record.leadId.prenom || ''}`.trim();
+            return (
+              <span 
+                onClick={() => handleLeadClick(record.leadId._id)}  // Pass just the ID
+                style={{ cursor: 'pointer', color: '#1890ff' }}
+              >
+                {fullName}
+              </span>
+            );
+          }
+        }
+        
+        // Case 2: nom_reclamant is a string (ID or name)
+        if (typeof record.nom_reclamant === 'string') {
+          // If it's an ID format (like "689665e1f27ff0e71f56c1fd")
+          if (/^[0-9a-f]{24}$/i.test(record.nom_reclamant)) {
+            return (
+              <span 
+                onClick={() => handleLeadClick(record.nom_reclamant)}  // Pass the ID
+                style={{ cursor: 'pointer', color: '#1890ff' }}
+              >
+                {'Client'}  {/* Or some default text since we don't have the name */}
+              </span>
+            );
+          }
+          // If it's a name string (like "Jean Dupont")
+          return (
+            <span style={{ cursor: 'default' }}>
+              {record.nom_reclamant || 'N/A'}
+            </span>
+          );
+        }
+        
+        // Default case
+        return 'N/A';
+      },
     },
     {
       title: "Motif",
@@ -531,6 +561,7 @@ const Reclamations = () => {
                 onChange={(value) => handleFilterChange("motif", value)}
                 value={filters.motif}
                 allowClear
+                showSearch
               >
                 <Option value="tous">Tous</Option>
                 <Select.OptGroup label="Souscription">
@@ -602,6 +633,7 @@ const Reclamations = () => {
               <Select
                 className="w-full"
                 allowClear
+                showSearch
                 placeholder="-- Choisissez --"
                 onChange={(value) => handleFilterChange("assureur", value)}
                 value={filters.assureur}

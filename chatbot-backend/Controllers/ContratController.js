@@ -51,7 +51,7 @@ class ContratController {
   }
   static async getAllContrats(req, res) {
     try {
-      const contrats = await Contrat.find();
+      const contrats = await Contrat.find().populate('lead').populate('session').sort({ date_creation: -1 });
       res.status(200).json(contrats);
     } catch (error) {
       res.status(500).json({ message: "Error fetching contrats", error });

@@ -13,24 +13,13 @@ import {
   message,
   Radio,
   Tooltip,
-  Popconfirm,
-  Upload,
-  Spin,
-  Divider,
-  Typography,
-  Row,
-  Col,
-  Alert,
-  Popover,
-  Card,
 } from "antd";
 import { CloseOutlined, EditOutlined, DeleteOutlined, DownloadOutlined  } from "@ant-design/icons";
+import { useWatch } from "antd/es/form/Form";
 import "react-phone-input-2/lib/style.css";
 import axios from "axios";
 import { useParams } from "react-router-dom";
-import FileUpload from "./FileUpload";
 import { jwtDecode } from "jwt-decode";
-// import moment from "moment";
 import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../../constants";
 
@@ -42,29 +31,53 @@ const SinistreTabContent = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const { id } = useParams();
-  const [devisData, setDevisData] = useState([]);
+  const [sinistreData, setSinistreData] = useState([]);
   const [gestionnaire, setGestionnaire] = useState(null);
   const [uploadedDocument, setUploadedDocument] = useState(null);
   const [pageSize, setPageSize] = useState(30);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filteredDevis, setFilteredDevis] = useState([]);
+  const [filteredSinistre, setFilteredSinistre] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingRecord, setEditingRecord] = useState(null);
   const [chatData, setChatData] = useState([]);
+  const [client, setClient] = useState([]);
   const token = localStorage.getItem("token");
   const decodedToken = token ? jwtDecode(token) : null;
   const currentUserId = decodedToken?.userId;
   const userRole = decodedToken?.role;
+  const [contrats, setContrats] = useState([]);
+   const [loadingContrats, setLoadingContrats] = useState(false);
+  const sinistreExist = useWatch("sinistreExist", form);
+    const contratExist = useWatch("contratExist", form);
+     const [loadingClients, setLoadingClients] = useState(false);
+       const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+    useEffect(() => {
+      const fetchContrats = async () => {
+        try {
+          setLoadingContrats(true);
+          const response = await axios.get("/contrat");
+          console.log("Fetched contracts:", response.data);
+          setContrats(response.data);
+        } catch (error) {
+          console.error("Error fetching contracts:", error);
+     
+        } finally {
+          setLoadingContrats(false);
+        }
+      };
+  
+      fetchContrats();
+    }, []);
 
   const handleStatusFilter = (value) => {
     setStatusFilter(value);
 
     if (value === "all") {
-      setFilteredDevis(devisData);
+      setFilteredSinistre(sinistreData);
     } else {
-      const filtered = devisData.filter((devis) => devis.statut === value);
-      setFilteredDevis(filtered);
+      const filtered = sinistreData.filter((devis) => devis.statut === value);
+      setFilteredSinistre(filtered);
     }
   };
 
@@ -90,30 +103,30 @@ const SinistreTabContent = () => {
         console.log("Raw leads data:", allLeads);
   
         // For admin, return all leads without filtering
-        if (userRole?.toLowerCase() === 'admin') { // Case-insensitive check
-          console.log("Admin access - showing all leads", allLeads.length);
-          setChatData(allLeads);
-          return;
-        }
+        // if (userRole?.toLowerCase() === 'admin') { // Case-insensitive check
+        //   console.log("Admin access - showing all leads", allLeads.length);
+        //   setChatData(allLeads);
+        //   return;
+        // }
   
-        // For commercial, filter leads
-        const filteredLeads = allLeads.filter((lead) => {
-          const commercial = lead.commercial || {};
-          const clientcreatedByCommercial = lead.cree_par || "";
+        // // For commercial, filter leads
+        // const filteredLeads = allLeads.filter((lead) => {
+        //   const commercial = lead.commercial || {};
+        //   const clientcreatedByCommercial = lead.cree_par || "";
           
-          return (
-            (commercial._id === currentUserId && 
-             commercial.nom === lastName && 
-             commercial.prenom === firstName) ||
-            clientcreatedByCommercial === userName
-          );
-        });
+        //   return (
+        //     (commercial._id === currentUserId && 
+        //      commercial.nom === lastName && 
+        //      commercial.prenom === firstName) ||
+        //     clientcreatedByCommercial === userName
+        //   );
+        // });
   
-        console.log("Filtered leads for commercial:", filteredLeads);
-        setChatData(filteredLeads);
+        // console.log("Filtered leads for commercial:", filteredLeads);
+        setChatData(allLeads);
       } catch (error) {
         console.error("Error fetching leads:", error);
-        message.error("Failed to fetch leads");
+        
       } finally {
         setLoading(false);
       }
@@ -127,13 +140,14 @@ const SinistreTabContent = () => {
       try {
         const response = await axios.get(`/lead/${id}`);
         const chatData = response.data.chat;
-
-        if (chatData?.gestionnaire) {
-          setGestionnaire(chatData.gestionnaire);
+        setClient(response.data);
+     
           form.setFieldsValue({
-            gestionnaire: chatData.gestionnaire._id || chatData.gestionnaire,
+            gestionnaire: chatData.gestionnaire, // Just store the ID directly
+            gestionnaireModel: chatData.gestionnaireModel,
+            gestionnaireName: chatData.gestionnaireName
           });
-        }
+     
       } catch (error) {
         console.error("Error fetching chat data:", error);
       } finally {
@@ -146,14 +160,6 @@ const SinistreTabContent = () => {
 
 
   const showModal = () => {
-    setEditingRecord(null); 
-    setUploadedDocument(null); 
-    form.resetFields();
-    if (gestionnaire) {
-      form.setFieldsValue({
-        gestionnaire: gestionnaire._id || gestionnaire
-      });
-    }
     setIsModalOpen(true); 
   };
   
@@ -166,62 +172,88 @@ const SinistreTabContent = () => {
   };
 
   // Helper function to format devis items consistently
-  const formatDevisItem = (devis) => ({
-    key: devis._id,
-    numero_devis: devis.numero_devis,
-    gestionnaire: devis.lead?.gestionnaire || "N/A",
-    risque: devis.risque,
-    assureur: devis.assureur,
-    statut: devis.statut,
-    source: devis.type_origine,
-    date_effet: devis.date_effet
-      ? new Date(devis.date_effet).toLocaleDateString()
+  const formatDevisItem = (sinistre) => ({
+    key: sinistre._id,
+    numero_sinistre: sinistre.numeroSinistre || "N/A",
+    gestionnaire: sinistre.gestionnaireName || "N/A",
+    risque: sinistre.risque || "N/A",
+    assureur: sinistre.assureur || "N/A",
+    statutSinistre: sinistre.statutSinistre || "N/A",
+    typeSinistre: sinistre.typeSinistre || "N/A",
+    dateSinistre: sinistre.dateSinistre 
+      ? new Date(sinistre.dateSinistre).toLocaleDateString() 
       : "N/A",
-    originalData: devis,
-    documents: devis.documents || [],
+      dateDeclaration: sinistre.dateDeclaration
+      ? new Date(sinistre.dateDeclaration).toLocaleDateString()
+      : "N/A",
+    originalData: sinistre,
+    documents: sinistre.documents || [],
+    contratId: sinistre.contratId || "N/A",
+    sinistreId: sinistre.sinistreId || "N/A"
   });
+
   const handleFormSubmit = async (values) => {
+    console.log("Form values:", values);
     const token = localStorage.getItem("token");
     const decodedToken = token ? jwtDecode(token) : null;
-    const currentUserId = decodedToken?.userId;
+    const isAdmin =
+    decodedToken.role === "Admin" || decodedToken.role === "admin";
+  const sessionId = decodedToken.userId;
+  const sessionModel = isAdmin ? "Admin" : "Commercial";
     
     try {
       // Prepare form data with document if exists
       const formData = {
         ...values,
         documents: uploadedDocument ? [uploadedDocument] : [],
-        gestionnaire: gestionnaire.name || gestionnaire._id,
-        session: currentUserId,
-        lead: id,
+        numeroSinistre: values.numeroSinistre,
+        gestionnaire:  gestionnaire,
+        session: sessionId,
+        coordonnees_expert: values.coordonnees_expert,
+        sessionModel: sessionModel,
+        leadId: id,
+        ...(values.sinistreExist === "oui"
+          ? {
+              leadId: values.sinistreId,
+              sinistreId: values.sinistreId,
+            }
+          : {
+              sinistreNom: values.sinistreNom,
+              sinistrePrenom: values.sinistrePrenom,
+              sinistreInput: values.sinistreInput,
+            }),
       };
   
       let response;
       
       if (editingRecord) {
-        // UPDATE EXISTING DEVIS
-        const devisId = editingRecord.originalData?._id;
-        if (!devisId) {
-          throw new Error("Missing devis ID for update");
-        }
-  
-        response = await axios.put(`/devis/${devisId}`, formData);
-      setDevisData(prev => prev.map(item => 
-        item.key === devisId ? formatDevisItem(response.data) : item
-      ));
-      setFilteredDevis(prev => prev.map(item => 
-        item.key === devisId ? formatDevisItem(response.data) : item
-      ));
+      const response = await axios.put(
+               `/sinistres/${editingRecord._id}`,
+               formData
+             );
+     
+      setSinistreData((prev) =>
+        [...prev].map((item) =>
+          item._id === editingRecord._id ? { ...response.data } : { ...item }
+        )
+      );
+      setFilteredSinistre((prev) =>
+        prev.map((item) =>
+          item._id === editingRecord._id ? { ...response.data } : item
+        )
+      );
         message.success("Devis mis à jour avec succès");
         form.resetFields();
         setIsModalOpen(false);
       } else {
         // CREATE NEW DEVIS
         response = await axios.post("/sinistres", formData);
+        console.log("Created sinistre:", response.data);
         const newItem = formatDevisItem(response.data);
       
-        setDevisData(prev => [newItem, ...prev]);
-        setFilteredDevis(prev => [newItem, ...prev]);
-        setDevisData(prev => [response.data, ...prev]);
+        setSinistreData(prev => [newItem, ...prev]);
+        setFilteredSinistre(prev => [newItem, ...prev]);
+        setSinistreData(prev => [response.data, ...prev]);
         setCurrentPage(1);
         message.success("Devis ajoutée avec succès");
           form.resetFields();
@@ -238,64 +270,6 @@ const SinistreTabContent = () => {
       console.error("Error saving devis:", error);
     }
   };
-
-  
-
-  // useEffect(() => {
-  //   const fetchAllSinistresByID = async () => {
-  //     const token = localStorage.getItem("token");
-  //     if (!token) return;
-  //     const decodedToken = token ? jwtDecode(token) : null;
-  //     const currentUserId = decodedToken?.userId;
-  //     const userRole = decodedToken?.role;
-  //     setLoading(true);
-
-  //     try {
-  //       const response = await axios.get(`/sinistres/${id}`, {
-  //         headers: {
-  //           Authorization: `Bearer ${token}`,
-  //           "X-User-ID": currentUserId,
-  //           "X-User-Role": userRole,
-  //           "Content-Type": "application/json",
-  //         },
-  //         withCredentials: true,
-  //       });
-  //       console.log("Fetched sinistres:", response.data);
-
-  //       const formattedData = response.data.data.map((devis, index) => ({
-  //         key: devis._id,
-  //         numero_devis: devis.numero_devis,
-  //         gestionnaire: devis.lead.gestionnaire,
-  //         risque: devis.risque,
-  //         assureur: devis.assureur,
-  //         statut: devis.statut,
-  //         source: devis.type_origine,
-  //         date_effet: devis.date_effet
-  //           ? new Date(devis.date_effet).toLocaleDateString()
-  //           : "N/A",
-  //         originalData: devis,
-  //         documents: devis.documents || [],
-  //         intermediaire: devis.intermediaire || "N/A",
-          
-  //       }));
-
-  //       setDevisData(formattedData);
-  //       setFilteredDevis(formattedData); // Initialize filtered data with all devis
-
-  //     } catch (error) {
-  //       console.error(
-  //         "Error fetching devis:",
-  //         error.response?.data || error.message
-  //       );
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-
- 
-  //     fetchAllSinistresByID();
-  // }, []);
-
   useEffect(() => {
     const fetchSinistresForLead = async () => {
       const token = localStorage.getItem("token");
@@ -315,33 +289,40 @@ const SinistreTabContent = () => {
           },
           withCredentials: true,
         });
-        console.log("Fetched sinistres:", response.data);
-        const formattedData = response.data.data.map(sinistre => ({
-          key: sinistre._id,
-          numeroSinistre: sinistre.numeroSinistre,
-          dateSinistre: new Date(sinistre.dateSinistre).toLocaleDateString(),
-          statutSinistre: sinistre.statutSinistre,
-          risque: sinistre.risque,
-          assureur: sinistre.assureur,
-          dateDeclaration: sinistre.dateDeclaration
-            ? new Date(sinistre.dateDeclaration).toLocaleDateString()
-            : "N/A",
-          gestionnaire: sinistre.gestionnaire || "N/A",
-          contratExist: sinistre.contratExist || "non",
-          contratDetails: sinistre.contratDetails || null,
-          contratSelect: sinistre.contratSelect || "N/A",
-          sinistreInput: sinistre.sinistreInput || "N/A",
-          sinistreDetails: sinistre.sinistreDetails || {},
-          responsabilite: sinistre.responsabilite || "N/A",
-          contratNumber: sinistre.contratDetails?.numeroContrat || "N/A",
-          createdAt: sinistre.createdAt,
-          typeSinistre: sinistre.typeSinistre,
-          montantSinistre: sinistre.montantSinistre,
-          originalData: sinistre
-        }));
   
-        setDevisData(formattedData);
-        setFilteredDevis(formattedData);
+        console.log("Raw sinistres data:", response.data);
+        
+        // Format the data without potentially destructive operations
+        const formattedData = response.data.data.map(sinistre => {
+          const baseData = formatDevisItem ? formatDevisItem(sinistre) : {};
+          
+          return {
+            ...baseData,
+            ...sinistre,
+            dateSinistre: sinistre.dateSinistre
+              ? new Date(sinistre.dateSinistre).toLocaleDateString()
+              : "N/A",
+            dateDeclaration: sinistre.dateDeclaration
+              ? new Date(sinistre.dateDeclaration).toLocaleDateString()
+              : "N/A",
+            gestionnaireName: sinistre.leadId.gestionnaireName || 
+                             sinistre.session?.name || 
+                             "N/A",
+            contratExist: sinistre.contratExist || "non",
+            contratDetails: sinistre.contratDetails || null,
+            contratNumber: sinistre.contratDetails?.contractNumber || "N/A",
+            sinistreDetails: sinistre.sinistreDetails || {},
+            responsabilite: sinistre.responsabilite || "N/A",
+            typeSinistre: sinistre.typeSinistre || "N/A",
+            montantSinistre: sinistre.montantSinistre || "N/A",
+            delegation: sinistre.delegation || "non",
+            coordonnees_expert: sinistre.coordonnees_expert || "N/A"
+          };
+        });
+  
+        console.log("Formatted sinistres data:", formattedData);
+        setSinistreData(formattedData);
+        setFilteredSinistre(formattedData);
   
       } catch (error) {
         console.error("Error fetching sinistres:", error);
@@ -351,7 +332,120 @@ const SinistreTabContent = () => {
     };
   
     fetchSinistresForLead();
-  }, [id, token]);
+  }, [id, token, refreshTrigger]);
+
+  // useEffect(() => {
+  //   const fetchSinistresForLead = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+  //     const decodedToken = token ? jwtDecode(token) : null;
+  //     const currentUserId = decodedToken?.userId;
+  //     const userRole = decodedToken?.role;
+      
+  //     setLoading(true);
+  //     try {
+  //       const response = await axios.get(`/sinistres/${id}`, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           "X-User-ID": currentUserId,
+  //           "X-User-Role": userRole,
+  //           "Content-Type": "application/json",
+  //         },
+  //         withCredentials: true,
+  //       });
+  
+  //       console.log("Fetched sinistres:", response.data);
+        
+  //       // Use the formatDevisItem function we created
+  //       const formattedData = response.data.data.map(sinistre => ({
+  //         ...formatDevisItem(sinistre), // Use the shared formatting
+  //         // Add additional fields specific to this view
+  //         dateSinistre: sinistre.dateSinistre
+  //           ? new Date(sinistre.dateSinistre).toLocaleDateString()
+  //           : "N/A",
+  //         dateDeclaration: sinistre.dateDeclaration
+  //           ? new Date(sinistre.dateDeclaration).toLocaleDateString()
+  //           : "N/A",
+  //         gestionnaireName: sinistre.leadId.gestionnaireName || "N/A",
+  //         contratExist: sinistre.contratExist || "non",
+  //         contratDetails: sinistre.contratDetails || null,
+  //         contratNumber: sinistre.contratDetails?.contractNumber || "N/A",
+  //         sinistreDetails: sinistre.sinistreDetails || {},
+  //         responsabilite: sinistre.responsabilite || "N/A",
+  //         typeSinistre: sinistre.typeSinistre || "N/A",
+  //         montantSinistre: sinistre.montantSinistre || "N/A",
+  //         delegation: sinistre.delegation || "non",
+  //         coordonnees_expert: sinistre.coordonnees_expert || "N/A"
+  //       }));
+  
+  //       setSinistreData(formattedData);
+  //       setFilteredSinistre(formattedData);
+  
+  //     } catch (error) {
+  //       console.error("Error fetching sinistres:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  
+  //   fetchSinistresForLead();
+  // }, [id, token, refreshTrigger]);
+  // useEffect(() => {
+  //   const fetchSinistresForLead = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+  //     const decodedToken = token ? jwtDecode(token) : null;
+  //     const currentUserId = decodedToken?.userId;
+  //     const userRole = decodedToken?.role;
+      
+  //     setLoading(true);
+  //     try {
+  //       const response = await axios.get(`/sinistres/${id}`, {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //           "X-User-ID": currentUserId,
+  //           "X-User-Role": userRole,
+  //           "Content-Type": "application/json",
+  //         },
+  //         withCredentials: true,
+  //       });
+  //       console.log("Fetched sinistres:", response.data);
+  //       const formattedData = response.data.data.map(sinistre => ({
+  //         key: sinistre._id,
+  //         dateSinistre: new Date(sinistre.dateSinistre).toLocaleDateString(),
+  //         statutSinistre: sinistre.statutSinistre,
+  //         gestionnaireName: devis.lead.gestionnaireName || "N/A",
+  //         risque: sinistre.risque,
+  //         assureur: sinistre.assureur,
+  //         dateDeclaration: sinistre.dateDeclaration
+  //           ? new Date(sinistre.dateDeclaration).toLocaleDateString()
+  //           : "N/A",
+  //           gestionnaire: sinistre.lead.gestionnaire,
+  //         contratExist: sinistre.contratExist || "non",
+  //         contratDetails: sinistre.contratDetails || null,
+  //         contratSelect: sinistre.contratSelect || "N/A",
+  //         sinistreInput: sinistre.sinistreInput || "N/A",
+  //         sinistreDetails: sinistre.sinistreDetails || {},
+  //         responsabilite: sinistre.responsabilite || "N/A",
+  //         contratNumber: sinistre.contratDetails?.numeroContrat || "N/A",
+  //         createdAt: sinistre.createdAt,
+  //         typeSinistre: sinistre.typeSinistre,
+  //         montantSinistre: sinistre.montantSinistre,
+  //         originalData: sinistre
+  //       }));
+  
+  //       setSinistreData(formattedData);
+  //       setFilteredSinistre(formattedData);
+  
+  //     } catch (error) {
+  //       console.error("Error fetching sinistres:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  
+  //   fetchSinistresForLead();
+  // }, [id, token]);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -385,19 +479,12 @@ const SinistreTabContent = () => {
     fetchUsers();
   }, []);
 
-  const formatDate = (date) => {
-    if (!date) return "N/A";
-    const d = new Date(date);
-    return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1)
-      .toString()
-      .padStart(2, "0")}/${d.getFullYear()}`;
-  };
  
   const columns = [
     {
       title: "N° sinistre",
-      dataIndex: "numeroSinistre",
-      key: "numeroSinistre",
+      dataIndex: "numero_sinistre",  // Changed from numeroSinistre to match formatted data
+      key: "numero_sinistre",
     },
     {
       title: "N° contrat",
@@ -423,13 +510,12 @@ const SinistreTabContent = () => {
     },
     {
       title: "Date sinistre",
-      dataIndex: "dateSinistre",
+      dataIndex: "dateSinistre",  // This matches the formatted data
       key: "dateSinistre",
-
     },
     {
       title: "Date déclaration",
-      dataIndex: "dateDeclaration",
+      dataIndex: "dateDeclaration",  // This matches the formatted data
       key: "dateDeclaration",
     },
     {
@@ -438,22 +524,22 @@ const SinistreTabContent = () => {
       key: "statutSinistre",
       render: (status) => {
         const statusMap = {
-          'en_cours': 'En cours',
-          'clo': 'Clôturé',
-          'reouvert': 'Réouvert'
+          en_cours: "En cours",
+          clo: "Clôturé",
+          reouvert: "Réouvert",
         };
         return statusMap[status] || status;
       },
       filters: [
-        { text: 'En cours', value: 'en_cours' },
-        { text: 'Clôturé', value: 'clo' },
-        { text: 'Réouvert', value: 'reouvert' }
+        { text: "En cours", value: "en_cours" },
+        { text: "Clôturé", value: "clo" },
+        { text: "Réouvert", value: "reouvert" },
       ],
       onFilter: (value, record) => record.statutSinistre === value,
     },
     {
       title: "Type",
-      dataIndex: "typeSinistre",
+      dataIndex: "typeSinistre",  // Changed to match API response field
       key: "typeSinistre",
       render: (type) => {
         const typeMap = {
@@ -471,14 +557,14 @@ const SinistreTabContent = () => {
     },
     {
       title: "Montant",
-      dataIndex: "montantSinistre",
+      dataIndex: "montantSinistre",  // Changed to match API response field
       key: "montantSinistre",
       render: (amount) => amount ? `${amount.toLocaleString()} €` : "N/A",
       sorter: (a, b) => (a.montantSinistre || 0) - (b.montantSinistre || 0),
     },
     {
       title: "Délégation",
-      dataIndex: "delegation",
+      dataIndex: "delegation",  // Changed to match API response field
       key: "delegation",
       render: (delegation) => delegation === 'oui' ? 'Oui' : 'Non',
       filters: [
@@ -494,31 +580,18 @@ const SinistreTabContent = () => {
     },
     {
       title: "Gestionnaire",
-      key: "gestionnaire",
-      render: (_, record) => {
-        // First check sinistreDetails.gestionnaireName (your data shows this exists)
-        if (record.sinistreDetails?.gestionnaireName) {
-          return record.sinistreDetails.gestionnaireName;
-        }
-        
-        // Fallback to session name if available
-        if (record.session) {
-          if (typeof record.session === 'object') {
-            return record.session.name || `${record.session.nom || ''} ${record.session.prenom || ''}`.trim();
-          }
-          // return `Gestionnaire (ID: ${record.session})`;
-        }
-        
-        // Final fallback
-        return "N/A";
-      },
-    },
-    {
-      title: "Créé le",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      render: (date) => formatDate(date),
-      sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+      dataIndex: "gestionnaireName",  // Changed to match formatted data
+      key: "gestionnaireName",
+      render: (gestionnaire, record) => (
+        <>
+          {gestionnaire || "N/A"}
+          {/* {userRole === "Admin" && (
+            <div style={{ fontSize: 12, color: "#666" }}>
+              {record.originalData.session?.email}
+            </div>
+          )} */}
+        </>
+      ),
     },
     {
       title: "Actions",
@@ -545,89 +618,121 @@ const SinistreTabContent = () => {
     },
   ];
 
-const handleEdit = (record) => {
+const handleEdit = async (record) => {
+  console.log("Editing record:", record);
   setEditingRecord(record);
   setIsModalOpen(true);
-  
-  // Safely prepare document data for display
-  const document = record?.documents || [];
-  const documentList = document.map(doc => ({
-    uid: doc._id || Math.random().toString(36).substring(2, 9),
-    name: doc.name,
-    status: 'done',
-    url: doc.url,
-    path: doc.path,
-    response: doc // Keep full document reference
-  }));
 
-  console.log("Prepared document list:", documentList);
-
-  // Set all form values including documents
+  // Reset form first
   form.resetFields();
-  form.setFieldsValue({
-    // Basic devis info
-    numero_devis: record.originalData?.numero_devis,
-    courtier: record.originalData?.courtier,
-    risque: record.originalData?.risque,
-    assureur: record.originalData?.assureur,
-    statut: record.originalData?.statut,
-    type_origine: record.originalData?.type_origine,
-    
-    // Dates
-    date_effet: record.originalData?.date_effet 
-      ? dayjs(record.originalData.date_effet)
-      : null,
-    date_creation: record.originalData?.date_creation
-      ? dayjs(record.originalData.date_creation)
-      : null,
-    
-    // Financial info
-    prime_proposee: record.originalData?.prime_proposee,
-    prime_actuelle: record.originalData?.prime_actuelle,
-    variation: record.originalData?.variation,
-    cree_par: record.originalData?.cree_par,
-    gestionnaire: record.originalData?.lead.gestionnaire,
-    intermediaire: record.originalData?.intermediaire,
-    
-    document: documentList[0] || null
-  });
 
-  // Set uploaded document state
-  setUploadedDocument(documentList[0] || null);
+  // Prepare base form values
+  const formValues = {
+    // Information section
+    numeroSinistre: record.numeroSinistre || record.numero_sinistre || "",
+
+    // Sinistre section
+    sinistreExist: record.sinistreExist || "non",
+
+    // Contract section
+    contratExist: record.contratExist || "non",
+
+    // Details
+    risque: record.risque || "",
+    assureur: record.assureur || "",
+
+    // Détail du sinistre
+    dateSinistre: record.dateSinistre ? dayjs(record.dateSinistre, 'DD/MM/YYYY') : null,
+    dateDeclaration: record.dateDeclaration ? dayjs(record.dateDeclaration, 'DD/MM/YYYY') : null,
+    statutSinistre: record.statutSinistre || "en_cours",
+    typeSinistre: record.typeSinistre || "",
+    responsabilite: record.responsabilite || "",
+    montantSinistre: record.montantSinistre || 0,
+    delegation: record.delegation || "non",
+    expert: record.expert || "",
+    coordonnees_expert: record.coordonnees_expert || "",
+    
+    // Handle both sinistreId and leadId cases
+    sinistreId: record.sinistreId || (record.leadId?._id || record.leadId) || null,
+    
+    // Gestionnaire handling
+    gestionnaire: record.gestionnaireName || 
+                (record.session?.name || "") || 
+                (record.gestionnaire ? JSON.parse(record.gestionnaire).id : "")
+  };
+
+  // Handle sinistre information based on sinistreExist
+  if (record.sinistreExist === "oui") {
+    const clientId = record.sinistreId || record.leadId?._id || record.leadId;
+    const matchingClient = chatData.find(client => client._id === clientId);
+
+    if (matchingClient) {
+      formValues.sinistreSelect = matchingClient._id;
+    } else if (record.leadId) {
+      formValues.sinistreSelect = record.leadId._id;
+    }
+  } else {
+    formValues.sinistreNom = record.leadId?.nom || "";
+    formValues.sinistrePrenom = record.leadId?.prenom || "";
+  }
+
+  if (record.contratExist === "oui") {
+    const matchingContrat = contrats.find(contrat => contrat._id === record.contratId);
+    if (matchingContrat) {
+      formValues.contratId = matchingContrat._id;  // Changed from contratSelect to contratId
+    } else if (record.contratDetails) {
+      formValues.contratId = record.contratDetails._id;  // Changed from contratSelect to contratId
+    }
+  }
+
+  console.log("Form values to be set:", formValues);
+
+  // Set form values without delay
+  requestAnimationFrame(() => {
+    try {
+      form.setFieldsValue(formValues);
+      console.log("Form values after setting:", form.getFieldsValue());
+    } catch (error) {
+      console.error("Error setting form values:", error);
+    }
+  });
 };
 
+useEffect(() => {
+  if (isModalOpen) {
+    const interval = setInterval(() => {
+      console.log("Current form values:", form.getFieldsValue());
+    }, 1000);
+    return () => clearInterval(interval);
+  }
+}, [isModalOpen, form]);
 
-
- 
-
-  const showDeleteConfirm = (id) => {
+  const showDeleteConfirm = (record) => {
     Modal.confirm({
       title: "Confirmer la suppression",
-      content: "Êtes-vous sûr de vouloir supprimer ce devis?",
+      content: "Êtes-vous sûr de vouloir supprimer le sinistre?",
       okText: "Oui",
       okType: "danger",
       cancelText: "Non",
       onOk() {
-        return deleteDevis(id);
+        return deleteDevis(record.key || record._id || record.id); // Use the correct ID property
       },
     });
   };
 
   const deleteDevis = async (id) => {
     try {
-      await axios.delete(`/devis/${id}`, {
+      await axios.delete(`/sinistres/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      setDevisData(devisData.filter((item) => item.key !== id));
-      setFilteredDevis(filteredDevis.filter((item) => item.key !== id));
-      message.success("Devis supprimé avec succès");
+      setSinistreData(sinistreData.filter((item) => item.key !== id));
+      setFilteredSinistre(filteredSinistre.filter((item) => item.key !== id));
+      message.success("Sinistre supprimé avec succès");
     } catch (error) {
-      console.error("Error deleting devis:", error);
-      message.error(
-        error.response?.data?.message || "Erreur lors de la suppression"
-      );
+      console.error("Error deleting Sinistre:", error);
+      
     }
   };
 
@@ -648,10 +753,10 @@ const handleEdit = (record) => {
             onChange={handleStatusFilter}
           >
             <Option value="all">Tous les statuts</Option>
-            <Option value="etude">En étude</Option>
-            <Option value="devis_envoye">Devis envoyé</Option>
-            <Option value="attente_signature">En attente signature</Option>
-            <Option value="cloture_sans_suite">Clôturé sans suite</Option>
+            <Option value="tous">Tous</Option>
+                <Option value="en_cours">En cours</Option>
+                <Option value="clo">Clos</Option>
+                <Option value="reouvert">Réouvert</Option>
           </Select>
         </div>
       </div>
@@ -667,14 +772,17 @@ const handleEdit = (record) => {
             ),
           })),
         ]}
-        dataSource={filteredDevis}
+        dataSource={filteredSinistre.slice(
+          (currentPage - 1) * pageSize,
+          currentPage * pageSize
+        )}
         loading={loading}
         bordered
         // pagination={{ pageSize: 10 }}
         pagination={{
           current: currentPage,
           pageSize,
-          total: filteredDevis.length,
+          total: filteredSinistre.length,
           // onChange: (page) => setCurrentPage(page),
           onChange: (page, pageSize) => {
             setCurrentPage(page);
@@ -686,6 +794,7 @@ const handleEdit = (record) => {
             `${range[0]}-${range[1]} of ${total} items`,
         }}
         scroll={{ x: "max-content" }}
+        rowKey={(record) => record._id}
       />
 
       <Modal
@@ -735,12 +844,15 @@ const handleEdit = (record) => {
   onFinish={handleFormSubmit}
   layout="vertical"
   className="w-full space-y-4"
+  initialValues={{
+    gestionnaire: gestionnaire?._id || gestionnaire || null
+  }}
 >
   {/* === INFORMATIONS === */}
   <h2 className="text-sm font-semibold mt-3 mb-2">INFORMATIONS</h2>
 
   <Form.Item
-    name="numero_sinistre"
+    name="numeroSinistre"
     label="N° du sinistre"
     rules={[{ required: false, message: "Ce champ est obligatoire" }]}
     className="w-full"
@@ -748,80 +860,163 @@ const handleEdit = (record) => {
     <Input placeholder="N° du sinistre" className="w-full" />
   </Form.Item>
 
-  {/* === LE SINISTRE === */}
-  <h2 className="text-sm font-semibold mt-3 mb-2">LE SINISTRE</h2>
 
-  <Form.Item
-    name="sinistre_existe_crm"
-    label="Le sinistré existe-t-il dans votre CRM ?"
-    className="w-full"
-  >
-    <Radio.Group>
-      <Radio value="oui">Oui</Radio>
-      <Radio value="non">Non</Radio>
-    </Radio.Group>
-  </Form.Item>
+           {/* LE SINISTRE */}
+                      <h2 className="text-sm font-semibold mt-16 mb-4">LE SINISTRE</h2>
+          
+                      <Form.Item
+                        label="Le sinistré existe-t-il dans votre CRM ?"
+                        name="sinistreExist"
+                        rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+                      >
+                        <Radio.Group>
+                          <Radio value="oui">Oui</Radio>
+                          <Radio value="non">Non</Radio>
+                        </Radio.Group>
+                      </Form.Item>
+          
+                      {/* If "oui" show Select */}
+                      {/* If sinistré exists (oui) - show client select */}
+                      {sinistreExist === "oui" && (
+                        <Form.Item
+                          label="Sinistré"
+                          name="sinistreId"
+                          rules={[
+                            { required: true, message: "Ce champ est obligatoire" },
+                          ]}
+                        >
+                          <Select
+                            showSearch
+                            optionFilterProp="children"
+                            placeholder="-- Choisissez un sinistré --"
+                            loading={loadingClients}
+                            filterOption={(input, option) =>
+                              option.children.toLowerCase().includes(input.toLowerCase())
+                            }
+                          >
+                            {chatData.map((client) => (
+                              <Option key={client._id} value={client._id}>
+                                {client.nom} {client.prenom}
+                              </Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      )}
+          
+                      {/* If sinistré doesn't exist (non) - show manual entry fields */}
+                      {sinistreExist === "non" && (
+                        <>
+                          <Form.Item
+                            label="Nom du sinistré"
+                            name="sinistreNom"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Le champ nom du sinistré est obligatoire",
+                              },
+                            ]}
+                          >
+                            <Input placeholder="Entrez le nom du sinistré" />
+                          </Form.Item>
+          
+                          <Form.Item
+                            label="Prénom du sinistré"
+                            name="sinistrePrenom"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Le champ prénom du sinistré est obligatoire",
+                              },
+                            ]}
+                          >
+                            <Input placeholder="Entrez le prénom du sinistré" />
+                          </Form.Item>
+                          <Form.Item
+                            label="Numéro de contrat*"
+                            name="sinistreInput"
+                            rules={[
+                              {
+                                required: true,
+                                message: "Le champ numéro de sinistre est obligatoire",
+                              },
+                            ]}
+                          >
+                            <Input placeholder="Entrez le numéro de sinistre" />
+                          </Form.Item>
+                        </>
+                      )}
+          
+                      {/* Only show contract section if sinistré exists (oui) */}
+                      {sinistreExist === "oui" && (
+                        <>
+                          {/* Contract Existence Toggle */}
+                          <Form.Item
+                            label="Le contrat existe-t-il dans votre CRM ?"
+                            name="contratExist"
+                            rules={[
+                              { required: true, message: "Ce champ est obligatoire" },
+                            ]}
+                          >
+                            <Radio.Group>
+                              <Radio value="oui">Oui</Radio>
+                              <Radio value="non">Non</Radio>
+                            </Radio.Group>
+                          </Form.Item>
+          
+                          {/* If contract exists (oui) - show contract select */}
+                          {contratExist === "oui" && (
+                            <Form.Item
+                              label="Contrat"
+                              name="contratId"
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Le champ contrat est obligatoire",
+                                },
+                              ]}
+                            >
+                              <Select
+                                placeholder={
+                                  loadingContrats
+                                    ? "Chargement..."
+                                    : "-- Choisissez un contrat --"
+                                }
+                                loading={loadingContrats}
+                                showSearch
+                                optionFilterProp="children"
+                                filterOption={(input, option) =>
+                                  option.children
+                                    .toLowerCase()
+                                    .includes(input.toLowerCase())
+                                }
+                              >
+                                {contrats.map((contrat) => (
+                                  <Option key={contrat._id} value={contrat._id}>
+                                    {contrat.contractNumber} - {contrat.insurer}
+                                  </Option>
+                                ))}
+                              </Select>
+                            </Form.Item>
+                          )}
+          
+                          {/* If contract doesn't exist (non) - show manual entry */}
+                          {contratExist === "non" && (
+                            <Form.Item
+                              label="Numéro de contrat"
+                              name="contratNumber"
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Le champ numéro de contrat est obligatoire",
+                                },
+                              ]}
+                            >
+                              <Input placeholder="Entrez le numéro de contrat" />
+                            </Form.Item>
+                          )}
+                        </>
+                      )}
 
-  <Form.Item
-  name="sinistre"
-  label="Sinistré"
-  className="w-full"
-  rules={[{ required: true, message: 'Veuillez sélectionner un sinistré' }]}
->
-  <Select
-    showSearch
-    placeholder="Sélectionnez un sinistré"
-    optionFilterProp="children"
-    filterOption={(input, option) =>
-      option.children.toLowerCase().includes(input.toLowerCase())
-    }
-    className="w-full"
-  >
-    {chatData
-      .filter(lead => {
-        // For admin, show all clients
-        if (userRole === 'Admin') return true;
-        
-        // For commercial, only show their own clients
-        const commercial = lead.commercial || {};
-        const clientcreatedByCommercial = lead.cree_par || {};
-        const decodedToken = jwtDecode(localStorage.getItem("token"));
-        const name = decodedToken?.name || "";
-        
-        return (
-          (commercial._id === currentUserId && 
-           commercial.nom === lastName && 
-           commercial.prenom === firstName) ||
-          clientcreatedByCommercial === name
-        );
-      })
-      .map(lead => (
-        <Option key={lead._id} value={lead.nom}>
-          {`${lead.nom} ${lead.prenom || ''}`} - {lead.email || ''}
-        </Option>
-      ))
-    }
-  </Select>
-</Form.Item>
-
-  <Form.Item
-    name="contrat_existe_crm"
-    label="Le contrat existe-t-il dans votre CRM ?"
-    className="w-full"
-  >
-    <Radio.Group>
-      <Radio value="oui">Oui</Radio>
-      <Radio value="non">Non</Radio>
-    </Radio.Group>
-  </Form.Item>
-
-  <Form.Item
-    name="numero_contrat"
-    label="Numéro de contrat"
-    className="w-full"
-  >
-    <Input placeholder="Numéro de contrat" className="w-full" />
-  </Form.Item>
 
   <Form.Item
     name="risque"
@@ -855,7 +1050,7 @@ const handleEdit = (record) => {
   <h2 className="text-sm font-semibold mt-3 mb-2">DÉTAIL DU SINISTRE</h2>
 
   <Form.Item
-    name="date_sinistre"
+    name="dateSinistre"
     label="Date du sinistre"
     className="w-full"
   >
@@ -863,7 +1058,7 @@ const handleEdit = (record) => {
   </Form.Item>
 
   <Form.Item
-    name="date_declaration"
+    name="dateDeclaration"
     label="Date de déclaration *"
     className="w-full"
   >
@@ -871,7 +1066,7 @@ const handleEdit = (record) => {
   </Form.Item>
 
   <Form.Item
-    name="statut_sinistre"
+    name="statutSinistre"
     label="Statut du sinistre"
     className="w-full"
   >
@@ -883,7 +1078,7 @@ const handleEdit = (record) => {
   </Form.Item>
 
   <Form.Item
-    name="type_sinistre"
+    name="typeSinistre"
     label="Type de sinistre"
     className="w-full"
   >
@@ -903,7 +1098,7 @@ const handleEdit = (record) => {
   </Form.Item>
 
   <Form.Item
-    name="montant_sinistre"
+    name="montantSinistre"
     label="Montant du sinistre"
     className="w-full"
   >
@@ -915,7 +1110,7 @@ const handleEdit = (record) => {
   </Form.Item>
 
   <Form.Item
-    name="sinistre_delegation"
+    name="delegation"
     label="Sinistre en délégation *"
     className="w-full"
   >
@@ -932,7 +1127,7 @@ const handleEdit = (record) => {
   >
     <Input.TextArea placeholder="Coordonnées de l'expert" className="w-full" />
   </Form.Item>
-<Form.Item
+{/* <Form.Item
               label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
               name="gestionnaire"
               className="mb-0"
@@ -962,7 +1157,83 @@ const handleEdit = (record) => {
                   disabled
                 />
               )}
-            </Form.Item>
+            </Form.Item> */}
+             {/* <Form.Item
+                          label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
+                          name="gestionnaire"
+                          className="mb-0"
+                          style={{ display: 'none' }}
+                        >
+                          {loading ? (
+                            <Input
+                              className="w-full text-xs h-7"
+                              placeholder="Chargement..."
+                              disabled
+                            />
+                          ) : (
+                            <Input
+                              className="w-full text-xs h-7"
+                              value={
+                                gestionnaire
+                                  ? `${
+                                      gestionnaire.userType === "admin"
+                                        ? gestionnaire.name
+                                        : `${gestionnaire.nom} ${gestionnaire.prenom}`
+                                    } (${
+                                      gestionnaire.userType === "admin"
+                                        ? "Admin"
+                                        : "Commercial"
+                                    })`
+                                  : "Non spécifié"
+                              }
+                              disabled
+                            />
+                          )}
+                        </Form.Item>
+                      
+                      
+                               <Form.Item
+                        label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+                        className="mb-0"
+                      >
+                        <Input
+                          className="w-full text-xs h-7"
+                          value={client?.gestionnaireName || "Non spécifié"}
+                          disabled
+                        />
+                      </Form.Item>
+                      
+                 
+                      <Form.Item name="gestionnaire" noStyle>
+                        <Input type="hidden" />
+                      </Form.Item>
+                      <Form.Item name="gestionnaireModel" noStyle>
+                        <Input type="hidden" />
+                      </Form.Item>
+                      <Form.Item name="gestionnaireName" noStyle>
+                        <Input type="hidden" />
+                      </Form.Item> */}
+                             <Form.Item
+                        label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+                        className="mb-0"
+                      >
+                        <Input
+                          className="w-full text-xs h-7"
+                          value={form.getFieldValue('gestionnaireName') || "Non spécifié"}
+                          disabled
+                        />
+                      </Form.Item>
+                      
+                      {/* Hidden fields for actual form submission */}
+                      <Form.Item name="gestionnaire" noStyle>
+                        <Input type="hidden" />
+                      </Form.Item>
+                      <Form.Item name="gestionnaireModel" noStyle>
+                        <Input type="hidden" />
+                      </Form.Item>
+                      <Form.Item name="gestionnaireName" noStyle>
+                        <Input type="hidden" />
+                      </Form.Item>
 </Form>
       
             <button

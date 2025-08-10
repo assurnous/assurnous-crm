@@ -12,14 +12,14 @@ const FileUpload = ({ onUploadSuccess }) => {
     // Validate file type
     const isPDF = file.type === 'application/pdf';
     if (!isPDF) {
-      message.error('You can only upload PDF files!');
+      message.error("Vous ne pouvez télécharger que des fichiers PDF !");
       return false;
     }
     
     // Validate file size
     const isLt10M = file.size / 1024 / 1024 < 10;
     if (!isLt10M) {
-      message.error('File must be smaller than 10MB!');
+      message.error("Le fichier doit être inférieur à 10 Mo !");
       return false;
     }
     
@@ -30,7 +30,6 @@ const FileUpload = ({ onUploadSuccess }) => {
     setUploading(true);
     const formData = new FormData();
     formData.append('document', file);
-    console.log('Uploading file:', file);
    
 
     try {
@@ -44,7 +43,7 @@ const FileUpload = ({ onUploadSuccess }) => {
 
       onSuccess(response.data, file);
       onUploadSuccess(response.data.document);
-      message.success(`${file.name} uploaded successfully`);
+      message.success(`${file.name} téléchargé avec succès`);
     } catch (error) {
         console.error('Upload error:', error);
         onError(error);

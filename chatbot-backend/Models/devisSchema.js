@@ -64,11 +64,35 @@ const DevisSchema = new Schema({
     type: String,
     required: false
   },
-  session: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Commercial', // Changed from 'User' to 'Commercial'
-    required: false
-  },
+  // session: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   ref: 'Commercial', // Changed from 'User' to 'Commercial'
+  //   required: false
+  // },
+       session: {
+            type: mongoose.Schema.Types.ObjectId,
+            refPath: 'sessionModel',
+            required: false,
+            validate: {
+              validator: function(v) {
+                // Skip validation if null
+                if (v === null) return true;
+                
+                // Check if valid ObjectId
+                if (!mongoose.Types.ObjectId.isValid(v)) return false;
+                
+                // Check if reference exists
+                return mongoose.model(this.sessionModel).exists({ _id: v });
+              },
+              message: props => `Invalid reference: ${props.value} for model ${this.sessionModel}`
+            }
+          },
+          sessionModel: {
+            type: String,
+            enum: ['Admin', 'Commercial'],
+            required: function() { return this.session !== null; }
+          },
+
   lead: { type: mongoose.Schema.Types.ObjectId, ref: "Chat", required: false },
   intermediaire: {
     type: String,

@@ -128,25 +128,30 @@ const AllCommands = () => {
       result = result.filter(contrat => contrat.insurer === filterValues.assureur);
     }
   
-    // Apply manager filter
     if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-      const selectedUser = users.find(u => u._id === filterValues.gestionnaire);
-      if (selectedUser) {
-        const displayName = selectedUser.userType === "admin" 
-          ? selectedUser.name 
-          : `${selectedUser.nom} ${selectedUser.prenom}`;
+      result = result.filter(contrat => {
+        // Find the user object that matches the selected ID
+        const user = users.find(u => u._id === filterValues.gestionnaire);
+        if (!user) return false;
         
-        result = result.filter(contrat => contrat.gestionnaire === displayName);
-      }
+        // Construct the display name to match against
+        const displayName = user.userType === "admin" 
+          ? user.name 
+          : `${user.nom} ${user.prenom}`;
+        
+        // Check all possible locations for the gestionnaire name
+        return (
+          contrat.lead?.gestionnaireName === displayName ||  // From lead object
+          contrat.gestionnaire === displayName ||            // Direct property
+          contrat.session?.name === displayName              // From session
+        );
+      });
     }
-  
+ 
     if (filterValues.categorie && filterValues.categorie !== "tous") {
       result = result.filter(contrat => {
-        const client = clients.find(c => 
-          contrat.clientId.includes(c.nom) || 
-          contrat.clientId.includes(c.prenom)
-        );
-        return client?.categorie === filterValues.categorie;
+        // Access the categorie from the formatted data
+        return contrat.categorie === filterValues.categorie;
       });
     }
   
@@ -155,26 +160,62 @@ const AllCommands = () => {
       result = result.filter(contrat => contrat.status === filterValues.status);
     }
   
-    if (filterValues.search) {
-      const searchTerm = filterValues.search.toLowerCase();
-      result = result.filter(contrat => {
-        return (
-          (contrat.numero_devis && contrat.numero_devis.toLowerCase().includes(searchTerm)) ||
-          (contrat.clientId && contrat.clientId.toLowerCase().includes(searchTerm)) ||
-          (contrat.gestionnaire && contrat.gestionnaire.toLowerCase().includes(searchTerm))
-        );
-      });
-    }
+    
+// Updated search filter
+if (filterValues.search) {
+  const searchTerm = filterValues.search.toLowerCase();
+  result = result.filter(contrat => {
+    // Get the lead data from the original record
+    const lead = contrat.originalData?.lead;
+    
+    // Construct client name from lead or use clientId as fallback
+    const clientName = lead 
+      ? `${lead.nom || ''} ${lead.prenom || ''}`.trim().toLowerCase()
+      : (contrat.clientId || '').toLowerCase();
+    
+    // Check both devis number and client name
+    return (
+      (contrat.contractNumber && contrat.contractNumber.toLowerCase().includes(searchTerm)) ||
+      (clientName && clientName.includes(searchTerm))
+    );
+  });
+}
     setFilteredContrat(result);
   };
 
   const handleClientChange = (clientId) => {
     setSelectedLeadId(clientId);
     const selectedClient = clients.find((client) => client._id === clientId);
+    
     if (selectedClient) {
+      console.log('Selected client gestionnaire info:', {
+        clientGestionnaireId: selectedClient.gestionnaire,
+        clientGestionnaireName: selectedClient.gestionnaireName,
+        allUsers: users
+      });
+  
+      // Try to find matching user by ID or name
+      const gestionnaireUser = users.find(user => 
+        user._id === selectedClient.gestionnaire ||
+        user.id === selectedClient.gestionnaire ||
+        (user.userType === "admin" && user.name === selectedClient.gestionnaireName) ||
+        (user.userType === "commercial" && 
+         `${user.nom} ${user.prenom}` === selectedClient.gestionnaireName)
+      );
+  
+      const displayName = gestionnaireUser
+        ? gestionnaireUser.userType === "admin"
+          ? gestionnaireUser.name
+          : `${gestionnaireUser.nom} ${gestionnaireUser.prenom}`
+        : selectedClient.gestionnaireName || "Non spécifié";
+  
       form.setFieldsValue({
         clientId: `${selectedClient.prenom} ${selectedClient.nom}`.trim(),
         email: selectedClient.email,
+        gestionnaire: displayName,
+        gestionnaireId: gestionnaireUser?._id || selectedClient.gestionnaire,
+        gestionnaireModel: selectedClient.gestionnaireModel || "Admin",
+        gestionnaireName: displayName
       });
     }
   };
@@ -182,34 +223,70 @@ const AllCommands = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Fetch both admins and commercials
         const [adminsRes, commercialsRes] = await Promise.all([
           axios.get("/admin"),
           axios.get("/commercials"),
         ]);
-
-        // Combine and format the data
+  
         const combinedUsers = [
-          ...adminsRes.data.map((admin) => ({
+          ...adminsRes.data.map(admin => ({
             ...admin,
             userType: "admin",
+            id: admin._id,
+            // Standardize name fields
+            name: admin.name || admin.nom || admin.email.split('@')[0]
           })),
-          ...commercialsRes.data.map((commercial) => ({
+          ...commercialsRes.data.map(commercial => ({
             ...commercial,
             userType: "commercial",
-          })),
+            id: commercial._id,
+            // Ensure all commercial have nom/prenom
+            nom: commercial.nom || commercial.name?.split(' ')[0] || "",
+            prenom: commercial.prenom || commercial.name?.split(' ')[1] || ""
+          }))
         ];
-
+  
+        console.log('Combined users data:', combinedUsers);
         setUsers(combinedUsers);
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching users:", error);
-        setLoading(false);
       }
     };
-
+  
     fetchUsers();
   }, []);
+
+  // useEffect(() => {
+  //   const fetchUsers = async () => {
+  //     try {
+  //       // Fetch both admins and commercials
+  //       const [adminsRes, commercialsRes] = await Promise.all([
+  //         axios.get("/admin"),
+  //         axios.get("/commercials"),
+  //       ]);
+
+  //       // Combine and format the data
+  //       const combinedUsers = [
+  //         ...adminsRes.data.map((admin) => ({
+  //           ...admin,
+  //           userType: "admin",
+  //         })),
+  //         ...commercialsRes.data.map((commercial) => ({
+  //           ...commercial,
+  //           userType: "commercial",
+  //         })),
+  //       ];
+
+  //       setUsers(combinedUsers);
+  //       setLoading(false);
+  //     } catch (error) {
+  //       console.error("Error fetching users:", error);
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchUsers();
+  // }, []);
 
   const formatContratItem = (contrat) => ({
     key: contrat._id,
@@ -236,16 +313,23 @@ const AllCommands = () => {
   const handleFormSubmit = async (values) => {
     const token = localStorage.getItem("token");
     const decodedToken = token ? jwtDecode(token) : null;
-    const currentUserId = decodedToken?.userId;
+    const isAdmin =
+    decodedToken.role === "Admin" || decodedToken.role === "admin";
+  const sessionId = decodedToken.userId;
+  const sessionModel = isAdmin ? "Admin" : "Commercial";
 
     try {
       // Prepare form data with document if exists
       const formData = {
         ...values,
         documents: uploadedDocument ? [uploadedDocument] : [],
-        session: currentUserId,
+      session: sessionId,
+        sessionModel: sessionModel,
         lead: selectedLeadId,
         isForecast: Boolean(values.isForecast),
+        gestionnaire: values.gestionnaireId,
+        gestionnaireModel: values.gestionnaireModel,
+        gestionnaireName: values.gestionnaireName
       };
 
       let response;
@@ -298,27 +382,38 @@ const AllCommands = () => {
     const fetchAllContrats = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const decodedToken = token ? jwtDecode(token) : null;
-      const currentUserId = decodedToken?.userId;
-      const userRole = decodedToken?.role;
-      setLoading(true);
+     
+  
 
       try {
-        const response = await axios.get("/contrat", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "X-User-ID": currentUserId,
-            "X-User-Role": userRole,
-            "Content-Type": "application/json",
-          },
-          withCredentials: true,
-        });
+        setLoading(true);
+            const decodedToken = jwtDecode(token);
+              const currentUserId = decodedToken?.userId;
+              const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+        const response = await axios.get("/contrat");
         console.log("Fetched contrats:", response.data);
 
-        const formattedData = response.data.map((contrat, index) => ({
+        const allContrat = response.data || [];
+
+        let filteredData;
+        if (isAdmin) {
+          // Admins see all devis
+          filteredData = allContrat;
+        } else {
+          // Commercials only see their own devis
+          filteredData = allContrat.filter(
+            contrat => contrat.session?._id?.toString() === currentUserId
+          );
+        }
+
+        const formattedData = filteredData.map(contrat => ({
           key: contrat._id,
           contractNumber: contrat.contractNumber,
-          gestionnaire: contrat.gestionnaire,
+          categorie: contrat?.lead?.categorie || "N/A",  // This is correct
+          clientName: contrat.lead 
+    ? `${contrat.lead.prenom} ${contrat.lead.nom}` 
+    : contrat.clientId || "N/A",
+    gestionnaire:  contrat.lead?.gestionnaireName || "N/A", 
           riskType: contrat.riskType,
           insurer: contrat.insurer,
           status: contrat.status,
@@ -356,33 +451,57 @@ const AllCommands = () => {
       }
     };
 
-    if (currentUserId && userRole) {
+    
       fetchAllContrats();
-    }
-  }, [currentUserId, userRole, token, refreshTrigger]);
+  }, [refreshTrigger]);
+
+  // useEffect(() => {
+  //   const fetchClientsData = async () => {
+  //     setClientLoading(true);
+  //     try {
+  //       const response = await axios.get("/data");
+  //       console.log("Clients data fetched:", response.data);
+
+  //       // Extract the chatData array from response
+  //       const clientsData = response.data?.chatData || [];
+  //       setClients(clientsData);
+  //     } catch (error) {
+  //       console.error("Error fetching clients data:", error);
+  //       setClients([]);
+  //     } finally {
+  //       setClientLoading(false);
+  //     }
+  //   };
+
+  //   fetchClientsData();
+  // }, []);
 
   useEffect(() => {
     const fetchClientsData = async () => {
       setClientLoading(true);
       try {
         const response = await axios.get("/data");
-        console.log("Clients data fetched:", response.data);
-
-        // Extract the chatData array from response
-        const clientsData = response.data?.chatData || [];
-        setClients(clientsData);
+        console.log("Full clients data:", {
+          rawResponse: response.data,
+          chatData: response.data?.chatData?.map(c => ({
+            _id: c._id,
+            nom: c.nom,
+            prenom: c.prenom,
+            gestionnaire: c.gestionnaire,
+            gestionnaireName: c.gestionnaireName
+          }))
+        });
+        setClients(response.data?.chatData || []);
       } catch (error) {
         console.error("Error fetching clients data:", error);
-        message.error("Erreur lors du chargement des clients");
         setClients([]);
       } finally {
         setClientLoading(false);
       }
     };
-
+  
     fetchClientsData();
   }, []);
-
   const showDeleteConfirm = (id) => {
     Modal.confirm({
       title: "Confirmer la suppression",
@@ -408,9 +527,6 @@ const AllCommands = () => {
       message.success("Contrat supprimé avec succès");
     } catch (error) {
       console.error("Error deleting contrat:", error);
-      message.error(
-        error.response?.data?.message || "Erreur lors de la suppression"
-      );
     }
   };
   const handleEdit = (record) => {
@@ -467,9 +583,17 @@ const AllCommands = () => {
     setUploadedDocument(documentList[0] || null);
   };
 
-  const handleLeadClick = (leadId) => {
+const handleLeadClick = (lead) => {
+  // Extract the ID from the lead object
+  const leadId = lead?._id || lead?.id;
+  if (leadId) {
     navigate(`/client/${leadId}`);
-  };
+  } else {
+    console.error("No lead ID found:", lead);
+    // Optionally show an error message to the user
+    message.error("Could not navigate to client details");
+  }
+};
 
   const columns = [
     {
@@ -478,19 +602,45 @@ const AllCommands = () => {
       key: "contractNumber",
       sorter: (a, b) => a.contractNumber.localeCompare(b.contractNumber),
     },
+    // {
+    //   title: "Client",
+    //   dataIndex: "clientId",
+    //   key: "clientId",
+    //   render: (clientId, record) => (
+    //     <Button
+    //       type="link"
+    //       onClick={() => handleLeadClick(record.originalData.lead)}
+    //       style={{ padding: 0 }}
+    //     >
+    //       {clientId || "N/A"}
+    //     </Button>
+    //   ),
+    // },
     {
       title: "Client",
       dataIndex: "clientId",
       key: "clientId",
-      render: (clientId, record) => (
-        <Button
-          type="link"
-          onClick={() => handleLeadClick(record.originalData.lead)}
-          style={{ padding: 0 }}
-        >
-          {clientId || "N/A"}
-        </Button>
-      ),
+      render: (clientId, record) => {
+        // Get the lead data - checking multiple possible locations
+        const lead = record.originalData?.lead || 
+                    record.lead || 
+                    record.leadId || 
+                    record.sinistreDetails;
+        
+        // Extract name components with fallbacks
+        const lastName = lead?.nom || "N/A";
+        const firstName = lead?.prenom || "";
+        
+        return (
+          <Button 
+            type="link" 
+            onClick={() => handleLeadClick(lead)}
+            style={{ padding: 0 }}
+          >
+            {`${lastName} ${firstName}`.trim()}
+          </Button>
+        );
+      },
     },
 
     {
@@ -572,6 +722,22 @@ const AllCommands = () => {
       title: "Gestionnaire",
       dataIndex: "gestionnaire",
       key: "gestionnaire",
+      render: (gestionnaireId, record) => {
+        // Get the name from the most reliable source in your data structure
+        const gestionnaireName = 
+        record.originalData?.session?.name ||          // From populated session
+        record.originalData?.lead?.gestionnaireName || // From lead
+        record.originalData?.intermediaire ||          // From intermediaire
+        "N/A";// Final fallback                             // Final fallback
+    
+        return (
+          <h1 
+            style={{ padding: 0 }}
+          >
+            {gestionnaireName}
+          </h1>
+        );
+      },
     },
     {
       title: "Actions",
@@ -657,6 +823,7 @@ const AllCommands = () => {
         placeholder="-- Choisissez --"
         onChange={(value) => handleFilterChange("risque", value)}
         allowClear
+        showSearch
       >
         {RISQUES.map((risque) => (
           <Option key={risque.value} value={risque.value}>
@@ -698,6 +865,7 @@ const AllCommands = () => {
         placeholder="-- Choisissez --"
         onChange={(value) => handleFilterChange("assureur", value)}
         allowClear
+        showSearch
       >
         {ASSUREURS.map((assureur) => (
           <Option key={assureur.value} value={assureur.value}>
@@ -1057,7 +1225,7 @@ const AllCommands = () => {
                   <Option value="autre">Autre</Option>
                 </Select>
               </Form.Item>
-              <Form.Item
+              {/* <Form.Item
                 label={
                   <span className="text-xs font-medium">GESTIONNAIRE*</span>
                 }
@@ -1102,7 +1270,53 @@ const AllCommands = () => {
                     );
                   })}
                 </Select>
-              </Form.Item>
+              </Form.Item> */}
+            <Form.Item
+  label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
+  name="gestionnaire"  // This should be the display name
+  className="mb-0"
+  rules={[
+    {
+      required: true,
+      message: "Veuillez sélectionner un gestionnaire",
+    },
+  ]}
+>
+  <Select
+    className="w-full text-xs h-7"
+    placeholder={loading ? "Chargement..." : "-- Choisissez un gestionnaire --"}
+    loading={loading}
+    showSearch
+    optionFilterProp="children"
+    filterOption={(input, option) =>
+      option.children.toLowerCase().includes(input.toLowerCase())
+    }
+    disabled={loading}
+  >
+    {users.map((user) => {
+      const displayName =
+        user.userType === "admin"
+          ? user.name
+          : `${user.nom} ${user.prenom}`;
+
+      return (
+        <Option key={user._id} value={displayName}>  {/* Use display name as value */}
+          {displayName} ({user.userType === "admin" ? "Admin" : "Commercial"})
+        </Option>
+      );
+    })}
+  </Select>
+</Form.Item>
+
+<Form.Item name="gestionnaireId" hidden>
+  <Input />
+</Form.Item>
+<Form.Item name="gestionnaireModel" hidden>
+  <Input />
+</Form.Item>
+<Form.Item name="gestionnaireName" hidden>
+  <Input />
+</Form.Item>
 
               <Form.Item
                 label={<span className="text-xs font-medium">CRÉÉ PAR*</span>}

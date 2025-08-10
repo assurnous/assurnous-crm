@@ -18,6 +18,7 @@ const eventSchema = new mongoose.Schema({
   comment: { type: String, required: false },
   lead: { type: mongoose.Schema.Types.ObjectId, ref: 'Chat' },
   nom: { type: String, required: true },
+
   createdBy: {
     user: {
       type: mongoose.Schema.Types.ObjectId,

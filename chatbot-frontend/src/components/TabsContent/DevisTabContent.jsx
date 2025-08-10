@@ -30,6 +30,7 @@ const DevisTabContent = () => {
   const [form] = Form.useForm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+   const [client, setClient] = useState(null);
   const { id } = useParams();
   const [devisData, setDevisData] = useState([]);
   const [gestionnaire, setGestionnaire] = useState(null);
@@ -63,11 +64,26 @@ const DevisTabContent = () => {
       try {
         const response = await axios.get(`/lead/${id}`);
         const chatData = response.data.chat;
+        setClient(chatData);
 
-        if (chatData?.gestionnaire) {
-          setGestionnaire(chatData.gestionnaire);
+        // if (chatData?.gestionnaire) {
+        //   setGestionnaire(chatData.gestionnaire);
+        //   form.setFieldsValue({
+        //     gestionnaire: chatData.gestionnaire._id || chatData.gestionnaire,
+        //   });
+        // }
+        if (isModalOpen) {
           form.setFieldsValue({
-            gestionnaire: chatData.gestionnaire._id || chatData.gestionnaire,
+            ...chatData,
+            date_naissance: chatData.date_naissance 
+              ? dayjs(chatData.date_naissance) 
+              : null,
+            date_creation: chatData.date_creation 
+              ? dayjs(chatData.date_creation) 
+              : null,
+            gestionnaire: chatData.gestionnaire, // Just store the ID directly
+            gestionnaireModel: chatData.gestionnaireModel,
+            gestionnaireName: chatData.gestionnaireName
           });
         }
       } catch (error) {
@@ -85,11 +101,11 @@ const DevisTabContent = () => {
     setEditingRecord(null); 
     setUploadedDocument(null); 
     form.resetFields();
-    if (gestionnaire) {
-      form.setFieldsValue({
-        gestionnaire: gestionnaire._id || gestionnaire
-      });
-    }
+    // if (gestionnaire) {
+    //   form.setFieldsValue({
+    //     gestionnaire: gestionnaire._id || gestionnaire
+    //   });
+    // }
     setIsModalOpen(true); 
   };
   
@@ -105,7 +121,7 @@ const DevisTabContent = () => {
   const formatDevisItem = (devis) => ({
     key: devis._id,
     numero_devis: devis.numero_devis,
-    gestionnaire: devis.lead?.gestionnaire || "N/A",
+    gestionnaire: devis.lead?.gestionnaireName || "N/A",
     risque: devis.risque,
     assureur: devis.assureur,
     statut: devis.statut,
@@ -113,23 +129,33 @@ const DevisTabContent = () => {
     date_effet: devis.date_effet
       ? new Date(devis.date_effet).toLocaleDateString()
       : "N/A",
+    date_creation: devis.date_creation 
+      ? new Date(devis.date_creation).toLocaleDateString() 
+      : "N/A",
     originalData: devis,
     documents: devis.documents || [],
   });
+
   const handleFormSubmit = async (values) => {
+    console.log("Form values:", values);
     const token = localStorage.getItem("token");
     const decodedToken = token ? jwtDecode(token) : null;
-    const currentUserId = decodedToken?.userId;
+    const isAdmin =
+    decodedToken.role === "Admin" || decodedToken.role === "admin";
+  const sessionId = decodedToken.userId;
+  const sessionModel = isAdmin ? "Admin" : "Commercial";
     
     try {
       // Prepare form data with document if exists
       const formData = {
         ...values,
         documents: uploadedDocument ? [uploadedDocument] : [],
-        gestionnaire: gestionnaire.name || gestionnaire._id,
-        session: currentUserId,
+        gestionnaire:  gestionnaire,
+        session: sessionId,
+        sessionModel: sessionModel,
         lead: id,
       };
+      console.log("Prepared form data:", formData);
   
       let response;
       
@@ -164,7 +190,7 @@ const DevisTabContent = () => {
       setIsModalOpen(false);
       }
   
-      setRefreshTrigger(prev => prev + 1);
+      // setRefreshTrigger(prev => prev + 1);
       form.resetFields();
       setIsModalOpen(false);
       setEditingRecord(null);
@@ -208,11 +234,22 @@ const DevisTabContent = () => {
           date_effet: devis.date_effet
             ? new Date(devis.date_effet).toLocaleDateString()
             : "N/A",
+          date_creation: devis.date_creation 
+            ? new Date(devis.date_creation).toLocaleDateString() 
+            : "N/A",
           originalData: devis,
           documents: devis.documents || [],
           contratNumber: devis.contratDetails?.numero_contrat || "N/A",
           intermediaire: devis.intermediaire || "N/A",
+          gestionnaireName: devis.lead.gestionnaireName || "N/A",
+          session: {
+            _id: devis.session?._id || currentUserId,
+            email: devis.session?.email || "N/A",
+            userType: devis.sessionModel || (userRole === "Admin" ? "Admin" : "Commercial"),
+          },
+
         }));
+        console.log("Formatted Devis Data:", formattedData);
 
         setDevisData(formattedData);
         setFilteredDevis(formattedData); // Initialize filtered data with all devis
@@ -279,12 +316,12 @@ const DevisTabContent = () => {
       key: "gestionnaire",
       render: (gestionnaire, record) => (
         <>
-          {gestionnaire}
-          {userRole === "Admin" && (
+          {client.gestionnaireName}
+          {/* {userRole === "Admin" && (
             <div style={{ fontSize: 12, color: "#666" }}>
               {record.originalData.session?.email}
             </div>
-          )}
+          )} */}
         </>
       ),
     },
@@ -410,7 +447,7 @@ const handleEdit = (record) => {
     date_effet: record.originalData?.date_effet 
       ? dayjs(record.originalData.date_effet)
       : null,
-    date_creation: record.originalData?.date_creation
+      date_creation: record.originalData?.date_creation
       ? dayjs(record.originalData.date_creation)
       : null,
     
@@ -458,9 +495,6 @@ const handleEdit = (record) => {
       message.success("Devis supprimé avec succès");
     } catch (error) {
       console.error("Error deleting devis:", error);
-      message.error(
-        error.response?.data?.message || "Erreur lors de la suppression"
-      );
     }
   };
 
@@ -645,7 +679,7 @@ const handleEdit = (record) => {
             {/* === STATUT ET NUMERO === */}
             <Form.Item
               name="statut"
-              label="Statut *"
+              label="Statut"
               rules={[
                 { required: false, message: "Veuillez sélectionner un statut" },
               ]}
@@ -663,7 +697,7 @@ const handleEdit = (record) => {
 
             <Form.Item
               name="numero_devis"
-              label="N° de Devis *"
+              label="N° de Devis"
               rules={[
                 {
                   required: false,
@@ -691,12 +725,12 @@ const handleEdit = (record) => {
               className="w-full"
             >
               <DatePicker className="w-full"  />
-            </Form.Item>
-          
-            <Form.Item
+              </Form.Item>
+              <Form.Item
               label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
               name="gestionnaire"
               className="mb-0"
+              style={{ display: 'none' }}
             >
               {loading ? (
                 <Input
@@ -724,6 +758,29 @@ const handleEdit = (record) => {
                 />
               )}
             </Form.Item>
+          
+          
+                   <Form.Item
+            label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+            className="mb-0"
+          >
+            <Input
+              className="w-full text-xs h-7"
+              value={client?.gestionnaireName || "Non spécifié"}
+              disabled
+            />
+          </Form.Item>
+          
+     
+          <Form.Item name="gestionnaire" noStyle>
+            <Input type="hidden" />
+          </Form.Item>
+          <Form.Item name="gestionnaireModel" noStyle>
+            <Input type="hidden" />
+          </Form.Item>
+          <Form.Item name="gestionnaireName" noStyle>
+            <Input type="hidden" />
+          </Form.Item>
             {/* === TYPE ET CREATEUR === */}
             <Form.Item
               name="type_origine"
@@ -743,7 +800,7 @@ const handleEdit = (record) => {
             </Form.Item>
 
             <Form.Item
-              label={<span className="text-xs font-medium">CRÉÉ PAR*</span>}
+              label={<span className="text-xs font-medium">CRÉÉ PAR</span>}
               name="cree_par"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -873,13 +930,6 @@ const handleEdit = (record) => {
               )}
             </Form.Item>
           </Form>
-          {/* <Button
-            type="primary"
-            htmlType="submit"
-            className="w-full text-xs h-7 mt-2 mb-4"
-          >
-            Enregistrer
-          </Button> */}
             <button
               type="submit"
               htmlType="submit"

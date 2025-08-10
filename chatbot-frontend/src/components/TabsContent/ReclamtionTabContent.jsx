@@ -45,10 +45,11 @@ const ReclamtionTabContent = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingRecord, setEditingRecord] = useState(null);
   const [chatData, setChatData] = useState([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const token = localStorage.getItem("token");
   const decodedToken = token ? jwtDecode(token) : null;
   const currentUserId = decodedToken?.userId;
-  const userRole = decodedToken?.role;
+
 
 
   const handleStatusFilter = (value) => {
@@ -62,18 +63,7 @@ const ReclamtionTabContent = () => {
     }
   };
 
-  const handleClientChange = (clientId) => {
-    setSelectedLeadId(clientId);
-    const selectedClient = chatData.find((client) => client._id === clientId);
-    if (selectedClient) {
-      form.setFieldsValue({
-        nom_reclamant: `${selectedClient.prenom} ${selectedClient.nom}`.trim(),
-        email: selectedClient.email,
-        portable: selectedClient.portable,
-        existe_crm: "oui",
-      });
-    }
-  };
+
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -94,33 +84,10 @@ const ReclamtionTabContent = () => {
         });
   
         const allLeads = response.data?.chatData || [];
-        console.log("Raw leads data:", allLeads);
-  
-        // For admin, return all leads without filtering
-        if (userRole?.toLowerCase() === 'admin') { // Case-insensitive check
-          console.log("Admin access - showing all leads", allLeads.length);
-          setChatData(allLeads);
-          return;
-        }
-  
-        // For commercial, filter leads
-        const filteredLeads = allLeads.filter((lead) => {
-          const commercial = lead.commercial || {};
-          const clientcreatedByCommercial = lead.cree_par || "";
-          
-          return (
-            (commercial._id === currentUserId && 
-             commercial.nom === lastName && 
-             commercial.prenom === firstName) ||
-            clientcreatedByCommercial === userName
-          );
-        });
-  
-        console.log("Filtered leads for commercial:", filteredLeads);
-        setChatData(filteredLeads);
+
+        setChatData(allLeads);
       } catch (error) {
         console.error("Error fetching leads:", error);
-        message.error("Failed to fetch leads");
       } finally {
         setLoading(false);
       }
@@ -173,26 +140,33 @@ const ReclamtionTabContent = () => {
   };
 
   // Helper function to format devis items consistently
-  const formatDevisItem = (devis) => ({
-    key: devis._id,
-    numero_devis: devis.numero_devis,
-    gestionnaire: devis.lead?.gestionnaire || "N/A",
-    risque: devis.risque,
-    assureur: devis.assureur,
-    statut: devis.statut,
-    source: devis.type_origine,
-    date_effet: devis.date_effet
-      ? new Date(devis.date_effet).toLocaleDateString()
+  const formatReclamationItem = (reclamation) => ({
+    key: reclamation._id,
+    numero_reclamation: reclamation.numero_reclamation,
+    existe_crm: reclamation.existe_crm,
+    nom_reclamant: reclamation.nom_reclamant, // This should be the ID when existe_crm="oui"
+    leadId: reclamation.leadId, // Make sure this is populated
+    motif: reclamation.motif,
+    assureur: reclamation.assureur,
+    date_reclamation: reclamation.date_reclamation 
+      ? new Date(reclamation.date_reclamation).toLocaleDateString()
       : "N/A",
-    originalData: devis,
-    documents: devis.documents || [],
+    issue: reclamation.issue,
+    date_cloture: reclamation.date_cloture 
+      ? new Date(reclamation.date_cloture).toLocaleDateString()
+      : "N/A",
+    originalData: reclamation,
+    documents: reclamation.attachments || [],
+    // Add these if needed by your form
+    nom_reclamant_input: reclamation.nom_reclamant_input,
+    prenom_reclamant_input: reclamation.prenom_reclamant_input
   });
   const handleFormSubmit = async (values) => {
+    console.log("Form values:", values);
     const token = localStorage.getItem("token");
     const decodedToken = token ? jwtDecode(token) : null;
 
     if (!decodedToken) {
-      message.error("Utilisateur non authentifié");
       return;
     }
     const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'admin';
@@ -207,8 +181,9 @@ const ReclamtionTabContent = () => {
         gestionnaire: gestionnaire.name || gestionnaire._id,
         session: sessionId,
         sessionModel: sessionModel,
-        lead: id,
+        leadId: id,
       };
+      console.log("Form data to be sent:", formData);
   
       let response;
       
@@ -222,10 +197,10 @@ const ReclamtionTabContent = () => {
   
         response = await axios.put(`/reclamations/${reclamationId}`, formData);
       setReclamtionData(prev => prev.map(item => 
-        item.key === reclamationId ? formatDevisItem(response.data) : item
+        item.key === reclamationId ? formatReclamationItem(response.data) : item
       ));
       setFilteredReclamation(prev => prev.map(item => 
-        item.key === reclamationId ? formatDevisItem(response.data) : item
+        item.key === reclamationId ? formatReclamationItem(response.data) : item
       ));
         message.success("Reclamation mise à jour avec succès");
         form.resetFields();
@@ -233,11 +208,11 @@ const ReclamtionTabContent = () => {
       } else {
         // CREATE NEW RECLAMATION
         response = await axios.post("/reclamations", formData);
-        const newItem = formatDevisItem(response.data);
+        console.log("New reclamation response:", response.data);
+        const newItem = formatReclamationItem(response.data);
       
         setReclamtionData(prev => [newItem, ...prev]);
         setFilteredReclamation(prev => [newItem, ...prev]);
-        setReclamtionData(prev => [response.data, ...prev]);
         setCurrentPage(1);
         message.success("Reclamation ajoutée avec succès");
           form.resetFields();
@@ -260,17 +235,20 @@ const ReclamtionTabContent = () => {
       const token = localStorage.getItem("token");
       if (!token) return;
       
+      const decodedToken = jwtDecode(token);
+      const currentUserId = decodedToken?.userId;
+      const userRole = decodedToken?.role;
+      
       setLoading(true);
       try {
         const response = await axios.get(`/reclamations/${id}`, {
           headers: {
             Authorization: `Bearer ${token}`,
-            "X-User-ID": jwtDecode(token).userId,
-            "X-User-Role": jwtDecode(token).role
+            "X-User-ID": currentUserId,
+            "X-User-Role": userRole
           }
         });
   
-        console.log("Full API response:", response.data);
   
         const formattedData = response.data.data?.map(reclamation => ({
           key: reclamation._id,
@@ -280,6 +258,14 @@ existe_crm: reclamation.existe_crm,
 leadId: reclamation.leadId,
           numero_reclamation: reclamation.numero_reclamation,
           gestionnaire: reclamation.leadId?.gestionnaireName || "N/A",
+          canal_reclamation: reclamation.canal_reclamation,
+          commentaire: reclamation.commentaire || "N/A",
+          service_concerne: reclamation.service_concerne || "N/A",
+          prise_en_charge_par: reclamation.prise_en_charge_par || "N/A",
+          niveau_traitement: reclamation.niveau_traitement || "N/A",
+          reference: reclamation.reference || "N/A",
+          declarant: reclamation.declarant || "N/A",
+          date_accuse: reclamation.date_accuse,
           risque: reclamation.risque || "N/A",
           assureur: reclamation.assureur,
           statut: reclamation.statut_reclamant,
@@ -296,7 +282,9 @@ leadId: reclamation.leadId,
             : "N/A",
             issue: reclamation.issue || "N/A",
           date_cloture: reclamation.date_cloture,
-          intermediaire: reclamation.declarant || "N/A"
+          intermediaire: reclamation.declarant || "N/A",
+            nom_reclamant_input: reclamation.nom_reclamant_input,
+  prenom_reclamant_input: reclamation.prenom_reclamant_input,
         })) || [];
   
         setReclamtionData(formattedData);
@@ -310,7 +298,7 @@ leadId: reclamation.leadId,
     };
   
     fetchAllReclamations();
-  }, [id, token]);
+  }, [id, token, refreshTrigger]);
 
 
   useEffect(() => {
@@ -352,29 +340,26 @@ leadId: reclamation.leadId,
       dataIndex: "numero_reclamation",
       key: "numero_reclamation",
     },
-    // {
-    //   title: "Client",
-    //   key: "client",
-    //   render: (_, record) =>
-    //     record.existe_crm === "oui"
-    //       ? record.nom_reclamant
-    //       : `${record.nom_reclamant_input || ""} ${
-    //           record.prenom_reclamant_input || ""
-    //         }`.trim(),
-    // },
     {
       title: "Client",
       key: "client",
       render: (_, record) => {
-        // If CRM exists, check both possible locations for name
+        // For CRM cases (existe_crm="oui")
         if (record.existe_crm === "oui") {
-          return record.nom_reclamant || 
-                 `${record.leadId?.nom || ""} ${record.leadId?.prenom || ""}`.trim();
+          // Case 1: leadId is fully populated with client details
+          if (record.leadId && typeof record.leadId === 'object' && record.leadId.nom) {
+            return `${record.leadId.nom} ${record.leadId.prenom}`.trim();
+          }
+          return 'N/A';
+        } else {
+           
+        const fullName = `${record.nom_reclamant_input || ''} ${record.prenom_reclamant_input || ''}`.trim();
+        return fullName || 'N/A';
         }
-        // Fallback to input fields if no CRM
-        return `${record.nom_reclamant_input || ""} ${record.prenom_reclamant_input || ""}`.trim();
+      
       },
     },
+   
     {
       title: "Motif",
       dataIndex: "motif",
@@ -425,52 +410,99 @@ leadId: reclamation.leadId,
     },
   ];
 
+// const handleEdit = (record) => {
+//   setEditingRecord(record);
+//   setIsModalOpen(true);
+  
+
+//   // Set all form values including documents
+//   form.resetFields();
+//  const formValues = {
+//        numero_reclamation: record.numero_reclamation,
+//        date_reclamation: record.date_reclamation
+//          ? dayjs(record.date_reclamation)
+//          : null,
+//        canal_reclamation: record.canal_reclamation,
+//        date_accuse: record.date_accuse ? dayjs(record.date_accuse) : null,
+//        declarant: record.declarant,
+//        statut_reclamant: record.statut_reclamant || "particulier",
+//        existe_crm: record.existe_crm || "oui",
+//        assureur: record.assureur,
+//        motif: record.motif,
+//        leadId: record.lead || null,
+//        service_concerne: record.service_concerne,
+//        prise_en_charge_par: record.prise_en_charge_par,
+//        niveau_traitement: record.niveau_traitement,
+//        reference: record.reference,
+//        commentaire: record.commentaire,
+//        issue: record.issue,
+//        nom_reclamant_input: record.nom_reclamant_input || "",
+//        prenom_reclamant_input: record.prenom_reclamant_input || "",
+//      };
+ 
+//      // Handle client information
+//      if (record.existe_crm === "oui") {
+//        const matchingClient = chatData.find(
+//          (client) =>
+//            `${client.nom} ${client.prenom}` === record.nom_reclamant ||
+//            client.denomination_commerciale === record.nom_reclamant
+//        );
+//        formValues.nom_reclamant = matchingClient?._id || record.nom_reclamant;
+//      } else {
+//        formValues.nom_reclamant_input = record.nom_reclamant_input;
+//        formValues.prenom_reclamant_input = record.prenom_reclamant_input;
+//      }
+
+//      setTimeout(() => {
+//       form.setFieldsValue(formValues);
+//     }, 100);
+// };
 const handleEdit = (record) => {
   setEditingRecord(record);
   setIsModalOpen(true);
-  
 
-  // Set all form values including documents
+  // Prepare form values
+  const formValues = {
+    numero_reclamation: record.numero_reclamation,
+    date_reclamation: record.date_reclamation ? dayjs(record.date_reclamation) : null,
+    canal_reclamation: record.canal_reclamation,
+    date_accuse: record.date_accuse ? dayjs(record.date_accuse) : null,
+    declarant: record.declarant,
+    statut_reclamant: record.statut_reclamant || "particulier",
+    existe_crm: record.existe_crm || "oui",
+    assureur: record.assureur,
+    motif: record.motif,
+    leadId: record.leadId?._id || null,  // Changed from record.lead to record.leadId._id
+    service_concerne: record.service_concerne,
+    prise_en_charge_par: record.prise_en_charge_par,
+    niveau_traitement: record.niveau_traitement,
+    reference: record.reference,
+    commentaire: record.commentaire,
+    issue: record.issue,
+    nom_reclamant_input: record.nom_reclamant_input || record.originalData?.nom_reclamant_input || "",
+    prenom_reclamant_input: record.prenom_reclamant_input || record.originalData?.prenom_reclamant_input || "",
+  };
+
+  // Handle client information
+  if (record.existe_crm === "oui") {
+    const matchingClient = chatData.find(
+      (client) =>
+        `${client.nom} ${client.prenom}` === record.nom_reclamant ||
+        client.denomination_commerciale === record.nom_reclamant
+    );
+    formValues.nom_reclamant = matchingClient?._id || record.leadId?._id || record.nom_reclamant;
+  } else {
+    // Make sure we're getting the input names from the right place
+    formValues.nom_reclamant_input = record.nom_reclamant_input || record.originalData?.nom_reclamant_input || "";
+    formValues.prenom_reclamant_input = record.prenom_reclamant_input || record.originalData?.prenom_reclamant_input || "";
+  }
+
+  // Reset and set form values in the same tick
   form.resetFields();
- const formValues = {
-       numero_reclamation: record.numero_reclamation,
-       date_reclamation: record.date_reclamation
-         ? dayjs(record.date_reclamation)
-         : null,
-       canal_reclamation: record.canal_reclamation,
-       date_accuse: record.date_accuse ? dayjs(record.date_accuse) : null,
-       declarant: record.declarant,
-       statut_reclamant: record.statut_reclamant || "particulier",
-       existe_crm: record.existe_crm || "oui",
-       assureur: record.assureur,
-       motif: record.motif,
-       leadId: record.lead || null,
-       service_concerne: record.service_concerne,
-       prise_en_charge_par: record.prise_en_charge_par,
-       niveau_traitement: record.niveau_traitement,
-       reference: record.reference,
-       commentaire: record.commentaire,
-       issue: record.issue,
-       nom_reclamant_input: record.nom_reclamant_input || "",
-       prenom_reclamant_input: record.prenom_reclamant_input || "",
-     };
- 
-     // Handle client information
-     if (record.existe_crm === "oui") {
-       const matchingClient = chatData.find(
-         (client) =>
-           `${client.nom} ${client.prenom}` === record.nom_reclamant ||
-           client.denomination_commerciale === record.nom_reclamant
-       );
-       formValues.nom_reclamant = matchingClient?._id || record.nom_reclamant;
-     } else {
-       formValues.nom_reclamant_input = record.nom_reclamant_input;
-       formValues.prenom_reclamant_input = record.prenom_reclamant_input;
-     }
+  form.setFieldsValue(formValues);
 
-     setTimeout(() => {
-      form.setFieldsValue(formValues);
-    }, 100);
+  // Debugging - log the values being set
+  console.log('Form values being set:', formValues);
 };
 
 
@@ -502,9 +534,6 @@ const handleEdit = (record) => {
       message.success("Déclaration supprimée avec succès");
     } catch (error) {
       console.error("Error deleting déclaration:", error);
-      message.error(
-        error.response?.data?.message || "Erreur lors de la suppression"
-      );
     }
   };
 
@@ -737,20 +766,18 @@ const handleEdit = (record) => {
                     ]}
                   >
                     <Select
-                      showSearch
-                      optionFilterProp="children"
-                      className="w-full"
-                      onChange={handleClientChange}
-                      placeholder="-- Choisissez --"
-                      loading={loading}
+                       showSearch
+                       optionFilterProp="children"
+                       placeholder="-- Choisissez un sinistré --"
+                       filterOption={(input, option) =>
+                         option.children.toLowerCase().includes(input.toLowerCase())
+                       }
                     >
                       {chatData.map((client) => (
-                        <Option key={client._id} value={client._id}>
-                          {client.nom} {client.prenom && `- ${client.prenom}`}
-                          {client.denomination_commerciale &&
-                            ` (${client.denomination_commerciale})`}
-                        </Option>
-                      ))}
+                              <Option key={client._id} value={client._id}>
+                                {client.nom} {client.prenom}
+                              </Option>
+                            ))}
                     </Select>
                   </Form.Item>
                 ) : (

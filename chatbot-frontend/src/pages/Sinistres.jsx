@@ -74,7 +74,7 @@ const Sinistres = () => {
         setContrats(response.data);
       } catch (error) {
         console.error("Error fetching contracts:", error);
-        message.error("Failed to load contracts");
+   
       } finally {
         setLoadingContrats(false);
       }
@@ -229,13 +229,14 @@ const Sinistres = () => {
   };
 
   const handleFormSubmit = async (values) => {
+    console.log("Form values:", values);
     try {
       const token = localStorage.getItem("token");
       const decodedToken = token ? jwtDecode(token) : null;
       console.log("Decoded token:", decodedToken);
 
       if (!decodedToken) {
-        message.error("Utilisateur non authentifié");
+      
         return;
       }
 
@@ -248,6 +249,7 @@ const Sinistres = () => {
         ...values,
         session: sessionId,
         sessionModel: sessionModel,
+        numeroSinistre: values.numeroSinistre,
         // Handle both cases of sinistreExist
         ...(values.sinistreExist === "oui"
           ? {
@@ -297,12 +299,6 @@ const Sinistres = () => {
         error: error.response?.data || error.message,
         stack: error.stack,
       });
-      message.error(
-        error.response?.data?.error ||
-          (editingRecord
-            ? "Erreur lors de la mise à jour de la sinistre"
-            : "Erreur lors de l'ajout de la sinistre")
-      );
     }
   };
 
@@ -382,7 +378,6 @@ const Sinistres = () => {
       );
     } catch (error) {
       console.error("Error deleting sinistre:", error);
-      message.error("Erreur lors de la suppression de la sinistre");
     }
   };
   const handleEdit = async (record) => {
@@ -392,9 +387,7 @@ const Sinistres = () => {
 
     // Reset form first
     form.resetFields();
-    const clientData =
-      clients.find((c) => c._id === record.sinistreId) ||
-      record.sinistreDetails;
+   
     // Prepare base form values
     const formValues = {
       // gestionnaire: clientData?.gestionnaire ? { name: clientData.gestionnaireName } : "",
@@ -423,7 +416,7 @@ const Sinistres = () => {
       montantSinistre: record.montantSinistre || 0,
       delegation: record.delegation || "non",
       // gestionnaire: record.session ? record.session.name : "",
-      expert: record.expert || "",
+      coordonnees_expert: record.coordonnees_expert || "",
       leadId: record.leadId || null,
     };
 
@@ -685,9 +678,9 @@ const Sinistres = () => {
     },
     {
       title: "Expert",
-      dataIndex: "expert",
-      key: "expert",
-      render: (expert) => expert || "N/A",
+      dataIndex: "coordonnees_expert",
+      key: "coordonnees_expert",
+      render: (coordonnees_expert) => coordonnees_expert || "N/A",
     },
     {
       title: "Risque",
@@ -1302,7 +1295,7 @@ const Sinistres = () => {
               </Select>
             </Form.Item>
 
-            <Form.Item label="Coordonnées de l'expert" name="expert">
+            <Form.Item label="Coordonnées de l'expert" name="coordonnees_expert">
               <Input placeholder="Coordonnées de l'expert" />
             </Form.Item>
 

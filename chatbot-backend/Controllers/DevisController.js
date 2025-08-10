@@ -5,6 +5,7 @@ class DevisController {
   static async createDevis(req, res) {
     const data = new Devis(req.body);
 
+
     await data.save();
 
     res.status(201).json(data);
@@ -50,7 +51,7 @@ class DevisController {
   }
   static async getAllDevis(req, res) {
     try {
-      const devis = await Devis.find();
+      const devis = await Devis.find().populate('lead').populate('session').sort({ date_creation: -1 });
       res.status(200).json(devis);
     } catch (error) {
       res.status(500).json({ message: "Error fetching devis", error });

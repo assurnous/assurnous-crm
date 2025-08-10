@@ -71,53 +71,58 @@ const Leads = () => {
     setFilters(newFilters);
     applyFilters(newFilters);
   };
-
+  
   const applyFilters = (filterValues) => {
-    let result = [...chatData];
+    let result = [...chatData]; // Start with all client data
+  
+    // Gestionnaire filter
     if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-      result = result.filter(
-        (item) =>
-          item.gestionnaire?.toLowerCase() ===
-          filterValues.gestionnaire.toLowerCase()
-      );
-    }
-
-    // Apply categorie filter
-    if (filterValues.categorie !== "tous") {
-      result = result.filter(
-        (item) =>
-          item.categorie?.toLowerCase() === filterValues.categorie.toLowerCase()
-      );
-    }
-
-    // Apply status filter - updated to match your schema's "statut" field
-    if (filterValues.status !== "tous") {
-      result = result.filter(
-        (item) =>
-          item.statut?.toLowerCase() === filterValues.status.toLowerCase()
-      );
-    }
-
-    // Apply search filter
-    if (filterValues.search) {
-      const searchTerm = filterValues.search.toLowerCase();
-      result = result.filter((item) => {
-        // Client name (nom + prenom)
-        const clientName = `${item.nom || ''} ${item.prenom || ''}`.toLowerCase();
+      result = result.filter(client => {
+        // Check both gestionnaire object and gestionnaireName
+        const gestionnaireDisplayName = client.gestionnaire?.name || 
+                                      `${client.gestionnaire?.nom || ''} ${client.gestionnaire?.prenom || ''}`.trim();
         
-        // All searchable fields from your columns
         return (
-          clientName.includes(searchTerm) ||
-          (item.categorie?.toLowerCase().includes(searchTerm)) ||
-          (item.portable?.toLowerCase().includes(searchTerm)) ||
-          (item.email?.toLowerCase().includes(searchTerm)) ||
-          (item.codepostal?.toLowerCase().includes(searchTerm))
+          gestionnaireDisplayName === filterValues.gestionnaire ||
+          client.gestionnaireName === filterValues.gestionnaire
         );
       });
     }
-
+  
+    // Catégorie filter
+    if (filterValues.categorie && filterValues.categorie !== "tous") {
+      result = result.filter(client => {
+        return client.categorie === filterValues.categorie;
+      });
+    }
+  
+    // Statut filter
+    if (filterValues.status && filterValues.status !== "tous") {
+      result = result.filter(client => {
+        return client.statut === filterValues.status;
+      });
+    }
+  
+    // Search filter
+    if (filterValues.search) {
+      const searchTerm = filterValues.search.toLowerCase();
+      result = result.filter(client => {
+        // Construct searchable fields
+        const fullName = `${client.nom || ''} ${client.prenom || ''}`.trim().toLowerCase();
+        const email = (client.email || '').toLowerCase();
+        const phone = (client.portable || client.telephone_entreprise || '').toLowerCase();
+        const company = (client.nom || '').toLowerCase(); // For entreprises
+        
+        return (
+          fullName.includes(searchTerm) ||
+          email.includes(searchTerm) ||
+          phone.includes(searchTerm) ||
+          company.includes(searchTerm)
+        );
+      });
+    }
+  
     setFilteredData(result);
-    setCurrentPage(1);
   };
 
   useEffect(() => {
@@ -166,7 +171,6 @@ const Leads = () => {
       // Handle successful submission, e.g., show a success message or reset form
     } catch (error) {
       console.error("Error adding lead:", error);
-      message.error("Erreur lors de l'ajout du client"); // Handle error (e.g., show error message)
     }
   };
 
@@ -257,40 +261,8 @@ const Leads = () => {
       console.log("Updated gestionnaire:", response.data);
     } catch (error) {
       console.error("Error updating gestionnaire:", error);
-      message.error("Failed to update gestionnaire");
     }
   };
-
-  // const handleGestionnaireChange = async (newGestionnaire, record) => {
-  //   try {
-  //     const response = await axios.put(
-  //       `/updateGestionnaireLead/${record._id}`,
-  //       {
-  //         gestionnaire: newGestionnaire,
-  //       }
-  //     );
-
-  //     // Update both states
-  //     setChatData((prev) =>
-  //       prev.map((item) =>
-  //         item._id === record._id
-  //           ? { ...item, gestionnaire: newGestionnaire }
-  //           : item
-  //       )
-  //     );
-  //     setFilteredData((prev) =>
-  //       prev.map((item) =>
-  //         item._id === record._id
-  //           ? { ...item, gestionnaire: newGestionnaire }
-  //           : item
-  //       )
-  //     );
-
-  //     console.log("Updated gestionnaire:", response.data);
-  //   } catch (error) {
-  //     console.error("Error updating gestionnaire:", error);
-  //   }
-  // };
 
   const handleStatusLeadChange = async (newStatus, record) => {
     try {
@@ -332,8 +304,7 @@ const Leads = () => {
 
       message.success("Lead supprimé avec succès");
     } catch (error) {
-      console.error("Error deleting coach:", error);
-      message.error("Failed to delete coach");
+      console.error("Error deleting lead:", error);
     }
   };
 
@@ -406,39 +377,6 @@ const Leads = () => {
         </Select>
       ),
     },
-
-    // {
-    //   title: "GESTIONNAIRE",
-    //   key: "gestionnaire",
-    //   render: (text, record) => (
-    //     <Select
-    //       value={record.gestionnaire || ""}
-    //       style={{ width: 180 }}
-    //       className="text-xs"
-    //       onChange={(value) => handleGestionnaireChange(value, record)}
-    //       showSearch
-    //       optionFilterProp="children"
-    //       filterOption={(input, option) =>
-    //         option.children.toLowerCase().includes(input.toLowerCase())
-    //       }
-    //       placeholder="-- Choisissez un gestionnaire --"
-    //     >
-    //       {users.map((user) => {
-    //         const displayName =
-    //           user.userType === "admin"
-    //             ? user.name
-    //             : `${user.nom} ${user.prenom}`;
-
-    //         return (
-    //           <Option key={`${user.userType}-${user._id}`} value={displayName}>
-    //             {displayName} (
-    //             {user.userType === "admin" ? "Admin" : "Commercial"})
-    //           </Option>
-    //         );
-    //       })}
-    //     </Select>
-    //   ),
-    // },
     {
       title: "GESTIONNAIRE",
       key: "gestionnaire",
@@ -458,8 +396,7 @@ const Leads = () => {
           <Option value="">Non assigné</Option>
           {users.map((user) => {
             const displayName =
-              user.userType === "admin"
-                ? user.name
+              (user.userType === "admin" || user.userType === "Manager" || user.userType === "Commercial") ? user.name
                 : `${user.nom} ${user.prenom}`;
     
             return (
@@ -738,7 +675,7 @@ const Leads = () => {
 
             {/* Catégorie */}
             <Form.Item
-              label={<span className="text-xs font-medium">CATÉGORIE*</span>}
+              label={<span className="text-xs font-medium">CATÉGORIE</span>}
               name="categorie"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -762,7 +699,7 @@ const Leads = () => {
 
             {/* Statut */}
             <Form.Item
-              label={<span className="text-xs font-medium">STATUS*</span>}
+              label={<span className="text-xs font-medium">STATUS</span>}
               name="statut"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -779,7 +716,7 @@ const Leads = () => {
 
             {/* Civilité */}
             <Form.Item
-              label={<span className="text-xs font-medium">CIVILITÉ*</span>}
+              label={<span className="text-xs font-medium">CIVILITÉ</span>}
               name="civilite"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -802,7 +739,7 @@ const Leads = () => {
 
             {/* Nom */}
             <Form.Item
-              label={<span className="text-xs font-medium">NOM*</span>}
+              label={<span className="text-xs font-medium">NOM</span>}
               name="nom"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -826,7 +763,7 @@ const Leads = () => {
 
             {/* Prénom */}
             <Form.Item
-              label={<span className="text-xs font-medium">PRÉNOM*</span>}
+              label={<span className="text-xs font-medium">PRÉNOM</span>}
               name="prenom"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -837,7 +774,7 @@ const Leads = () => {
             {/* Date de naissance */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">DATE DE NAISSANCE*</span>
+                <span className="text-xs font-medium">DATE DE NAISSANCE</span>
               }
               name="date_naissance"
               className="mb-0"
@@ -849,7 +786,7 @@ const Leads = () => {
             {/* Pays de naissance */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">PAYS DE NAISSANCE*</span>
+                <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
               }
               name="pays_naissance"
               className="mb-0"
@@ -903,7 +840,7 @@ const Leads = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  SITUATION FAMILIALE*
+                  SITUATION FAMILIALE
                 </span>
               }
               name="situation_famille"
@@ -945,7 +882,7 @@ const Leads = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  N° ET LIBELLÉ DE LA VOIE*
+                  N° ET LIBELLÉ DE LA VOIE
                 </span>
               }
               name="numero_voie"
@@ -985,7 +922,7 @@ const Leads = () => {
 
             {/* Code postal */}
             <Form.Item
-              label={<span className="text-xs font-medium">CODE POSTAL*</span>}
+              label={<span className="text-xs font-medium">CODE POSTAL</span>}
               name="code_postal"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -995,7 +932,7 @@ const Leads = () => {
 
             {/* Ville */}
             <Form.Item
-              label={<span className="text-xs font-medium">VILLE*</span>}
+              label={<span className="text-xs font-medium">VILLE</span>}
               name="ville"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
@@ -1007,7 +944,7 @@ const Leads = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  INSCRIT SUR BLOCTEL*
+                  INSCRIT SUR BLOCTEL
                 </span>
               }
               name="bloctel"
@@ -1026,7 +963,7 @@ const Leads = () => {
             {/* Téléphone portable */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">TÉLÉPHONE PORTABLE*</span>
+                <span className="text-xs font-medium">TÉLÉPHONE PORTABLE</span>
               }
               name="portable"
               className="mb-0"
@@ -1059,7 +996,7 @@ const Leads = () => {
 
             {/* Email */}
             <Form.Item
-              label={<span className="text-xs font-medium">EMAIL*</span>}
+              label={<span className="text-xs font-medium">EMAIL</span>}
               name="email"
               className="mb-0"
               rules={[
@@ -1083,7 +1020,7 @@ const Leads = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    ACTIVITÉ DE L'ENTREPRISE*
+                    ACTIVITÉ DE L'ENTREPRISE
                   </span>
                 }
                 name="activite_entreprise"
@@ -1102,7 +1039,7 @@ const Leads = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    CATÉGORIE SOCIOPROFESSIONNELLE*
+                    CATÉGORIE SOCIOPROFESSIONNELLE
                   </span>
                 }
                 name="categorie_professionnelle"
@@ -1132,7 +1069,7 @@ const Leads = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    DOMAINE D'ACTIVITÉ*
+                    DOMAINE D'ACTIVITÉ
                   </span>
                 }
                 name="domaine_activite"
@@ -1170,7 +1107,7 @@ const Leads = () => {
 
               <Form.Item
                 label={
-                  <span className="text-xs font-medium">STATUT JURIDIQUE*</span>
+                  <span className="text-xs font-medium">STATUT JURIDIQUE</span>
                 }
                 name="statut_juridique"
                 className="mb-0"
@@ -1197,7 +1134,7 @@ const Leads = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    DÉNOMINATION COMMERCIALE*
+                    DÉNOMINATION COMMERCIALE
                   </span>
                 }
                 name="denomination_commerciale"
@@ -1242,15 +1179,15 @@ const Leads = () => {
 
               {/* SIRET */}
               <Form.Item
-                label={<span className="text-xs font-medium">SIRET*</span>}
+                label={<span className="text-xs font-medium">SIRET</span>}
                 name="siret"
                 className="mb-0"
                 rules={[
                   { required: false, message: "Ce champ est obligatoire" },
-                  {
-                    pattern: /^\d{14}$/,
-                    message: "Le SIRET doit contenir 14 chiffres",
-                  },
+                  // {
+                  //   pattern: /^\d{14}$/,
+                  //   message: "Le SIRET doit contenir 14 chiffres",
+                  // },
                 ]}
               >
                 <Input
@@ -1285,7 +1222,7 @@ const Leads = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    TÉLÉPHONE DE L'ENTREPRISE*
+                    TÉLÉPHONE DE L'ENTREPRISE
                   </span>
                 }
                 name="telephone_entreprise"
@@ -1305,7 +1242,7 @@ const Leads = () => {
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
-                    EMAIL DE L'ENTREPRISE*
+                    EMAIL DE L'ENTREPRISE
                   </span>
                 }
                 name="email_entreprise"
@@ -1340,7 +1277,7 @@ const Leads = () => {
               {/* Code NAF */}
               <Form.Item
                 label={
-                  <span className="text-xs font-medium">CODE NAF/APE*</span>
+                  <span className="text-xs font-medium">CODE NAF/APE</span>
                 }
                 name="code_naf"
                 className="mb-0"
@@ -1449,7 +1386,7 @@ const Leads = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  RÉGIME DE SÉCURITÉ SOCIALE*
+                  RÉGIME DE SÉCURITÉ SOCIALE
                 </span>
               }
               name="regime_securite_sociale"
@@ -1472,18 +1409,18 @@ const Leads = () => {
             <Form.Item
               label={
                 <span className="text-xs font-medium">
-                  NUMÉRO DE SÉCURITÉ SOCIALE*
+                  NUMÉRO DE SÉCURITÉ SOCIALE
                 </span>
               }
               name="num_secu"
               className="mb-0"
               rules={[
                 { required: false, message: "Ce champ est obligatoire" },
-                {
-                  pattern:
-                    /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/,
-                  message: "Format invalide (15 chiffres + clé)",
-                },
+                // {
+                //   pattern:
+                //     /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/,
+                //   message: "Format invalide (15 chiffres + clé)",
+                // },
               ]}
             >
               <Input
@@ -1498,7 +1435,7 @@ const Leads = () => {
             <Form.Item
               name="type_origine"
               label={
-                <span className="text-xs font-medium">Type d'origin*</span>
+                <span className="text-xs font-medium">Type d'origin</span>
               }
               className="w-full"
             >
@@ -1514,9 +1451,9 @@ const Leads = () => {
               </Select>
             </Form.Item>
 
-            <Form.Item
-              label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
-              name="gestionnaire"
+            {/* <Form.Item
+              label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+              name="gestionnaires"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
@@ -1547,10 +1484,11 @@ const Leads = () => {
                   );
                 })}
               </Select>
-            </Form.Item>
+            </Form.Item> */}
+            
 
             <Form.Item
-              label={<span className="text-xs font-medium">CRÉÉ PAR*</span>}
+              label={<span className="text-xs font-medium">CRÉÉ PAR</span>}
               name="cree_par"
               className="mb-0"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}

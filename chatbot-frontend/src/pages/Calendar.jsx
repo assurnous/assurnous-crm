@@ -11,9 +11,9 @@ import {
   DatePicker,
   Badge,
   List,
-  Avatar,
+  message
 } from "antd";
-import { UserOutlined, TeamOutlined, PlusOutlined } from "@ant-design/icons";
+import { DeleteOutlined, PlusOutlined, EyeOutlined  } from "@ant-design/icons";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
@@ -35,13 +35,39 @@ const MyCalendar = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [form] = Form.useForm();
-  const [eventDetailsModalVisible, setEventDetailsModalVisible] =
-    useState(false);
+  const [eventDetailsModalVisible, setEventDetailsModalVisible] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedEventDetails, setSelectedEventDetails] = useState(null);
   const [activeFilter, setActiveFilter] = useState("me");
   const [currentUserRole, setCurrentUserRole] = useState(null); // New state for user role
 
   const token = localStorage.getItem("token");
+
+
+
+const handleDeleteEvent = async (eventId) => {
+  try {
+    setDeleteLoading(true);
+    await axios.delete(`/event/${eventId}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    message.success("Événement supprimé avec succès");
+    setEventDetailsModalVisible(false);
+    
+    // Refresh events list
+    if (token) {
+      const decoded = jwtDecode(token);
+      fetchMyEvents(decoded.userId);
+      fetchAllUsersEvents();
+    }
+  } catch (error) {
+    console.error("Error deleting event:", error);
+    message.error("Erreur lors de la suppression de l'événement");
+  } finally {
+    setDeleteLoading(false);
+  }
+};
 
   useEffect(() => {
     if (token) {
@@ -274,69 +300,238 @@ const MyCalendar = () => {
   };
 
   return (
+    // <div className="calendar-container">
+    //   <Modal
+    //     title={`Détails de l'événement`}
+    //     open={eventDetailsModalVisible}
+    //     footer={[
+    //       <Button 
+    //         key="cancel" 
+    //         onClick={() => setEventDetailsModalVisible(false)}
+    //       >
+    //         Fermer
+    //       </Button>,
+    //       <Button
+    //         key="delete"
+    //         type="primary"
+    //         danger
+    //         onClick={() => handleDeleteEvent(selectedEventDetails._id)}
+    //         loading={deleteLoading} // Add this state if you want loading indicator
+    //       >
+    //         Supprimer
+    //       </Button>
+    //     ]}
+        
+    //     width={600}
+    //   >
+    //     {selectedEventDetails && (
+    //       <div className="space-y-4">
+    //         <div className="grid grid-cols-2 gap-4">
+    //           <div>
+    //             <div className="font-bold">Date:</div>
+    //             <div>
+    //               {dayjs(selectedEventDetails.event_date).format(
+    //                 "dddd, D MMMM YYYY"
+    //               )}
+    //             </div>
+    //           </div>
+    //           <div>
+    //             <div className="font-bold">Heure:</div>
+    //             <div>{selectedEventDetails.formattedTime}</div>
+    //           </div>
+    //         </div>
+
+    //         <div>
+    //           <div className="font-bold">Type:</div>
+    //           <div>{selectedEventDetails.objective}</div>
+    //         </div>
+
+    //         {selectedEventDetails.comment && (
+    //           <div>
+    //             <div className="font-bold">Commentaire:</div>
+    //             <div>{selectedEventDetails.comment}</div>
+    //           </div>
+    //         )}
+
+    //         <div className="grid grid-cols-2 gap-4">
+    //           <div>
+    //             <div className="font-bold">Créé par:</div>
+    //             <div>{selectedEventDetails.createdBy?.name || "Inconnu"}</div>
+    //           </div>
+    //           <div>
+    //             <div className="font-bold">Client:</div>
+    //             <div>{selectedEventDetails.nom || "Client sans nom"}</div>
+    //           </div>
+    //         </div>
+
+    //         {selectedEventDetails.lead && (
+    //           <div className="mt-4">
+    //             <Button
+    //               type="primary"
+    //               onClick={() =>
+    //                 (window.location.href = `/client/${selectedEventDetails.lead}`)
+    //               }
+    //             >
+    //               Voir la fiche client
+    //             </Button>
+    //           </div>
+    //         )}
+    //       </div>
+    //     )}
+    //   </Modal>
     <div className="calendar-container">
-      <Modal
-        title={`Détails de l'événement`}
-        open={eventDetailsModalVisible}
-        onCancel={() => setEventDetailsModalVisible(false)}
-        footer={null}
-        width={600}
+  <Modal
+    title={
+      <div className="flex items-center">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6 mr-2 text-blue-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+        <span className="text-lg font-semibold">Détails de l'événement</span>
+      </div>
+    }
+    open={eventDetailsModalVisible}
+    onCancel={() => setEventDetailsModalVisible(false)}
+    footer={[
+      <Button 
+        key="cancel" 
+        onClick={() => setEventDetailsModalVisible(false)}
+        className="mr-2"
       >
-        {selectedEventDetails && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+        Fermer
+      </Button>,
+      <Button
+        key="delete"
+        type="primary"
+        danger
+        onClick={() => handleDeleteEvent(selectedEventDetails._id)}
+        loading={deleteLoading}
+        icon={<DeleteOutlined />}
+      >
+        Supprimer
+      </Button>
+    ]}
+    width={650}
+    bodyStyle={{ padding: '24px' }}
+  >
+    {selectedEventDetails && (
+      <div className="space-y-6">
+        {/* Header with colored type badge */}
+        <div className="flex items-start justify-between">
+          <div>
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+              selectedEventDetails.objective === "Tâche" 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-blue-100 text-blue-800'
+            }`}>
+              {selectedEventDetails.objective}
+            </span>
+            <h3 className="mt-2 text-xl font-semibold text-gray-800">
+              {selectedEventDetails.nom || "Client sans nom"}
+            </h3>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-gray-500">Créé par</div>
+            <div className="font-medium">
+              {selectedEventDetails.createdBy?.name || "Inconnu"}
+            </div>
+          </div>
+        </div>
+
+        {/* Main content */}
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-500">Date</div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {dayjs(selectedEventDetails.event_date).format("dddd, D MMMM YYYY")}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-gray-500">Heure</div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {selectedEventDetails.formattedTime}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {selectedEventDetails.comment && (
+            <div className="mt-4 space-y-2">
+              <div className="text-sm font-medium text-gray-500">Commentaire</div>
+              <div className="p-3 bg-white rounded-md border border-gray-200">
+                {selectedEventDetails.comment}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Client card */}
+        {selectedEventDetails.lead && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+            <div className="flex items-center justify-between">
               <div>
-                <div className="font-bold">Date:</div>
-                <div>
-                  {dayjs(selectedEventDetails.event_date).format(
-                    "dddd, D MMMM YYYY"
-                  )}
+                <div className="text-sm font-medium text-gray-500">Client</div>
+                <div className="font-semibold">
+                  {selectedEventDetails.nom || "Client sans nom"}
                 </div>
               </div>
-              <div>
-                <div className="font-bold">Heure:</div>
-                <div>{selectedEventDetails.formattedTime}</div>
-              </div>
+              <Button
+                type="primary"
+                onClick={() => window.location.href = `/client/${selectedEventDetails.lead}`}
+                icon={<EyeOutlined />}
+              >
+                Voir la fiche
+              </Button>
             </div>
-
-            <div>
-              <div className="font-bold">Type:</div>
-              <div>{selectedEventDetails.objective}</div>
-            </div>
-
-            {selectedEventDetails.comment && (
-              <div>
-                <div className="font-bold">Commentaire:</div>
-                <div>{selectedEventDetails.comment}</div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="font-bold">Créé par:</div>
-                <div>{selectedEventDetails.createdBy?.name || "Inconnu"}</div>
-              </div>
-              <div>
-                <div className="font-bold">Client:</div>
-                <div>{selectedEventDetails.nom || "Client sans nom"}</div>
-              </div>
-            </div>
-
-            {selectedEventDetails.lead && (
-              <div className="mt-4">
-                <Button
-                  type="primary"
-                  onClick={() =>
-                    (window.location.href = `/lead/${selectedEventDetails.lead}`)
-                  }
-                >
-                  Voir la fiche client
-                </Button>
-              </div>
-            )}
           </div>
         )}
-      </Modal>
+      </div>
+    )}
+  </Modal>
+
 
       {/* Simplified Sidebar */}
       <div
