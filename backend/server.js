@@ -30,7 +30,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(cookieParser());
 // middleware to connect with frontend
 app.use(cors({
-    origin: ["https://assurnous.vercel.app"],
+    origin: ["https://assurnous-seven.vercel.app"],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-User-ID', 'X-User-Role']
