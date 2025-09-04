@@ -483,10 +483,23 @@ const Reclamations = () => {
       dataIndex: "issue",
       key: "issue",
     },
+    // {
+    //   title: "Date de clôture",
+    //   dataIndex: "date_cloture",
+    //   key: "date_cloture",
+    // },
     {
       title: "Date de clôture",
       dataIndex: "date_cloture",
       key: "date_cloture",
+      render: (date) => {
+        if (!date) return;
+        const d = new Date(date);
+        return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1)
+          .toString()
+          .padStart(2, "0")}/${d.getFullYear()}`;
+      },
+      sorter: (a, b) => new Date(a.date_cloture) - new Date(b.date_cloture),
     },
     {
       title: "Actions",
