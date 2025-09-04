@@ -20,6 +20,7 @@ import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { ASSUREURS } from "../constants";
+import ReclamationChatSidebar from "../pages/Chat";
 
 const { Option } = Select;
 
@@ -139,45 +140,45 @@ const Reclamations = () => {
     setIsModalOpen(false);
     setEditingRecord(null);
   };
+  const fetchReclamations = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    
+    setLoading(true);
+    try {
+      const decodedToken = jwtDecode(token);
+      const currentUserId = decodedToken?.userId;
+      const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+
+      // Fetch all reclamations
+      const response = await axios.get("/reclamations");
+      const allReclamations = response.data.data || [];
+
+      // Filter based on role
+      let filteredData;
+      if (isAdmin) {
+        // Admins see all reclamations
+        filteredData = allReclamations;
+      } else {
+        // Commercials only see their own reclamations
+        filteredData = allReclamations.filter(
+          reclamation => reclamation.session?._id.toString() === currentUserId
+        );
+      }
+
+      setAllReclamations(filteredData);
+     
+      
+    } catch (error) {
+      console.error("Error fetching reclamations:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   
   useEffect(() => {
-    const fetchReclamations = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
-      
-      setLoading(true);
-      try {
-        const decodedToken = jwtDecode(token);
-        const currentUserId = decodedToken?.userId;
-        const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
-  
-        // Fetch all reclamations
-        const response = await axios.get("/reclamations");
-        const allReclamations = response.data.data || [];
-  
-        // Filter based on role
-        let filteredData;
-        if (isAdmin) {
-          // Admins see all reclamations
-          filteredData = allReclamations;
-        } else {
-          // Commercials only see their own reclamations
-          filteredData = allReclamations.filter(
-            reclamation => reclamation.session?._id.toString() === currentUserId
-          );
-        }
-  
-        setAllReclamations(filteredData);
-       
-        
-      } catch (error) {
-        console.error("Error fetching reclamations:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
+
     fetchReclamations();
   }, [refreshTrigger]);
 
@@ -1258,6 +1259,10 @@ const Reclamations = () => {
           </Button>
         </div>
       </Modal>
+      <ReclamationChatSidebar 
+          reclamations={allReclamations} 
+          onReclamationUpdate={fetchReclamations}
+        />
     </section>
   );
 };
