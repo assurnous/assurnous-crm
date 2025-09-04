@@ -11,13 +11,16 @@ import {
   DatePicker,
   Badge,
   List,
-  message
+  message,
+  ConfigProvider 
 } from "antd";
 import { DeleteOutlined, PlusOutlined, EyeOutlined  } from "@ant-design/icons";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
 import "dayjs/locale/fr";
+
+import frFR from 'antd/locale/fr_FR'
 dayjs.locale("fr");
 
 const { Option } = Select;
@@ -300,85 +303,7 @@ const handleDeleteEvent = async (eventId) => {
   };
 
   return (
-    // <div className="calendar-container">
-    //   <Modal
-    //     title={`Détails de l'événement`}
-    //     open={eventDetailsModalVisible}
-    //     footer={[
-    //       <Button 
-    //         key="cancel" 
-    //         onClick={() => setEventDetailsModalVisible(false)}
-    //       >
-    //         Fermer
-    //       </Button>,
-    //       <Button
-    //         key="delete"
-    //         type="primary"
-    //         danger
-    //         onClick={() => handleDeleteEvent(selectedEventDetails._id)}
-    //         loading={deleteLoading} // Add this state if you want loading indicator
-    //       >
-    //         Supprimer
-    //       </Button>
-    //     ]}
-        
-    //     width={600}
-    //   >
-    //     {selectedEventDetails && (
-    //       <div className="space-y-4">
-    //         <div className="grid grid-cols-2 gap-4">
-    //           <div>
-    //             <div className="font-bold">Date:</div>
-    //             <div>
-    //               {dayjs(selectedEventDetails.event_date).format(
-    //                 "dddd, D MMMM YYYY"
-    //               )}
-    //             </div>
-    //           </div>
-    //           <div>
-    //             <div className="font-bold">Heure:</div>
-    //             <div>{selectedEventDetails.formattedTime}</div>
-    //           </div>
-    //         </div>
-
-    //         <div>
-    //           <div className="font-bold">Type:</div>
-    //           <div>{selectedEventDetails.objective}</div>
-    //         </div>
-
-    //         {selectedEventDetails.comment && (
-    //           <div>
-    //             <div className="font-bold">Commentaire:</div>
-    //             <div>{selectedEventDetails.comment}</div>
-    //           </div>
-    //         )}
-
-    //         <div className="grid grid-cols-2 gap-4">
-    //           <div>
-    //             <div className="font-bold">Créé par:</div>
-    //             <div>{selectedEventDetails.createdBy?.name || "Inconnu"}</div>
-    //           </div>
-    //           <div>
-    //             <div className="font-bold">Client:</div>
-    //             <div>{selectedEventDetails.nom || "Client sans nom"}</div>
-    //           </div>
-    //         </div>
-
-    //         {selectedEventDetails.lead && (
-    //           <div className="mt-4">
-    //             <Button
-    //               type="primary"
-    //               onClick={() =>
-    //                 (window.location.href = `/client/${selectedEventDetails.lead}`)
-    //               }
-    //             >
-    //               Voir la fiche client
-    //             </Button>
-    //           </div>
-    //         )}
-    //       </div>
-    //     )}
-    //   </Modal>
+    <ConfigProvider locale={frFR}>
     <div className="calendar-container">
   <Modal
     title={
@@ -764,6 +689,7 @@ const handleDeleteEvent = async (eventId) => {
         </Modal>
       </div>
     </div>
+    </ConfigProvider>
   );
 };
 
