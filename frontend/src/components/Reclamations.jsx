@@ -12,6 +12,7 @@ import {
   Tooltip,
   Space,
   Tag,
+    ConfigProvider 
 } from "antd";
 const { RangePicker } = DatePicker;
 import { CloseOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -21,6 +22,7 @@ import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
 import { ASSUREURS } from "../constants";
 import ReclamationChatSidebar from "../pages/Chat";
+import fr_FR from 'antd/locale/fr_FR';
 
 const { Option } = Select;
 
@@ -590,6 +592,7 @@ const Reclamations = () => {
   ];
 
   return (
+    <ConfigProvider locale={fr_FR}>
     <section className="container mx-auto">
       <div className="mb-12 md:p-1 p-1">
         <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
@@ -1341,6 +1344,7 @@ const Reclamations = () => {
           reclamations={filteredReclamationsForChat} 
         />
     </section>
+    </ConfigProvider>
   );
 };
 
