@@ -29,6 +29,8 @@ import {
   CheckCircleOutlined,
   InfoCircleOutlined,
   MailOutlined,
+  UserSwitchOutlined,
+  SwapOutlined,
 } from "@ant-design/icons";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
@@ -51,6 +53,62 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [transferModalVisible, setTransferModalVisible] = useState(false);
+  const [selectedCommercial, setSelectedCommercial] = useState(null);
+  const [commercials, setCommercials] = useState([]);
+  const [transferLoading, setTransferLoading] = useState(false);
+  const isAdmin = currentUser?.role?.toLowerCase() === "admin";
+  const isCommercial = currentUser?.role?.toLowerCase() === "commercial";
+
+  useEffect(() => {
+    if (drawerVisible && isAdmin) {
+      fetchCommercials();
+    }
+  }, [drawerVisible, isAdmin]);
+
+  // Add this function to fetch commercial users
+  const fetchCommercials = async () => {
+    try {
+      const response = await axios.get("/commercials");
+      setCommercials(response.data);
+    } catch (error) {
+      console.error("Error fetching commercials:", error);
+      message.error("Erreur lors du chargement des commerciaux");
+    }
+  };
+
+  // Add this function to handle the transfer
+  const handleTransferReclamation = async () => {
+    if (!selectedCommercial || !selectedReclamation) return;
+
+    setTransferLoading(true);
+    try {
+      const response = await axios.post(
+        `/reclamations/${selectedReclamation._id}/transfer`,
+        {
+          commercialId: selectedCommercial._id,
+          commercialName:
+            `${selectedCommercial.prenom} ${selectedCommercial.nom}`.trim(),
+        }
+      );
+
+      if (response.status === 200) {
+        message.success("Réclamation transférée avec succès");
+        setTransferModalVisible(false);
+        setSelectedCommercial(null);
+
+        // Refresh the reclamation data
+        if (onReclamationUpdate) {
+          onReclamationUpdate();
+        }
+      }
+    } catch (error) {
+      console.error("Error transferring reclamation:", error);
+      message.error("Erreur lors du transfert de la réclamation");
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -74,12 +132,15 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
   // Calculate unread messages from admins and commercials
   const calculateUnreadMessages = () => {
     let count = 0;
-    reclamations.forEach(reclamation => {
+    reclamations.forEach((reclamation) => {
       if (reclamation.messages && reclamation.messages.length > 0) {
-        reclamation.messages.forEach(message => {
+        reclamation.messages.forEach((message) => {
           // Count messages from admins or commercials that are not from current user
-          if ((message.senderType === 'admin' || message.senderType === 'commercial') && 
-              message.senderId !== currentUser?.userId) {
+          if (
+            (message.senderType === "admin" ||
+              message.senderType === "commercial") &&
+            message.senderId !== currentUser?.userId
+          ) {
             count++;
           }
         });
@@ -153,7 +214,7 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
       const response = await axios.post("/reclamations/messages", messageData);
       setMessages((prev) => [...prev, response.data]);
       setNewMessage("");
-      
+
       // Recalculate unread count after sending message
       calculateUnreadMessages();
     } catch (error) {
@@ -257,7 +318,7 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
 
     const searchTerm = searchQuery.toLowerCase();
     const creatorName = getCreatorName(reclamation.session).toLowerCase();
-    
+
     return (
       reclamation.numero_reclamation?.toLowerCase().includes(searchTerm) ||
       reclamation.nom_reclamant?.toLowerCase().includes(searchTerm) ||
@@ -265,9 +326,6 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
       creatorName.includes(searchTerm)
     );
   });
-
-  const isAdmin = currentUser?.role?.toLowerCase() === "admin";
-  const isCommercial = currentUser?.role?.toLowerCase() === "commercial";
 
   return (
     <>
@@ -280,19 +338,19 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
           zIndex: 1000,
         }}
       >
-        <Badge 
-          count={unreadCount} 
+        <Badge
+          count={unreadCount}
           size="small"
-          style={{ 
-            backgroundColor: '#ff4d4f',
+          style={{
+            backgroundColor: "#ff4d4f",
           }}
         >
           <Button
             type="primary"
-            icon={<MessageOutlined />}
+            icon={<MessageOutlined  style={{ fontSize: "32px", marginRight: "2px" }}/>}
             onClick={() => {
               setDrawerVisible(true);
-              setUnreadCount(0); // Reset counter when opening drawer
+              setUnreadCount(0);
             }}
             style={{
               borderRadius: "50%",
@@ -347,9 +405,9 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
           .unread-indicator {
             position: absolute;
             top: 12px;
-            left: 8px;
-            width: 8px;
-            height: 8px;
+            left: 6px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background-color: #ff4d4f;
           }
@@ -364,12 +422,12 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
               <CustomerServiceOutlined className="mr-2 text-blue-600" />
               <span className="font-semibold">Centre de Réclamations</span>
               {unreadCount > 0 && (
-                <Badge 
-                  count={unreadCount} 
-                  size="small" 
-                  style={{ 
-                    backgroundColor: '#ff4d4f',
-                    marginLeft: 8
+                <Badge
+                  count={unreadCount}
+                  size="small"
+                  style={{
+                    backgroundColor: "#ff4d4f",
+                    marginLeft: 8,
                   }}
                 />
               )}
@@ -401,68 +459,106 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                 className="rounded-full"
               />
             </div>
-            
+
             <div className="p-2">
               <Text type="secondary" className="text-xs">
                 {filteredReclamations.length} réclamation(s) trouvée(s)
               </Text>
             </div>
 
-            <div className="overflow-y-auto" style={{ height: "calc(100vh - 120px)" }}>
+            <div
+              className="overflow-y-auto"
+              style={{ height: "calc(100vh - 120px)" }}
+            >
               <List
                 dataSource={filteredReclamations}
                 renderItem={(reclamation) => {
-                  const hasUnreadMessages = reclamation.messages && 
-                    reclamation.messages.some(message => 
-                      (message.senderType === 'admin' || message.senderType === 'commercial') && 
-                      message.senderId !== currentUser?.userId
+                  const hasUnreadMessages =
+                    reclamation.messages &&
+                    reclamation.messages.some(
+                      (message) =>
+                        (message.senderType === "admin" ||
+                          message.senderType === "commercial") &&
+                        message.senderId !== currentUser?.userId
                     );
-                  
+
                   return (
                     <List.Item
                       className={`reclamation-item p-3 ${
-                        selectedReclamation?._id === reclamation._id ? "selected" : ""
+                        selectedReclamation?._id === reclamation._id
+                          ? "selected"
+                          : ""
                       }`}
                       onClick={() => setSelectedReclamation(reclamation)}
-                      style={{ border: "none", cursor: "pointer", paddingLeft: "20px" }}
+                      style={{
+                        border: "none",
+                        cursor: "pointer",
+                        paddingLeft: "20px",
+                      }}
                     >
-                      {hasUnreadMessages && <div className="unread-indicator" />}
+                      {hasUnreadMessages && (
+                        <div className="unread-indicator" />
+                      )}
                       <div className="w-full">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center">
-                            <Badge 
-                              color={getStatusColor(reclamation.status)} 
+                            <Badge
+                              color={getStatusColor(reclamation.status)}
                               className="mr-2"
                             />
                             <Text strong className="text-sm">
                               #{reclamation.numero_reclamation}
                             </Text>
                           </div>
-                          <Tag 
-                            color={getStatusColor(reclamation.status)} 
+                          <Tag
+                            color={getStatusColor(reclamation.status)}
                             icon={getStatusIcon(reclamation.status)}
                             className="m-0 text-xs"
                           >
                             {reclamation.status || "nouveau"}
                           </Tag>
                         </div>
-                        
+                        {reclamation.assignedToName && (
+                          <div className="mt-1">
+                            <Text type="secondary" className="text-xs">
+                              Assigné à: {reclamation.assignedToName}
+                            </Text>
+                          </div>
+                        )}
+
                         <Text className="block text-sm mb-1">
                           {reclamation.nom_reclamant}
                         </Text>
-                        
+
                         <div className="flex justify-between items-center">
                           <Text type="secondary" className="text-xs">
-                            {reclamation.date_reclamation ? 
-                              dayjs(reclamation.date_reclamation).format("DD/MM/YYYY") : "N/A"}
+                            {reclamation.date_reclamation
+                              ? dayjs(reclamation.date_reclamation).format(
+                                  "DD/MM/YYYY"
+                                )
+                              : "N/A"}
                           </Text>
-                          
+
                           {isAdmin && reclamation.date_cloture && (
                             <Text type="secondary" className="text-xs">
-                              Clôture: {dayjs(reclamation.date_cloture).format("DD/MM/YYYY")}
+                              Clôture:{" "}
+                              {dayjs(reclamation.date_cloture).format(
+                                "DD/MM/YYYY"
+                              )}
                             </Text>
                           )}
                         </div>
+                        {isAdmin && (
+                          <Button
+                            type="default"
+                            size="small"
+                            onClick={() => setTransferModalVisible(true)}
+                            icon={<SwapOutlined />}
+                            className="flex items-center ml-2"
+                          >
+                            Transférer
+                          </Button>
+                        )}
 
                         {/* Admin-only information */}
                         {isAdmin && (
@@ -481,8 +577,12 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                               Type: {reclamation.sessionModel || "N/A"}
                             </Text>
                             <Text type="secondary" className="text-xs block">
-                              Créé le: {reclamation.createdAt ? 
-                                dayjs(reclamation.createdAt).format("DD/MM/YYYY HH:mm") : "N/A"}
+                              Créé le:{" "}
+                              {reclamation.createdAt
+                                ? dayjs(reclamation.createdAt).format(
+                                    "DD/MM/YYYY HH:mm"
+                                  )
+                                : "N/A"}
                             </Text>
                           </div>
                         )}
@@ -509,14 +609,25 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                       <Text type="secondary" className="text-sm">
                         Client: {selectedReclamation.nom_reclamant}
                       </Text>
+                      {selectedReclamation.assignedToName && (
+                        <div className="mt-1">
+                          <Text type="secondary" className="text-sm">
+                            Assigné à: {selectedReclamation.assignedToName}
+                          </Text>
+                        </div>
+                      )}
 
                       {/* Creator information in chat header */}
                       {isAdmin && selectedReclamation.session && (
                         <div className="mt-2">
                           <Text type="secondary" className="text-xs">
-                            Créé par: {getCreatorName(selectedReclamation.session)}
+                            Créé par:{" "}
+                            {getCreatorName(selectedReclamation.session)}
                             {selectedReclamation.session.email && (
-                              <span> ({getCreatorEmail(selectedReclamation.session)})</span>
+                              <span>
+                                {" "}
+                                ({getCreatorEmail(selectedReclamation.session)})
+                              </span>
                             )}
                           </Text>
                           <Text type="secondary" className="text-xs">
@@ -529,14 +640,20 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                       type="primary"
                       size="small"
                       onClick={() => {
-                        setSelectedStatus(selectedReclamation.status || "nouveau");
+                        setSelectedStatus(
+                          selectedReclamation.status || "nouveau"
+                        );
                         setStatusModalVisible(true);
                       }}
                       className="flex items-center"
                     >
-                      <Tag 
-                        color={getStatusColor(selectedReclamation.status || "nouveau")}
-                        icon={getStatusIcon(selectedReclamation.status || "nouveau")}
+                      <Tag
+                        color={getStatusColor(
+                          selectedReclamation.status || "nouveau"
+                        )}
+                        icon={getStatusIcon(
+                          selectedReclamation.status || "nouveau"
+                        )}
                         className="m-0 mr-1"
                       >
                         {selectedReclamation.status || "nouveau"}
@@ -551,8 +668,12 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                       <div className="flex items-center text-sm">
                         <ClockCircleOutlined className="mr-1 text-gray-400" />
                         <Text type="secondary">
-                          Créée: {selectedReclamation.date_reclamation ? 
-                            dayjs(selectedReclamation.date_reclamation).format("DD/MM/YYYY") : "N/A"}
+                          Créée:{" "}
+                          {selectedReclamation.date_reclamation
+                            ? dayjs(
+                                selectedReclamation.date_reclamation
+                              ).format("DD/MM/YYYY")
+                            : "N/A"}
                         </Text>
                       </div>
                     </Col>
@@ -561,7 +682,10 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                         <div className="flex items-center text-sm">
                           <CheckCircleOutlined className="mr-1 text-gray-400" />
                           <Text type="secondary">
-                            Clôture: {dayjs(selectedReclamation.date_cloture).format("DD/MM/YYYY")}
+                            Clôture:{" "}
+                            {dayjs(selectedReclamation.date_cloture).format(
+                              "DD/MM/YYYY"
+                            )}
                           </Text>
                         </div>
                       )}
@@ -575,7 +699,9 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                     <div className="text-center py-8 text-gray-400">
                       <MessageOutlined className="text-3xl mb-2" />
                       <div>Aucun message</div>
-                      <div className="text-sm">Soyez le premier à commenter</div>
+                      <div className="text-sm">
+                        Soyez le premier à commenter
+                      </div>
                     </div>
                   ) : (
                     messages.map((message, index) => (
@@ -599,8 +725,14 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                           >
                             <div className="text-sm">{message.content}</div>
                             <div className="message-time mt-1">
-                              {getUserName(message.senderId, message.senderType)} •{" "}
-                              {message.timestamp ? dayjs(message.timestamp).format("HH:mm") : "N/A"}
+                              {getUserName(
+                                message.senderId,
+                                message.senderType
+                              )}{" "}
+                              •{" "}
+                              {message.timestamp
+                                ? dayjs(message.timestamp).format("HH:mm")
+                                : "N/A"}
                             </div>
                           </div>
                           {message.senderId === currentUser?.userId &&
@@ -645,7 +777,10 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                   <Title level={4} className="text-gray-400">
                     Sélectionnez une réclamation
                   </Title>
-                  <Text>Choisissez une réclamation dans la liste pour voir les discussions</Text>
+                  <Text>
+                    Choisissez une réclamation dans la liste pour voir les
+                    discussions
+                  </Text>
                 </div>
               </div>
             )}
@@ -683,7 +818,7 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
               {selectedReclamation?.status || "nouveau"}
             </Tag>
           </div>
-          
+
           <Select
             value={selectedStatus}
             onChange={setSelectedStatus}
@@ -698,6 +833,86 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
             {/* Only show "Fermé" option for admin users */}
             {isAdmin && <Option value="ferme">Fermé</Option>}
           </Select>
+        </Modal>
+        <Modal
+          title={
+            <div className="flex items-center">
+              <UserSwitchOutlined className="mr-2 text-blue-500" />
+              <span>Transférer la réclamation à un commercial</span>
+            </div>
+          }
+          visible={transferModalVisible}
+          onCancel={() => {
+            setTransferModalVisible(false);
+            setSelectedCommercial(null);
+          }}
+          footer={[
+            <Button
+              key="cancel"
+              onClick={() => {
+                setTransferModalVisible(false);
+                setSelectedCommercial(null);
+              }}
+            >
+              Annuler
+            </Button>,
+            <Button
+              key="submit"
+              type="primary"
+              onClick={handleTransferReclamation}
+              loading={transferLoading}
+              disabled={!selectedCommercial}
+              icon={<SwapOutlined />}
+            >
+              Transférer
+            </Button>,
+          ]}
+          centered
+        >
+          <div className="mb-4">
+            <Text>
+              Transférer la réclamation #
+              {selectedReclamation?.numero_reclamation} à:
+            </Text>
+          </div>
+
+          <Select
+            value={selectedCommercial?._id}
+            onChange={(value) => {
+              const commercial = commercials.find((c) => c._id === value);
+              setSelectedCommercial(commercial);
+            }}
+            className="w-full"
+            placeholder="Sélectionnez un commercial"
+            showSearch
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option.children.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            {commercials.map((commercial) => (
+              <Option key={commercial._id} value={commercial._id}>
+                {commercial.prenom} {commercial.nom} - {commercial.email}
+              </Option>
+            ))}
+          </Select>
+
+          {selectedCommercial && (
+            <div className="mt-4 p-3 bg-blue-50 rounded-md">
+              <Text strong>Commercial sélectionné:</Text>
+              <div className="mt-1">
+                <Text>
+                  {selectedCommercial.prenom} {selectedCommercial.nom}
+                </Text>
+                <br />
+                <Text type="secondary">{selectedCommercial.email}</Text>
+                <br />
+                <Text type="secondary">
+                  Téléphone: {selectedCommercial.phone || "N/A"}
+                </Text>
+              </div>
+            </div>
+          )}
         </Modal>
       </Drawer>
     </>

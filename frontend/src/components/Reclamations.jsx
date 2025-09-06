@@ -36,6 +36,7 @@ const Reclamations = () => {
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [editingRecord, setEditingRecord] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [filteredReclamationsForChat, setFilteredReclamationsForChat] = useState([]);
   const [filters, setFilters] = useState({
     periode: null,
     motif: "tous",
@@ -140,6 +141,41 @@ const Reclamations = () => {
     setIsModalOpen(false);
     setEditingRecord(null);
   };
+  // const fetchReclamations = async () => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token) return;
+    
+  //   setLoading(true);
+  //   try {
+  //     const decodedToken = jwtDecode(token);
+  //     const currentUserId = decodedToken?.userId;
+  //     const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+
+  //     // Fetch all reclamations
+  //     const response = await axios.get("/reclamations");
+  //     const allReclamations = response.data.data || [];
+
+  //     // Filter based on role
+  //     let filteredData;
+  //     if (isAdmin) {
+  //       // Admins see all reclamations
+  //       filteredData = allReclamations;
+  //     } else {
+  //       // Commercials only see their own reclamations
+  //       filteredData = allReclamations.filter(
+  //         reclamation => reclamation.session?._id.toString() === currentUserId
+  //       );
+  //     }
+
+  //     setAllReclamations(filteredData);
+     
+      
+  //   } catch (error) {
+  //     console.error("Error fetching reclamations:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const fetchReclamations = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -149,25 +185,26 @@ const Reclamations = () => {
       const decodedToken = jwtDecode(token);
       const currentUserId = decodedToken?.userId;
       const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
-
+  
       // Fetch all reclamations
       const response = await axios.get("/reclamations");
       const allReclamations = response.data.data || [];
-
+  
       // Filter based on role
       let filteredData;
       if (isAdmin) {
         // Admins see all reclamations
         filteredData = allReclamations;
       } else {
-        // Commercials only see their own reclamations
+        // Commercials see their own reclamations AND assigned reclamations
         filteredData = allReclamations.filter(
-          reclamation => reclamation.session?._id.toString() === currentUserId
+          reclamation => 
+            reclamation.session?._id.toString() === currentUserId ||
+            reclamation.assignedTo?.toString() === currentUserId
         );
       }
-
+  
       setAllReclamations(filteredData);
-     
       
     } catch (error) {
       console.error("Error fetching reclamations:", error);
@@ -175,7 +212,6 @@ const Reclamations = () => {
       setLoading(false);
     }
   };
-
   
   useEffect(() => {
 
@@ -189,6 +225,25 @@ const Reclamations = () => {
       });
     }
   }, [isModalOpen, form]);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token || !allReclamations.length) return;
+    
+    const decodedToken = jwtDecode(token);
+    const currentUserId = decodedToken?.userId;
+    const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+  
+    let filtered = allReclamations;
+    if (!isAdmin) {
+      filtered = allReclamations.filter(
+        reclamation => 
+          reclamation.session?._id.toString() === currentUserId ||
+          reclamation.assignedTo?.toString() === currentUserId
+      );
+    }
+    
+    setFilteredReclamationsForChat(filtered);
+  }, [allReclamations]);
   const handleEdit = async (record) => {
     console.log("Editing record:", record);
 
@@ -483,11 +538,19 @@ const Reclamations = () => {
       dataIndex: "issue",
       key: "issue",
     },
-    // {
-    //   title: "Date de clôture",
-    //   dataIndex: "date_cloture",
-    //   key: "date_cloture",
-    // },
+    {
+      title: "Assigné à",
+      key: "assignedTo",
+      render: (_, record) => {
+        if (record.assignedToName) {
+          return record.assignedToName;
+        }
+        if (record.assignedTo && typeof record.assignedTo === 'object') {
+          return `${record.assignedTo.prenom || ''} ${record.assignedTo.nom || ''}`.trim();
+        }
+        return "Non assigné";
+      },
+    },
     {
       title: "Date de clôture",
       dataIndex: "date_cloture",
@@ -1273,8 +1336,9 @@ const Reclamations = () => {
         </div>
       </Modal>
       <ReclamationChatSidebar 
-          reclamations={allReclamations} 
+          // reclamations={allReclamations} 
           onReclamationUpdate={fetchReclamations}
+          reclamations={filteredReclamationsForChat} 
         />
     </section>
   );
