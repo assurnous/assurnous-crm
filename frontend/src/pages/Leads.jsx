@@ -39,6 +39,8 @@ const Leads = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [isOpenModalImport, setIsOpenModalImport] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedCategorie, setSelectedCategorie] = useState('');
+  
 
   const [filters, setFilters] = useState({
     gestionaire: "tous",
@@ -129,9 +131,10 @@ const Leads = () => {
     const fetchUsers = async () => {
       try {
         // Fetch both admins and commercials
-        const [adminsRes, commercialsRes] = await Promise.all([
+        const [adminsRes, commercialsRes, managersRes] = await Promise.all([
           axios.get("/admin"),
           axios.get("/commercials"),
+          axios.get("/manager"),// Fetch managers as well
         ]);
 
         // Combine and format the data
@@ -144,6 +147,10 @@ const Leads = () => {
             ...commercial,
             userType: "commercial",
           })),
+          ...managersRes.data.map((manager) => ({
+            ...manager,
+            userType: "manager",
+          }))
         ];
         console.log("Combined Users:", combinedUsers);
 
@@ -377,6 +384,37 @@ const Leads = () => {
         </Select>
       ),
     },
+    // {
+    //   title: "GESTIONNAIRE",
+    //   key: "gestionnaire",
+    //   render: (text, record) => (
+    //     <Select
+    //       value={record.gestionnaire?._id || ""}
+    //       style={{ width: 180 }}
+    //       className="text-xs"
+    //       onChange={(value) => handleGestionnaireChange(value, record)}
+    //       showSearch
+    //       optionFilterProp="children"
+    //       filterOption={(input, option) =>
+    //         option.children.toLowerCase().includes(input.toLowerCase())
+    //       }
+    //       placeholder="-- Choisissez un gestionnaire --"
+    //     >
+    //       <Option value="">Non assigné</Option>
+    //       {users.map((user) => {
+    //         const displayName =
+    //           (user.userType === "admin" || user.userType === "Manager" || user.userType === "Commercial") ? user.name
+    //             : `${user.nom} ${user.prenom}`;
+    
+    //         return (
+    //           <Option key={user._id} value={user._id}>
+    //             {displayName} ({user.userType === "admin" ? "Admin" : "Commercial"})
+    //           </Option>
+    //         );
+    //       })}
+    //     </Select>
+    //   ),
+    // },
     {
       title: "GESTIONNAIRE",
       key: "gestionnaire",
@@ -395,13 +433,36 @@ const Leads = () => {
         >
           <Option value="">Non assigné</Option>
           {users.map((user) => {
-            const displayName =
-              (user.userType === "admin" || user.userType === "Manager" || user.userType === "Commercial") ? user.name
-                : `${user.nom} ${user.prenom}`;
+            // Determine display name based on user type
+            let displayName;
+            if (user.userType === "admin") {
+              displayName = user.name;
+            } else if (user.userType === "manager" || user.userType === "commercial") {
+              displayName = `${user.prenom || ''} ${user.nom || ''}`.trim();
+            } else {
+              // Fallback for any other user types
+              displayName = user.name || user.email || user._id;
+            }
+    
+            // Determine display type label
+            let typeLabel;
+            switch(user.userType) {
+              case "admin":
+                typeLabel = "Admin";
+                break;
+              case "commercial":
+                typeLabel = "Commercial";
+                break;
+              case "manager":
+                typeLabel = "Manager";
+                break;
+              default:
+                typeLabel = user.userType || "Utilisateur";
+            }
     
             return (
               <Option key={user._id} value={user._id}>
-                {displayName} ({user.userType === "admin" ? "Admin" : "Commercial"})
+                {displayName} ({typeLabel})
               </Option>
             );
           })}
@@ -674,7 +735,7 @@ const Leads = () => {
             </h2>
 
             {/* Catégorie */}
-            <Form.Item
+            {/* <Form.Item
               label={<span className="text-xs font-medium">CATÉGORIE</span>}
               name="categorie"
               className="mb-0"
@@ -695,9 +756,32 @@ const Leads = () => {
                 <Option value="professionnel">Professionnel</Option>
                 <Option value="entreprise">Entreprise</Option>
               </Select>
-            </Form.Item>
+            </Form.Item> */}
+            <Form.Item
+  label={<span className="text-xs font-medium">CATÉGORIE</span>}
+  name="categorie"
+  className="mb-0"
+  rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+>
+  <Select
+    className="w-full text-xs h-7"
+    placeholder="-- Choisissez --"
+    onChange={(value) => {
+      setSelectedCategorie(value);
+      form.setFieldsValue({
+        denomination_commerciale: undefined,
+        raison_sociale: undefined,
+        siret: undefined,
+      });
+    }}
+  >
+    <Option value="particulier">Particulier</Option>
+    <Option value="professionnel">Professionnel</Option>
+    <Option value="entreprise">Entreprise</Option>
+  </Select>
+</Form.Item>
 
-            {/* Statut */}
+      
             <Form.Item
               label={<span className="text-xs font-medium">STATUS</span>}
               name="statut"
@@ -714,7 +798,7 @@ const Leads = () => {
               </Select>
             </Form.Item>
 
-            {/* Civilité */}
+         
             <Form.Item
               label={<span className="text-xs font-medium">CIVILITÉ</span>}
               name="civilite"
@@ -732,12 +816,12 @@ const Leads = () => {
               </Select>
             </Form.Item>
 
-            {/* === INFORMATIONS PERSONNELLES === */}
+
             <h2 className="text-sm font-semibold mt-6 mb-2">
               INFORMATIONS PERSONNELLES
             </h2>
 
-            {/* Nom */}
+       
             <Form.Item
               label={<span className="text-xs font-medium">NOM</span>}
               name="nom"
@@ -747,7 +831,7 @@ const Leads = () => {
               <Input className="w-full text-xs h-7" placeholder="Nom" />
             </Form.Item>
 
-            {/* Nom de naissance */}
+   
             <Form.Item
               label={
                 <span className="text-xs font-medium">NOM DE NAISSANCE</span>
@@ -761,7 +845,7 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* Prénom */}
+   
             <Form.Item
               label={<span className="text-xs font-medium">PRÉNOM</span>}
               name="prenom"
@@ -771,7 +855,7 @@ const Leads = () => {
               <Input className="w-full text-xs h-7" placeholder="Prénom" />
             </Form.Item>
 
-            {/* Date de naissance */}
+          
             <Form.Item
               label={
                 <span className="text-xs font-medium">DATE DE NAISSANCE</span>
@@ -783,28 +867,21 @@ const Leads = () => {
               <DatePicker className="w-full text-xs h-7" format="DD/MM/YYYY" />
             </Form.Item>
 
-            {/* Pays de naissance */}
             <Form.Item
-              label={
-                <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
-              }
-              name="pays_naissance"
-              className="mb-0"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
-                showSearch
-              >
-                <Option value="france">France</Option>
-                <Option value="belgique">Belgique</Option>
-                <Option value="suisse">Suisse</Option>
-                <Option value="autre">Autre</Option>
-              </Select>
-            </Form.Item>
+  label={
+    <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
+  }
+  name="pays_naissance"
+  className="mb-0"
+  rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+>
+  <Input 
+    className="w-full text-xs h-7" 
+    placeholder="Ex: France, Belgique, Suisse..." 
+  />
+</Form.Item>
 
-            {/* Code postal de naissance */}
+         
             <Form.Item
               label={
                 <span className="text-xs font-medium">
@@ -820,7 +897,7 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* Commune de naissance */}
+
             <Form.Item
               label={
                 <span className="text-xs font-medium">
@@ -836,7 +913,7 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* Situation familiale */}
+
             <Form.Item
               label={
                 <span className="text-xs font-medium">
@@ -860,7 +937,7 @@ const Leads = () => {
               </Select>
             </Form.Item>
 
-            {/* Enfants à charge */}
+
             <Form.Item
               label={
                 <span className="text-xs font-medium">ENFANTS À CHARGE</span>
@@ -875,10 +952,10 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* === ADRESSE === */}
+
             <h2 className="text-sm font-semibold mt-6 mb-2">ADRESSE</h2>
 
-            {/* N° et libellé de la voie */}
+
             <Form.Item
               label={
                 <span className="text-xs font-medium">
@@ -895,7 +972,6 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* Complément d'adresse */}
             <Form.Item
               label={
                 <span className="text-xs font-medium">
@@ -911,7 +987,7 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* Lieu-dit */}
+      
             <Form.Item
               label={<span className="text-xs font-medium">LIEU-DIT</span>}
               name="lieu_dit"
@@ -920,7 +996,7 @@ const Leads = () => {
               <Input className="w-full text-xs h-7" placeholder="Lieu-dit" />
             </Form.Item>
 
-            {/* Code postal */}
+     
             <Form.Item
               label={<span className="text-xs font-medium">CODE POSTAL</span>}
               name="code_postal"
@@ -930,7 +1006,7 @@ const Leads = () => {
               <Input className="w-full text-xs h-7" placeholder="Code postal" />
             </Form.Item>
 
-            {/* Ville */}
+         
             <Form.Item
               label={<span className="text-xs font-medium">VILLE</span>}
               name="ville"
@@ -940,7 +1016,6 @@ const Leads = () => {
               <Input className="w-full text-xs h-7" placeholder="Ville" />
             </Form.Item>
 
-            {/* Inscrit sur Bloctel */}
             <Form.Item
               label={
                 <span className="text-xs font-medium">
@@ -957,10 +1032,8 @@ const Leads = () => {
               </Radio.Group>
             </Form.Item>
 
-            {/* === COORDONNÉES === */}
             <h2 className="text-sm font-semibold mt-6 mb-2">COORDONNÉES</h2>
 
-            {/* Téléphone portable */}
             <Form.Item
               label={
                 <span className="text-xs font-medium">TÉLÉPHONE PORTABLE</span>
@@ -979,7 +1052,7 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* Téléphone fixe */}
+         
             <Form.Item
               label={
                 <span className="text-xs font-medium">TÉLÉPHONE FIXE</span>
@@ -994,7 +1067,7 @@ const Leads = () => {
               />
             </Form.Item>
 
-            {/* Email */}
+    
             <Form.Item
               label={<span className="text-xs font-medium">EMAIL</span>}
               name="email"
@@ -1010,13 +1083,13 @@ const Leads = () => {
                 placeholder="Email"
               />
             </Form.Item>
-
+            {selectedCategorie !== 'particulier' && (
             <>
               <h2 className="text-sm font-semibold mt-6 mb-2">
                 INFORMATIONS PROFESSIONNELLES
               </h2>
 
-              {/* Activité de l'entreprise */}
+    
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
@@ -1035,7 +1108,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Catégorie socioprofessionnelle */}
+      
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
@@ -1065,7 +1138,7 @@ const Leads = () => {
                 </Select>
               </Form.Item>
 
-              {/* Domaine d'activité */}
+
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
@@ -1149,7 +1222,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Raison sociale */}
+         
               <Form.Item
                 label={
                   <span className="text-xs font-medium">RAISON SOCIALE</span>
@@ -1163,7 +1236,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Date de création */}
+        
               <Form.Item
                 label={
                   <span className="text-xs font-medium">DATE DE CRÉATION</span>
@@ -1177,17 +1250,13 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* SIRET */}
               <Form.Item
                 label={<span className="text-xs font-medium">SIRET</span>}
                 name="siret"
                 className="mb-0"
                 rules={[
                   { required: false, message: "Ce champ est obligatoire" },
-                  // {
-                  //   pattern: /^\d{14}$/,
-                  //   message: "Le SIRET doit contenir 14 chiffres",
-                  // },
+              
                 ]}
               >
                 <Input
@@ -1196,7 +1265,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Forme juridique */}
+        
               <Form.Item
                 label={
                   <span className="text-xs font-medium">FORME JURIDIQUE</span>
@@ -1218,7 +1287,6 @@ const Leads = () => {
                 </Select>
               </Form.Item>
 
-              {/* Téléphone de l'entreprise */}
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
@@ -1238,7 +1306,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Email de l'entreprise */}
+         
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
@@ -1259,7 +1327,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Site internet */}
+        
               <Form.Item
                 label={
                   <span className="text-xs font-medium">SITE INTERNET</span>
@@ -1274,7 +1342,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Code NAF */}
+    
               <Form.Item
                 label={
                   <span className="text-xs font-medium">CODE NAF/APE</span>
@@ -1291,7 +1359,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* IDCC */}
+     
               <Form.Item
                 label={<span className="text-xs font-medium">IDCC</span>}
                 name="idcc"
@@ -1303,7 +1371,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Bénéficiaires effectifs */}
+        
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
@@ -1320,7 +1388,6 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Chiffre d'affaires */}
               <Form.Item
                 label={
                   <span className="text-xs font-medium">
@@ -1341,7 +1408,7 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Effectif */}
+    
               <Form.Item
                 label={<span className="text-xs font-medium">EFFECTIF</span>}
                 name="effectif"
@@ -1354,29 +1421,25 @@ const Leads = () => {
                 />
               </Form.Item>
 
-              {/* Période de clôture d'exercice */}
+  
               <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    PÉRIODE DE CLÔTURE D'EXERCICE
-                  </span>
-                }
-                name="periode_cloture"
-                className="mb-0"
-              >
-                <Select
-                  className="w-full text-xs h-7"
-                  placeholder="-- Choisissez --"
-                >
-                  <Option value="31/12">31 décembre</Option>
-                  <Option value="30/06">30 juin</Option>
-                  <Option value="31/03">31 mars</Option>
-                  <Option value="30/09">30 septembre</Option>
-                  <Option value="autre">Autre</Option>
-                </Select>
-              </Form.Item>
+  label={
+    <span className="text-xs font-medium">
+      PÉRIODE DE CLÔTURE D'EXERCICE
+    </span>
+  }
+  name="periode_cloture"
+  className="mb-0"
+>
+  <DatePicker
+    className="w-full text-xs h-7"
+    format="DD/MM/YYYY"
+    placeholder="Sélectionnez une date"
+    picker="date"
+  />
+</Form.Item>
             </>
-
+            )}
             {/* === SÉCURITÉ SOCIALE === */}
             <h2 className="text-sm font-semibold mt-6 mb-2">
               SÉCURITÉ SOCIALE
@@ -1416,11 +1479,7 @@ const Leads = () => {
               className="mb-0"
               rules={[
                 { required: false, message: "Ce champ est obligatoire" },
-                // {
-                //   pattern:
-                //     /^[12][0-9]{2}[0-1][0-9](2[AB]|[0-9]{2})[0-9]{3}[0-9]{3}[0-9]{2}$/,
-                //   message: "Format invalide (15 chiffres + clé)",
-                // },
+             
               ]}
             >
               <Input
@@ -1451,41 +1510,7 @@ const Leads = () => {
               </Select>
             </Form.Item>
 
-            {/* <Form.Item
-              label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
-              name="gestionnaires"
-              className="mb-0"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez un gestionnaire --"
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {users.map((user) => {
-                  // Handle different field names between admin and commercial
-                  const displayName =
-                    user.userType === "admin"
-                      ? user.name
-                      : `${user.nom} ${user.prenom}`;
-
-                  return (
-                    <Option
-                      key={`${user.userType}-${user._id}`}
-                      value={displayName}
-                    >
-                      {displayName} (
-                      {user.userType === "admin" ? "Admin" : "Commercial"})
-                    </Option>
-                  );
-                })}
-              </Select>
-            </Form.Item> */}
-            
+        
 
             <Form.Item
               label={<span className="text-xs font-medium">CRÉÉ PAR</span>}

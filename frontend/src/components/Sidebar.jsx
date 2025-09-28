@@ -23,15 +23,18 @@ import {
   faUserMd,
   faBuilding,
   faUsers,
+  faBell
  
 } from "@fortawesome/free-solid-svg-icons";
 import { UserOutlined } from "@ant-design/icons";
-import { Layout, Menu, Divider, Avatar } from "antd";
+import { Layout, Menu, Divider, Avatar, Badge } from "antd";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import { UserContext } from "../UserContext";
 import { ToggleContext } from "./store/ToggleContext";
 import logo from "../assets/logo.jpeg";
+import { useNotifications } from "../useNotifications";
+
 
 const { Sider } = Layout;
 const { SubMenu } = Menu;
@@ -48,8 +51,22 @@ const SideBar = () => {
   const { collapsed, onClickHandler } = useContext(ToggleContext);
   const [openKeys, setOpenKeys] = useState([]);
 
+  const { unreadCount, markAsRead, fetchUnreadCount  } = useNotifications();
+
 
   const showProfile = () => setProfileVisible(true);
+  console.log('Sidebar - Unread count:', unreadCount);
+
+
+
+  const handleNotificationClick = () => {
+    console.log('🔔 Bell clicked, marking as read');
+    markAsRead();
+    fetchUnreadCount();
+    navigate("/reclamations");
+  };
+ 
+
 
   useEffect(() => {
     const parentKey = items.find(item => 
@@ -72,9 +89,7 @@ const SideBar = () => {
     setToken(null);
     navigate("/SignIn");
   };
-  const handleSettingsClick = () => {
-    navigate("/Paramètres");
-  };
+
 
   const getInitials = (name) => {
     const names = name?.split(" ");
@@ -114,7 +129,7 @@ const SideBar = () => {
         />
       ),
       label: "Mes clients",
-      role: ["Admin", "Manager"],
+      role: ["Admin"],
         },
         {
           key: "/clients-lists",
@@ -128,6 +143,17 @@ const SideBar = () => {
           role: "Commercial",
         },
         {
+          key: "/clients-list",
+          icon: (
+            <FontAwesomeIcon
+              icon={faUsers}
+              style={{ fontSize: "18px", marginRight: "2px" }}
+            />
+          ),
+          label: "Mes clients",
+          role: "Manager",
+        },
+        {
           key: "/Contrats",
           icon: (
             <FontAwesomeIcon
@@ -136,8 +162,10 @@ const SideBar = () => {
             />
           ),
           label: "Mes Contrats",
-          role: ["Admin", "Commercial"],
+          role: ["Admin", "Commercial", "Manager"],
         },
+      
+        
         {
           key: '/Sinistres',
           icon: (
@@ -147,7 +175,7 @@ const SideBar = () => {
             />
           ),
           label: "Mes Sinistres",
-          role: ["Admin", "Commercial"],
+          role: ["Admin", "Commercial", "Manager"],
         }, 
         {
           key: '/reclamations',
@@ -158,8 +186,9 @@ const SideBar = () => {
             />
           ),
           label: "Mes Réclamations",
-          role: ["Admin", "Commercial"],
-        }
+          role: ["Admin", "Commercial", "Manager"],
+        },
+        
       ],
     },
     {
@@ -181,7 +210,7 @@ const SideBar = () => {
             />
           ),
           label: "Compagnies",
-          role: ["Admin", "Commercial"],
+          role: ["Admin", "Commercial", "Manager"],
         },
         {
           key: "/devis",
@@ -192,7 +221,7 @@ const SideBar = () => {
             />
           ),
           label: "Mes devis",
-          role: ["Admin", "Commercial"],
+          role: ["Admin", "Commercial", "Manager"],
         },
         // {
         //   key: "/tarification",
@@ -227,7 +256,7 @@ const SideBar = () => {
             />
           ),
           label: "Liste de conformité",
-          role: ["Admin", "Commercial"],
+          role: ["Admin", "Commercial", "Manager"],
         },
         // {
         //   key: "/Guide-de-conformité",
@@ -263,7 +292,7 @@ const SideBar = () => {
         />
       ),
       label: "Mon Agenda",
-      role: ["Commercial", "Admin"],
+      role: ["Commercial", "Admin", "Manager"],
     },
 
     {
@@ -435,6 +464,84 @@ const SideBar = () => {
 
       {/* Help, Settings, and Logout Section */}
       <div className="mr-12">
+      <div 
+          className={`flex items-center px-4 py-3 mr-6 cursor-pointer  rounded-md ${
+            collapsed ? "justify-center" : "justify-between"
+          }`}
+          onClick={handleNotificationClick}
+        >
+          {/* {collapsed ? (
+            <Badge 
+              count={unreadCount}
+              size="small" 
+              offset={[-5, 5]} 
+              style={{ backgroundColor: '#ff4d4f' }}
+            >
+              <FontAwesomeIcon
+                icon={faBell}
+                style={{ fontSize: "18px", color: "#6B7280" }}
+              />
+            </Badge>
+          ) : (
+            <>
+              <div className="flex items-center ml-4">
+                <FontAwesomeIcon
+                  icon={faBell}
+                  style={{ fontSize: "18px", marginRight: "12px", color: "#6B7280" }}
+                />
+                <span className="text-gray-600 text-sm">Demandes internes</span>
+              </div>
+             
+                <Badge 
+                  count={unreadCount}
+                  size="small" 
+                  style={{ 
+                    backgroundColor: '#ff4d4f',
+                    fontSize: '10px',
+                    height: '16px',
+                    minWidth: '16px',
+                    lineHeight: '16px'
+                  }} 
+                />
+           
+            </>
+          )} */}
+           {collapsed ? (
+        <Badge 
+          count={unreadCount}
+          size="small" 
+          offset={[-5, 5]} 
+          style={{ backgroundColor: '#ff4d4f' }}
+        >
+          <FontAwesomeIcon
+            icon={faBell}
+            style={{ fontSize: "18px", color: "#6B7280" }}
+          />
+        </Badge>
+      ) : (
+        <>
+          <div className="flex items-center ml-4">
+            <FontAwesomeIcon
+              icon={faBell}
+              style={{ fontSize: "18px", marginRight: "12px", color: "#6B7280" }}
+            />
+            <span className="text-gray-600 text-sm">Demandes internes</span>
+          </div>
+          <Badge 
+            count={unreadCount}
+            size="small" 
+            style={{ 
+              backgroundColor: '#ff4d4f',
+              fontSize: '10px',
+              height: '16px',
+              minWidth: '16px',
+              lineHeight: '16px'
+            }} 
+          />
+        </>
+      )}
+        </div>
+
         <Menu
           className="font-bold bg-white text-gray-600"
           mode="inline"
@@ -455,6 +562,7 @@ const SideBar = () => {
           </Menu.Item>
         </Menu>
        
+      
       </div>
     </Sider>
   );

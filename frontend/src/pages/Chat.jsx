@@ -36,6 +36,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
 import "dayjs/locale/fr";
+import { useNotifications } from "../useNotifications";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -52,13 +53,22 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [unreadCount, setUnreadCount] = useState(0);
   const [transferModalVisible, setTransferModalVisible] = useState(false);
   const [selectedCommercial, setSelectedCommercial] = useState(null);
   const [commercials, setCommercials] = useState([]);
   const [transferLoading, setTransferLoading] = useState(false);
   const isAdmin = currentUser?.role?.toLowerCase() === "admin";
   const isCommercial = currentUser?.role?.toLowerCase() === "commercial";
+  const { unreadCount, markAsRead, fetchUnreadCount } = useNotifications();
+
+  const handleReclamationSelect = async (reclamation) => {
+    setSelectedReclamation(reclamation);
+    if (reclamation) {
+      await markAsRead(reclamation._id);
+      // Refresh the count after marking as read
+      fetchUnreadCount();
+    }
+  };
 
   useEffect(() => {
     if (drawerVisible && isAdmin) {
@@ -89,8 +99,14 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
           commercialId: selectedCommercial._id,
           commercialName:
             `${selectedCommercial.prenom} ${selectedCommercial.nom}`.trim(),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         }
       );
+      console.log('Transfer response:', response);
 
       if (response.status === 200) {
         message.success("Réclamation transférée avec succès");
@@ -125,29 +141,29 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
     }
   }, [selectedReclamation]);
 
-  useEffect(() => {
-    calculateUnreadMessages();
-  }, [reclamations, currentUser]);
+  // useEffect(() => {
+  //   calculateUnreadMessages();
+  // }, [reclamations, currentUser]);
 
-  // Calculate unread messages from admins and commercials
-  const calculateUnreadMessages = () => {
-    let count = 0;
-    reclamations.forEach((reclamation) => {
-      if (reclamation.messages && reclamation.messages.length > 0) {
-        reclamation.messages.forEach((message) => {
-          // Count messages from admins or commercials that are not from current user
-          if (
-            (message.senderType === "admin" ||
-              message.senderType === "commercial") &&
-            message.senderId !== currentUser?.userId
-          ) {
-            count++;
-          }
-        });
-      }
-    });
-    setUnreadCount(count);
-  };
+  // // Calculate unread messages from admins and commercials
+  // const calculateUnreadMessages = () => {
+  //   let count = 0;
+  //   reclamations.forEach((reclamation) => {
+  //     if (reclamation.messages && reclamation.messages.length > 0) {
+  //       reclamation.messages.forEach((message) => {
+  //         // Count messages from admins or commercials that are not from current user
+  //         if (
+  //           (message.senderType === "admin" ||
+  //             message.senderType === "commercial") &&
+  //           message.senderId !== currentUser?.userId
+  //         ) {
+  //           count++;
+  //         }
+  //       });
+  //     }
+  //   });
+  //   setUnreadCount(count);
+  // };
 
   const fetchUsers = async () => {
     try {
@@ -215,8 +231,6 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
       setMessages((prev) => [...prev, response.data]);
       setNewMessage("");
 
-      // Recalculate unread count after sending message
-      calculateUnreadMessages();
     } catch (error) {
       console.error("Error sending message:", error);
       message.error("Erreur lors de l'envoi du message");
@@ -229,6 +243,10 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
     try {
       await axios.put(`/reclamations/${selectedReclamation._id}/status`, {
         status: selectedStatus,
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        }
       });
 
       if (onReclamationUpdate) {
@@ -350,7 +368,6 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
             icon={<MessageOutlined  style={{ fontSize: "32px", marginRight: "2px" }}/>}
             onClick={() => {
               setDrawerVisible(true);
-              setUnreadCount(0);
             }}
             style={{
               borderRadius: "50%",
@@ -489,16 +506,17 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
                           ? "selected"
                           : ""
                       }`}
-                      onClick={() => setSelectedReclamation(reclamation)}
+                      // onClick={() => setSelectedReclamation(reclamation)}
+                      onClick={() => handleReclamationSelect(reclamation)}
                       style={{
                         border: "none",
                         cursor: "pointer",
                         paddingLeft: "20px",
                       }}
                     >
-                      {hasUnreadMessages && (
+                      {/* {hasUnreadMessages && (
                         <div className="unread-indicator" />
-                      )}
+                      )} */}
                       <div className="w-full">
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center">

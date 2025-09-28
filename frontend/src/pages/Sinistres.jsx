@@ -21,7 +21,7 @@ import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../constants";
 import { useNavigate } from "react-router-dom";
 
-const { Option, OptGroup } = Select;
+const { Option } = Select;
 const Sinistres = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
@@ -228,28 +228,111 @@ const Sinistres = () => {
     setCurrentPage(1);
   };
 
+  // const handleFormSubmit = async (values) => {
+  //   console.log("Form values:", values);
+  //   try {
+  //     const token = localStorage.getItem("token");
+  //     const decodedToken = token ? jwtDecode(token) : null;
+  //     console.log("Decoded token:", decodedToken);
+
+  //     if (!decodedToken) {
+      
+  //       return;
+  //     }
+
+  //     const isAdmin =
+  //       decodedToken.role === "Admin" || decodedToken.role === "admin";
+  //     const sessionId = decodedToken.userId;
+  //     const sessionModel = isAdmin ? "Admin" : "Commercial";
+
+  //     const formData = {
+  //       ...values,
+  //       session: sessionId,
+  //       sessionModel: sessionModel,
+  //       gestionnaire: gestionnaire,
+  //       numeroSinistre: values.numeroSinistre,
+  //       // Handle both cases of sinistreExist
+  //       ...(values.sinistreExist === "oui"
+  //         ? {
+  //             leadId: values.sinistreId,
+  //             sinistreId: values.sinistreId,
+  //           }
+  //         : {
+  //             sinistreNom: values.sinistreNom,
+  //             sinistrePrenom: values.sinistrePrenom,
+  //             sinistreInput: values.sinistreInput,
+  //           }),
+  //     };
+
+  //     if (editingRecord) {
+  //       const response = await axios.put(
+  //         `/sinistres/${editingRecord._id}`,
+  //         formData
+  //       );
+  //       setAllSinistres((prev) =>
+  //         [...prev].map((item) =>
+  //           item._id === editingRecord._id ? { ...response.data } : { ...item }
+  //         )
+  //       );
+  //       setRefreshTrigger((prev) => prev + 1);
+  //       setFilteredSinistres((prev) =>
+  //         prev.map((item) =>
+  //           item._id === editingRecord._id ? { ...response.data } : item
+  //         )
+  //       );
+
+  //       message.success("Sinistre mise à jour avec succès");
+  //     } else {
+  //       const response = await axios.post("/sinistres", formData);
+  //       setAllSinistres((prev) => [{ ...response.data }, ...prev]);
+  //       setFilteredSinistres((prev) => [{ ...response.data }, ...prev]);
+  //       setCurrentPage(1);
+  //       setRefreshTrigger((prev) => prev + 1);
+
+  //       message.success("Sinistre ajoutée avec succès");
+  //     }
+
+  //     setIsModalOpen(false);
+  //     form.resetFields();
+  //     setEditingRecord(null);
+  //   } catch (error) {
+  //     console.error("Submission error details:", {
+  //       error: error.response?.data || error.message,
+  //       stack: error.stack,
+  //     });
+  //   }
+  // };
   const handleFormSubmit = async (values) => {
     console.log("Form values:", values);
     try {
       const token = localStorage.getItem("token");
       const decodedToken = token ? jwtDecode(token) : null;
-      console.log("Decoded token:", decodedToken);
-
+  
       if (!decodedToken) {
-      
         return;
       }
-
-      const isAdmin =
-        decodedToken.role === "Admin" || decodedToken.role === "admin";
+  
+      const isAdmin = decodedToken.role === "Admin" || decodedToken.role === "admin";
       const sessionId = decodedToken.userId;
       const sessionModel = isAdmin ? "Admin" : "Commercial";
-
+  
+      // Déterminer le modèle du gestionnaire basé sur l'utilisateur sélectionné
+      let gestionnaireModel = null;
+      if (values.gestionnaire) {
+        const selectedUser = users.find(user => user._id === values.gestionnaire);
+        gestionnaireModel = selectedUser?.userType === "admin" ? "Admin" : "Commercial";
+      }
+  
       const formData = {
         ...values,
         session: sessionId,
         sessionModel: sessionModel,
-        numeroSinistre: values.numeroSinistre,
+        // Envoyer directement l'ID du gestionnaire
+        gestionnaire: values.gestionnaire || null,
+        gestionnaireModel: gestionnaireModel,
+        // Convertir les dates en format ISO
+        dateSinistre: values.dateSinistre ? values.dateSinistre.toISOString() : null,
+        dateDeclaration: values.dateDeclaration ? values.dateDeclaration.toISOString() : null,
         // Handle both cases of sinistreExist
         ...(values.sinistreExist === "oui"
           ? {
@@ -262,7 +345,12 @@ const Sinistres = () => {
               sinistreInput: values.sinistreInput,
             }),
       };
-
+  
+      // Nettoyer les données
+      delete formData.gestionnaireString;
+  
+      console.log("Final form data:", formData);
+  
       if (editingRecord) {
         const response = await axios.put(
           `/sinistres/${editingRecord._id}`,
@@ -279,7 +367,7 @@ const Sinistres = () => {
             item._id === editingRecord._id ? { ...response.data } : item
           )
         );
-
+  
         message.success("Sinistre mise à jour avec succès");
       } else {
         const response = await axios.post("/sinistres", formData);
@@ -287,10 +375,10 @@ const Sinistres = () => {
         setFilteredSinistres((prev) => [{ ...response.data }, ...prev]);
         setCurrentPage(1);
         setRefreshTrigger((prev) => prev + 1);
-
+  
         message.success("Sinistre ajoutée avec succès");
       }
-
+  
       setIsModalOpen(false);
       form.resetFields();
       setEditingRecord(null);
@@ -299,9 +387,9 @@ const Sinistres = () => {
         error: error.response?.data || error.message,
         stack: error.stack,
       });
+      message.error("Erreur lors de la soumission du formulaire");
     }
   };
-
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -471,34 +559,28 @@ const Sinistres = () => {
     }, 100);
   };
 
-  const handleLeadClick = (leadId) => {
-    navigate(`/client/${leadId}`);
+  const handleSinistreClick = (record) => {
+    navigate(`/Sinistres/${record._id}`);
   };
   const columns = [
     {
       title: "N° sinistre",
       dataIndex: "numeroSinistre",
       key: "numeroSinistre",
+      render: (text, record) => (
+        <span
+          onClick={() => handleSinistreClick(record)}
+          style={{
+            cursor: 'pointer',
+            color: '#1890ff',
+            textDecoration: 'underline'
+          }}
+        >
+          {text}
+        </span>
+      ),
     },
-    // {
-    //   title: "Client",
-    //   key: "client",
-    //   render: (_, record) => {
-    //     if (record.sinistreExist === "oui") {
-    //       // Check both possible populated fields
-    //       if (record.sinistreDetails) {
-    //         return `${record.sinistreDetails.nom} ${record.sinistreDetails.prenom}`;
-    //       }
-    //       if (record.leadId && typeof record.leadId === 'object') {
-    //         return `${record.leadId.nom} ${record.leadId.prenom}`;
-    //       }
-    //       return "Client (non chargé)";
-    //     } else {
-    //       return `${record.sinistreNom || ''} ${record.sinistrePrenom || ''}`.trim() ||
-    //              record.sinistreInput || "N/A";
-    //     }
-    //   },
-    // },
+
     {
       title: "Client",
       key: "client",
@@ -525,15 +607,7 @@ const Sinistres = () => {
 
         return (
           <span
-            onClick={() =>
-              isClickable &&
-              handleLeadClick(
-                record.sinistreDetails?._id ||
-                  (typeof record.leadId === "object"
-                    ? record.leadId._id
-                    : record.leadId)
-              )
-            }
+          onClick={() => handleSinistreClick(record)}
             style={{
               cursor: isClickable ? "pointer" : "default",
               color: isClickable ? "#1890ff" : "inherit",
@@ -563,39 +637,12 @@ const Sinistres = () => {
         }
       },
     },
-    // {
-    //   title: "N° contrat",
-    //   key: "contrat",
-    //   render: (_, record) => {
-    //     if (record.contratExist === "oui") {
-    //       // Case 1: Contract details are populated
-    //       if (record.contratDetails?.numeroContrat) {
-    //         return record.contratDetails.numeroContrat;
-    //       }
-    //       // Case 2: Contract exists but details not populated
-    //       if (record.contratId) {
-    //         return (
-    //           <Tooltip title={`Référence: ${record.contratId}`}>
-    //             <span style={{ color: "#faad14" }}>Contrat (référence)</span>
-    //           </Tooltip>
-    //         );
-    //       }
-    //       // Case 3: Manual contract input
-    //       if (record.contratNumber) {
-    //         return record.contratNumber;
-    //       }
-    //       return "N/A";
-    //     } else {
-    //       // Case 4: No contract exists
-    //       return record.sinistreInput || "N/A";
-    //     }
-    //   },
-    // },
-
+   
     {
       title: "Assureur",
       dataIndex: "assureur",
       key: "assureur",
+
     },
     {
       title: "Date sinistre",
@@ -705,21 +752,8 @@ const Sinistres = () => {
       key: "gestionnaire",
       render: (_, record) => {
         // First check sinistreDetails.gestionnaireName (your data shows this exists)
-        if (record.sinistreDetails?.gestionnaireName) {
-          return record.sinistreDetails.gestionnaireName;
-        }
-
-        // Fallback to session name if available
-        if (record.session) {
-          if (typeof record.session === "object") {
-            return (
-              record.session.name ||
-              `${record.session.nom || ""} ${
-                record.session.prenom || ""
-              }`.trim()
-            );
-          }
-          // return `Gestionnaire (ID: ${record.session})`;
+        if (record.gestionnaire?.name) {
+          return record.gestionnaire.name;
         }
 
         // Final fallback
@@ -1033,7 +1067,7 @@ const Sinistres = () => {
             <Form.Item
               label="N° de sinistre"
               name="numeroSinistre"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input placeholder="Entrez le numéro de sinistre" />
             </Form.Item>
@@ -1044,7 +1078,7 @@ const Sinistres = () => {
             <Form.Item
               label="Le sinistré existe-t-il dans votre CRM ?"
               name="sinistreExist"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Radio.Group>
                 <Radio value="oui">Oui</Radio>
@@ -1059,7 +1093,7 @@ const Sinistres = () => {
                 label="Sinistré"
                 name="sinistreId"
                 rules={[
-                  { required: true, message: "Ce champ est obligatoire" },
+                  { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Select
@@ -1088,7 +1122,7 @@ const Sinistres = () => {
                   name="sinistreNom"
                   rules={[
                     {
-                      required: true,
+                      required: false,
                       message: "Le champ nom du sinistré est obligatoire",
                     },
                   ]}
@@ -1101,7 +1135,7 @@ const Sinistres = () => {
                   name="sinistrePrenom"
                   rules={[
                     {
-                      required: true,
+                      required: false,
                       message: "Le champ prénom du sinistré est obligatoire",
                     },
                   ]}
@@ -1113,7 +1147,7 @@ const Sinistres = () => {
                   name="sinistreInput"
                   rules={[
                     {
-                      required: true,
+                      required: false,
                       message: "Le champ numéro de sinistre est obligatoire",
                     },
                   ]}
@@ -1131,7 +1165,7 @@ const Sinistres = () => {
                   label="Le contrat existe-t-il dans votre CRM ?"
                   name="contratExist"
                   rules={[
-                    { required: true, message: "Ce champ est obligatoire" },
+                    { required: false, message: "Ce champ est obligatoire" },
                   ]}
                 >
                   <Radio.Group>
@@ -1147,7 +1181,7 @@ const Sinistres = () => {
                     name="contratId"
                     rules={[
                       {
-                        required: true,
+                        required: false,
                         message: "Le champ contrat est obligatoire",
                       },
                     ]}
@@ -1183,7 +1217,7 @@ const Sinistres = () => {
                     name="contratNumber"
                     rules={[
                       {
-                        required: true,
+                        required: false,
                         message: "Le champ numéro de contrat est obligatoire",
                       },
                     ]}
@@ -1222,7 +1256,7 @@ const Sinistres = () => {
             <Form.Item
               label="Date de sinistre"
               name="dateSinistre"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <DatePicker
                 className="w-full"
@@ -1233,7 +1267,7 @@ const Sinistres = () => {
             <Form.Item
               label="Date de déclaration"
               name="dateDeclaration"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <DatePicker
                 className="w-full"
@@ -1244,7 +1278,7 @@ const Sinistres = () => {
             <Form.Item
               label="Statut du sinistre"
               name="statutSinistre"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select placeholder="-- Choisissez --">
                 <Option value="en_cours">En cours</Option>
@@ -1256,7 +1290,7 @@ const Sinistres = () => {
             <Form.Item
               label="Type de sinistre"
               name="typeSinistre"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 placeholder="-- Choisissez --"
@@ -1275,7 +1309,7 @@ const Sinistres = () => {
             <Form.Item
               label="Responsabilité"
               name="responsabilite"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input placeholder="responsabilité" />
             </Form.Item>
@@ -1287,7 +1321,7 @@ const Sinistres = () => {
             <Form.Item
               label="Sinistre en délégation ?"
               name="delegation"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select placeholder="-- Choisissez --">
                 <Option value="oui">Oui</Option>
@@ -1299,12 +1333,12 @@ const Sinistres = () => {
               <Input placeholder="Coordonnées de l'expert" />
             </Form.Item>
 
-            <Form.Item
+            {/* <Form.Item
               label="Gestionnaire"
               name="gestionnaire"
               rules={[
                 {
-                  required: true,
+                  required: false,
                   message: "Ce champ est obligatoire",
                   validator: (_, value) => {
                     try {
@@ -1345,7 +1379,43 @@ const Sinistres = () => {
                   );
                 })}
               </Select>
-            </Form.Item>
+            </Form.Item> */}
+            <Form.Item
+  label="Gestionnaire"
+  name="gestionnaire" // Ce sera directement l'ID
+  rules={[
+    {
+      required: false,
+      message: "Veuillez sélectionner un gestionnaire",
+    },
+  ]}
+>
+  <Select
+    className="w-full text-xs h-7"
+    placeholder="-- Choisissez--"
+    showSearch
+    optionFilterProp="children"
+  >
+    {users.map((user) => {
+      const displayName =
+        user.userType === "admin"
+          ? user.name
+          : `${user.nom} ${user.prenom}`;
+
+      return (
+        <Option key={user._id} value={user._id}>
+          {displayName} (
+          {user.userType === "admin" ? "Admin" : "Commercial"})
+        </Option>
+      );
+    })}
+  </Select>
+</Form.Item>
+
+{/* Champ caché pour le modèle du gestionnaire */}
+<Form.Item name="gestionnaireModel" hidden>
+  <Input />
+</Form.Item>
           </Form>
           <Button
             type="primary"
