@@ -39,6 +39,10 @@ import GuideDeConformité from "./pages/GuideDeConformité";
 import Commissions from "./pages/Commissions";
 import Mastructure from "./pages/Mastructure";
 import Interlouteurs from "./pages/Interlouteurs";
+import ListManagerLeads from "./pages/Manager/ListManagerLeads";
+// import { NotificationProvider } from "./NotificationContext";
+// import NotificationUpdater from "./components/NotificationUpdater";
+import DetailsSinistres from "./pages/DetailsSinistres";
 
 
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -47,14 +51,15 @@ export const callApiClient = axios.create({
   baseURL: import.meta.env.VITE_CALL_API_BASE_URL,
   withCredentials: true,
 });
-console.log("VITE_CALL_API_BASE_URL:", import.meta.env.VITE_CALL_API_BASE_URL);
+
 
 function App() {
   
   return (
     <ToggleProvider>
-      <ToggleProvider></ToggleProvider>
+      {/* <ToggleProvider></ToggleProvider> */}
       <UserContextProvider>
+  
         <Routes>
           <Route path="/" element={<Layout />}>
             {/* `index` for Home to display only at `/` */}
@@ -77,6 +82,7 @@ function App() {
             <Route path="/reclamations/:id" element={<TicketDetail />} />
             <Route path="/Contrats" element={<AllCommands />} />
             <Route path="/Sinistres" element={<Sinistres />} />
+            <Route path="/Sinistres/:id" element={<DetailsSinistres />} />
             <Route path="/Liste-de-conformité" element={<ListeDeConformité />} />
             <Route path="/Guide-de-conformité" element={<GuideDeConformité />} />
             <Route path="/Mes-comissions" element={<Commissions />} />
@@ -88,11 +94,14 @@ function App() {
 
 
 
+
             <Route path="/import-leads" element={<ImportLeads />} />
             {/* <Route path="/lead/:id" element={<LeadDetailsPage />}/> */}
             <Route path="/affect-leads" element={<AffectuerLead />} />
             <Route path="/Paramètres" element={<CommerciauxPage />} />
             <Route path="/clients-lists" element={<ListLeads />} />
+            <Route path="/clients-list" element={<ListManagerLeads />} />
+
             <Route path="/magic-sms" element={<MagicSms />} />
             <Route path="/publicités" element={<Publicités />} />
             <Route path="/create-publicité" element={<CreatePub />} />
