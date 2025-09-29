@@ -560,7 +560,7 @@ const Sinistres = () => {
   };
 
   const handleSinistreClick = (record) => {
-    navigate(`/sinistres/${record._id}`);
+    navigate(`/Sinistres/${record._id}`);
   };
   const columns = [
     {
