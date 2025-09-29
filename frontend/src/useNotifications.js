@@ -5,7 +5,7 @@ import {jwtDecode} from 'jwt-decode';
 export const useNotifications = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
-  const API_BASE = process.env.VITE_API_BASE_URL;
+  
 
   // Get auth headers
   const getAuthHeaders = useCallback(() => {
@@ -35,9 +35,9 @@ const fetchUnreadCount = useCallback(async () => {
         name: decoded.name
       });
   
-  
+      console.log('🔔 Making API call to /api/notifications/unread-count...');
       
-      const response = await axios.get(`${API_BASE}/unread-count`, {
+      const response = await axios.get('/unread-count', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -55,7 +55,7 @@ const fetchUnreadCount = useCallback(async () => {
   }, []);
   const fetchNotifications = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_BASE}/notifications`, getAuthHeaders());
+      const response = await axios.get('/notifications', getAuthHeaders());
       setNotifications(response.data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -68,7 +68,7 @@ const fetchUnreadCount = useCallback(async () => {
   const markAsRead = useCallback(async (reclamationId = null) => {
     try {
       console.log('Marking notifications as read...', { reclamationId });
-      await axios.post(`${API_BASE}/mark-as-read`, { reclamationId }, getAuthHeaders());
+      await axios.post('/mark-as-read', { reclamationId }, getAuthHeaders());
       // Refresh counts after marking as read
       await fetchUnreadCount();
       await fetchNotifications();
