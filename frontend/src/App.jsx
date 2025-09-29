@@ -47,10 +47,10 @@ import DetailsSinistres from "./pages/DetailsSinistres";
 
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
 axios.defaults.withCredentials = true;
-export const callApiClient = axios.create({
-  baseURL: import.meta.env.VITE_CALL_API_BASE_URL,
-  withCredentials: true,
-});
+// export const callApiClient = axios.create({
+//   baseURL: import.meta.env.VITE_CALL_API_BASE_URL,
+//   withCredentials: true,
+// });
 
 
 function App() {
