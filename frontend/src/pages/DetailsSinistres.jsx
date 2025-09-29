@@ -440,7 +440,7 @@ const DetailsSinistres = () => {
       key: "uploadedBy",
       render: (user) =>
         user
-          ? user.name || `${user.nom || ""} ${user.prenom || ""}`.trim()
+          ? `${user.nom || ""} ${user.prenom || ""}`.trim()
           : "N/A",
     },
     {
