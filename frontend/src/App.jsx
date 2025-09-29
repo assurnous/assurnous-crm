@@ -39,7 +39,7 @@ import GuideDeConformité from "./pages/GuideDeConformité";
 import Commissions from "./pages/Commissions";
 import Mastructure from "./pages/Mastructure";
 import Interlouteurs from "./pages/Interlouteurs";
-import ListManagerLeads from "./pages/Manager/ListManagerLeads";
+// import ListManagerLeads from "./pages/Manager/ListManagerLeads";
 // import { NotificationProvider } from "./NotificationContext";
 // import NotificationUpdater from "./components/NotificationUpdater";
 import DetailsSinistres from "./pages/DetailsSinistres";
@@ -82,7 +82,7 @@ function App() {
             <Route path="/reclamations/:id" element={<TicketDetail />} />
             <Route path="/Contrats" element={<AllCommands />} />
             <Route path="/Sinistres" element={<Sinistres />} />
-            <Route path="/sinistres/:id" element={<DetailsSinistres />} />
+            <Route path="/Sinistres/:id" element={<DetailsSinistres />} />
             <Route path="/Liste-de-conformité" element={<ListeDeConformité />} />
             <Route path="/Guide-de-conformité" element={<GuideDeConformité />} />
             <Route path="/Mes-comissions" element={<Commissions />} />
@@ -100,7 +100,7 @@ function App() {
             <Route path="/affect-leads" element={<AffectuerLead />} />
             <Route path="/Paramètres" element={<CommerciauxPage />} />
             <Route path="/clients-lists" element={<ListLeads />} />
-            <Route path="/clients-list" element={<ListManagerLeads />} />
+            {/* <Route path="/clients-list" element={<ListManagerLeads />} /> */}
 
             <Route path="/magic-sms" element={<MagicSms />} />
             <Route path="/publicités" element={<Publicités />} />

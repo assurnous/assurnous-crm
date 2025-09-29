@@ -135,9 +135,8 @@ const Home = () => {
   const decodedToken = token ? jwtDecode(token) : null;
   const currentUserId = decodedToken?.userId;
   const userRole = decodedToken?.role;
-  console.log('userRole:', userRole);
   const currentUserName = decodedToken?.name;
-  console.log('currentUserName:', currentUserName);
+
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -374,24 +373,7 @@ const Home = () => {
     );
 
     return {
-      // repartition: {
-      //   assureurs: Object.entries(assureurCounts).map(([name, count]) => ({
-      //     name,
-      //     count,
-      //     percentage: Math.round(
-      //       (count / (reclamations.length + sinistres.length)) * 100
-      //     ),
-      //     primeTTC: `${Math.round(count * 10000)} €`,
-      //   })),
-      //   risques: Object.entries(risqueCounts).map(([name, count]) => ({
-      //     name,
-      //     count,
-      //     percentage: Math.round(
-      //       (count / (reclamations.length + sinistres.length)) * 100
-      //     ),
-      //     primeTTC: `${Math.round(count * 10000)} €`,
-      //   })),
-      // },
+
       repartition: {
         assureurs: Object.entries(assureurStats).map(([name, { count, totalPrime }]) => ({
           name,
@@ -414,22 +396,7 @@ const Home = () => {
         assureurs: assureurTotals,
         risques: risqueTotals,
       },
-      // commission: {
-      //   assureurs: {
-      //     totalCommission: `${Math.round(reclamations.length * 500)} €`,
-      //     totalPrevisionnel: `${Math.round(reclamations.length * 600)} €`,
-      //     totalCount: reclamations.length,
-      //   },
-      //   risques: {
-      //     totalCommission: `${Math.round(sinistres.length * 500)} €`,
-      //     totalPrevisionnel: `${Math.round(sinistres.length * 600)} €`,
-      //     totalCount: sinistres.length,
-      //   },
-      // },
-      primeTotals: {
-        primeTTC: `${totalPrimeTTC.toLocaleString()} €`,
-        totalPercentage: "100%",
-      },
+    
       clientStats: {
         particuliers: {
           count: clientCategories.particuliers,

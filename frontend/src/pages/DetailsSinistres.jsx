@@ -439,9 +439,7 @@ const DetailsSinistres = () => {
       dataIndex: "uploadedBy",
       key: "uploadedBy",
       render: (user) =>
-        user
-          ? `${user.nom || ""} ${user.prenom || ""}`.trim()
-          : "N/A",
+        user ? `${user.nom || ""} ${user.prenom || ""}`.trim() : "N/A",
     },
     {
       title: "Date d'upload",
