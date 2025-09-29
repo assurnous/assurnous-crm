@@ -82,7 +82,7 @@ function App() {
             <Route path="/reclamations/:id" element={<TicketDetail />} />
             <Route path="/Contrats" element={<AllCommands />} />
             <Route path="/Sinistres" element={<Sinistres />} />
-            <Route path="/Sinistres/:id" element={<DetailsSinistres />} />
+            <Route path="/sinistres/:id" element={<DetailsSinistres />} />
             <Route path="/Liste-de-conformité" element={<ListeDeConformité />} />
             <Route path="/Guide-de-conformité" element={<GuideDeConformité />} />
             <Route path="/Mes-comissions" element={<Commissions />} />
