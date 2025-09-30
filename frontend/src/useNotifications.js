@@ -1,3 +1,218 @@
+// // import { useState, useEffect, useCallback } from 'react';
+// // import axios from 'axios';
+// // import {jwtDecode} from 'jwt-decode';
+
+// // export const useNotifications = () => {
+// //   const [unreadCount, setUnreadCount] = useState(0);
+// //   const [notifications, setNotifications] = useState([]);
+  
+
+// //   // Get auth headers
+// //   const getAuthHeaders = useCallback(() => {
+// //     const token = localStorage.getItem('token');
+// //     return {
+// //       headers: {
+// //         Authorization: `Bearer ${token}`
+// //       }
+// //     };
+// //   }, []);
+
+// // const fetchUnreadCount = useCallback(async () => {
+// //     try {
+// //       const token = localStorage.getItem('token');
+// //       console.log('🔔 fetchUnreadCount - Token exists:', !!token);
+      
+// //       if (!token) {
+// //         setUnreadCount(0);
+// //         return;
+// //       }
+  
+// //       // Decode to see who we are
+// //       const decoded = jwtDecode(token);
+// //       console.log('🔔 Current user:', {
+// //         userId: decoded.userId,
+// //         role: decoded.role,
+// //         name: decoded.name
+// //       });
+  
+// //       console.log('🔔 Making API call to /api/notifications/unread-count...');
+      
+// //       const response = await axios.get('/unread-count', {
+// //         headers: { Authorization: `Bearer ${token}` }
+// //       });
+      
+// //       console.log('🔔 API Response:', response.data);
+// //       console.log('🔔 Response headers:', response.headers);
+      
+// //       setUnreadCount(response.data.count);
+// //     } catch (error) {
+// //       console.error('🔔 Error fetching unread count:', error);
+// //       if (error.response) {
+// //         console.error('🔔 Response error:', error.response.status, error.response.data);
+// //       }
+// //       setUnreadCount(0);
+// //     }
+// //   }, []);
+// //   const fetchNotifications = useCallback(async () => {
+// //     try {
+// //       const response = await axios.get('/notifications', getAuthHeaders());
+// //       setNotifications(response.data);
+// //     } catch (error) {
+// //       console.error('Error fetching notifications:', error);
+// //       if (error.response?.status === 401) {
+// //         setNotifications([]);
+// //       }
+// //     }
+// //   }, [getAuthHeaders]);
+
+// //   const markAsRead = useCallback(async (reclamationId = null) => {
+// //     try {
+// //       console.log('Marking notifications as read...', { reclamationId });
+// //       await axios.post('/mark-as-read', { reclamationId }, getAuthHeaders());
+// //       // Refresh counts after marking as read
+// //       await fetchUnreadCount();
+// //       await fetchNotifications();
+// //     } catch (error) {
+// //       console.error('Error marking notifications as read:', error);
+// //     }
+// //   }, [getAuthHeaders, fetchUnreadCount, fetchNotifications]);
+
+// //   useEffect(() => {
+// //     console.log('useNotifications hook mounted');
+// //     const token = localStorage.getItem('token');
+// //     if (token) {
+// //       fetchUnreadCount();
+// //       fetchNotifications();
+
+// //       // Poll for new notifications every 30 seconds
+// //       const interval = setInterval(fetchUnreadCount, 30000);
+// //       return () => {
+// //         console.log('Clearing notification interval');
+// //         clearInterval(interval);
+// //       };
+// //     }
+// //   }, [fetchUnreadCount, fetchNotifications]);
+
+// //   return {
+// //     unreadCount,
+// //     notifications,
+// //     fetchUnreadCount,
+// //     fetchNotifications,
+// //     markAsRead
+// //   };
+// // };
+// // import { useState, useEffect, useCallback } from 'react';
+// // import axios from 'axios';
+// // import {jwtDecode} from 'jwt-decode';
+
+// // export const useNotifications = () => {
+// //   const [unreadCount, setUnreadCount] = useState(0);
+// //   const [notifications, setNotifications] = useState([]);
+
+// //   // Get the full API base URL
+// //   const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+// //   const fetchUnreadCount = useCallback(async () => {
+// //     try {
+// //       const token = localStorage.getItem('token');
+// //       console.log('🔔 PRODUCTION DEBUG - API_BASE:', API_BASE);
+// //       console.log('🔔 PRODUCTION DEBUG - Token exists:', !!token);
+      
+// //       if (!token) {
+// //         setUnreadCount(0);
+// //         return;
+// //       }
+
+// //       const decoded = jwtDecode(token);
+// //       console.log('🔔 PRODUCTION DEBUG - Current user:', decoded.userId);
+
+// //       // Use full URL to your backend
+// //       const response = await axios.get(`${API_BASE}/unread-count`, {
+// //         headers: { 
+// //           Authorization: `Bearer ${token}`,
+// //           'Content-Type': 'application/json'
+// //         }
+// //       });
+      
+// //       console.log('🔔 PRODUCTION DEBUG - API Success:', response.data);
+// //       setUnreadCount(response.data.count);
+// //     } catch (error) {
+// //       console.error('🔔 PRODUCTION DEBUG - API Error:', {
+// //         message: error.message,
+// //         status: error.response?.status,
+// //         data: error.response?.data,
+// //         url: error.config?.url
+// //       });
+      
+// //       // Check for CORS issues
+// //       if (error.message.includes('Network Error') || error.message.includes('CORS')) {
+// //         console.error('🔔 CORS Error - Check backend CORS configuration for:', window.location.origin);
+// //       }
+      
+// //       setUnreadCount(0);
+// //     }
+// //   }, [API_BASE]);
+
+// //   const fetchNotifications = useCallback(async () => {
+// //     try {
+// //       const token = localStorage.getItem('token');
+// //       const response = await axios.get(`${API_BASE}/notifications`, {
+// //         headers: { 
+// //           Authorization: `Bearer ${token}`,
+// //           'Content-Type': 'application/json'
+// //         }
+// //       });
+// //       setNotifications(response.data);
+// //     } catch (error) {
+// //       console.error('Error fetching notifications:', error);
+// //       if (error.response?.status === 401) {
+// //         setNotifications([]);
+// //       }
+// //     }
+// //   }, [API_BASE]);
+
+// //   const markAsRead = useCallback(async (reclamationId = null) => {
+// //     try {
+// //       console.log('Marking notifications as read...', { reclamationId });
+// //       const token = localStorage.getItem('token');
+// //       await axios.post(`${API_BASE}/mark-as-read`, { reclamationId }, {
+// //         headers: { 
+// //           Authorization: `Bearer ${token}`,
+// //           'Content-Type': 'application/json'
+// //         }
+// //       });
+// //       // Refresh counts after marking as read
+// //       await fetchUnreadCount();
+// //     } catch (error) {
+// //       console.error('Error marking notifications as read:', error);
+// //     }
+// //   }, [API_BASE, fetchUnreadCount]);
+
+// //   useEffect(() => {
+// //     console.log('🔔 useNotifications mounted - API_BASE:', API_BASE);
+    
+// //     const token = localStorage.getItem('token');
+// //     if (token) {
+// //       fetchUnreadCount();
+// //       fetchNotifications();
+
+// //       // Poll for new notifications every 30 seconds
+// //       const interval = setInterval(fetchUnreadCount, 30000);
+// //       return () => {
+// //         console.log('Clearing notification interval');
+// //         clearInterval(interval);
+// //       };
+// //     }
+// //   }, [fetchUnreadCount, fetchNotifications, API_BASE]);
+
+// //   return {
+// //     unreadCount,
+// //     notifications,
+// //     fetchUnreadCount,
+// //     fetchNotifications,
+// //     markAsRead
+// //   };
+// // };
 // import { useState, useEffect, useCallback } from 'react';
 // import axios from 'axios';
 // import {jwtDecode} from 'jwt-decode';
@@ -5,109 +220,7 @@
 // export const useNotifications = () => {
 //   const [unreadCount, setUnreadCount] = useState(0);
 //   const [notifications, setNotifications] = useState([]);
-  
-
-//   // Get auth headers
-//   const getAuthHeaders = useCallback(() => {
-//     const token = localStorage.getItem('token');
-//     return {
-//       headers: {
-//         Authorization: `Bearer ${token}`
-//       }
-//     };
-//   }, []);
-
-// const fetchUnreadCount = useCallback(async () => {
-//     try {
-//       const token = localStorage.getItem('token');
-//       console.log('🔔 fetchUnreadCount - Token exists:', !!token);
-      
-//       if (!token) {
-//         setUnreadCount(0);
-//         return;
-//       }
-  
-//       // Decode to see who we are
-//       const decoded = jwtDecode(token);
-//       console.log('🔔 Current user:', {
-//         userId: decoded.userId,
-//         role: decoded.role,
-//         name: decoded.name
-//       });
-  
-//       console.log('🔔 Making API call to /api/notifications/unread-count...');
-      
-//       const response = await axios.get('/unread-count', {
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-      
-//       console.log('🔔 API Response:', response.data);
-//       console.log('🔔 Response headers:', response.headers);
-      
-//       setUnreadCount(response.data.count);
-//     } catch (error) {
-//       console.error('🔔 Error fetching unread count:', error);
-//       if (error.response) {
-//         console.error('🔔 Response error:', error.response.status, error.response.data);
-//       }
-//       setUnreadCount(0);
-//     }
-//   }, []);
-//   const fetchNotifications = useCallback(async () => {
-//     try {
-//       const response = await axios.get('/notifications', getAuthHeaders());
-//       setNotifications(response.data);
-//     } catch (error) {
-//       console.error('Error fetching notifications:', error);
-//       if (error.response?.status === 401) {
-//         setNotifications([]);
-//       }
-//     }
-//   }, [getAuthHeaders]);
-
-//   const markAsRead = useCallback(async (reclamationId = null) => {
-//     try {
-//       console.log('Marking notifications as read...', { reclamationId });
-//       await axios.post('/mark-as-read', { reclamationId }, getAuthHeaders());
-//       // Refresh counts after marking as read
-//       await fetchUnreadCount();
-//       await fetchNotifications();
-//     } catch (error) {
-//       console.error('Error marking notifications as read:', error);
-//     }
-//   }, [getAuthHeaders, fetchUnreadCount, fetchNotifications]);
-
-//   useEffect(() => {
-//     console.log('useNotifications hook mounted');
-//     const token = localStorage.getItem('token');
-//     if (token) {
-//       fetchUnreadCount();
-//       fetchNotifications();
-
-//       // Poll for new notifications every 30 seconds
-//       const interval = setInterval(fetchUnreadCount, 30000);
-//       return () => {
-//         console.log('Clearing notification interval');
-//         clearInterval(interval);
-//       };
-//     }
-//   }, [fetchUnreadCount, fetchNotifications]);
-
-//   return {
-//     unreadCount,
-//     notifications,
-//     fetchUnreadCount,
-//     fetchNotifications,
-//     markAsRead
-//   };
-// };
-// import { useState, useEffect, useCallback } from 'react';
-// import axios from 'axios';
-// import {jwtDecode} from 'jwt-decode';
-
-// export const useNotifications = () => {
-//   const [unreadCount, setUnreadCount] = useState(0);
-//   const [notifications, setNotifications] = useState([]);
+//   const [isInitialized, setIsInitialized] = useState(false);
 
 //   // Get the full API base URL
 //   const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -119,6 +232,7 @@
 //       console.log('🔔 PRODUCTION DEBUG - Token exists:', !!token);
       
 //       if (!token) {
+//         console.log('🔔 No token available for fetchUnreadCount');
 //         setUnreadCount(0);
 //         return;
 //       }
@@ -143,12 +257,6 @@
 //         data: error.response?.data,
 //         url: error.config?.url
 //       });
-      
-//       // Check for CORS issues
-//       if (error.message.includes('Network Error') || error.message.includes('CORS')) {
-//         console.error('🔔 CORS Error - Check backend CORS configuration for:', window.location.origin);
-//       }
-      
 //       setUnreadCount(0);
 //     }
 //   }, [API_BASE]);
@@ -156,6 +264,11 @@
 //   const fetchNotifications = useCallback(async () => {
 //     try {
 //       const token = localStorage.getItem('token');
+//       if (!token) {
+//         console.log('🔔 No token available for fetchNotifications');
+//         return;
+//       }
+      
 //       const response = await axios.get(`${API_BASE}/notifications`, {
 //         headers: { 
 //           Authorization: `Bearer ${token}`,
@@ -188,22 +301,58 @@
 //     }
 //   }, [API_BASE, fetchUnreadCount]);
 
+//   // Listen for token changes and login events
 //   useEffect(() => {
-//     console.log('🔔 useNotifications mounted - API_BASE:', API_BASE);
-    
-//     const token = localStorage.getItem('token');
-//     if (token) {
-//       fetchUnreadCount();
-//       fetchNotifications();
+//     const checkTokenAndInitialize = () => {
+//       const token = localStorage.getItem('token');
+//       console.log('🔔 Token check:', !!token);
+      
+//       if (token && !isInitialized) {
+//         console.log('🔔 Initializing notifications...');
+//         fetchUnreadCount();
+//         fetchNotifications();
+//         setIsInitialized(true);
+//       }
+//     };
 
-//       // Poll for new notifications every 30 seconds
+//     // Check immediately
+//     checkTokenAndInitialize();
+
+//     // Listen for storage events (when token is set in another tab/window)
+//     const handleStorageChange = (e) => {
+//       if (e.key === 'token') {
+//         console.log('🔔 Token storage changed');
+//         checkTokenAndInitialize();
+//       }
+//     };
+
+//     // Listen for custom login event (you can trigger this after successful login)
+//     const handleLogin = () => {
+//       console.log('🔔 Login event received');
+//       setTimeout(checkTokenAndInitialize, 1000); // Small delay to ensure token is saved
+//     };
+
+//     window.addEventListener('storage', handleStorageChange);
+//     window.addEventListener('userLoggedIn', handleLogin); // Custom event
+
+//     return () => {
+//       window.removeEventListener('storage', handleStorageChange);
+//       window.removeEventListener('userLoggedIn', handleLogin);
+//     };
+//   }, [fetchUnreadCount, fetchNotifications, isInitialized]);
+
+//   // Polling effect - only start when we have a token
+//   useEffect(() => {
+//     const token = localStorage.getItem('token');
+//     if (token && isInitialized) {
+//       console.log('🔔 Starting notification polling');
 //       const interval = setInterval(fetchUnreadCount, 30000);
 //       return () => {
-//         console.log('Clearing notification interval');
+//         console.log('🔔 Clearing notification interval');
 //         clearInterval(interval);
 //       };
 //     }
-//   }, [fetchUnreadCount, fetchNotifications, API_BASE]);
+//   }, [fetchUnreadCount, isInitialized]);
 
 //   return {
 //     unreadCount,
@@ -213,21 +362,33 @@
 //     markAsRead
 //   };
 // };
-import { useState, useEffect, useCallback } from 'react';
+
+
+
+
+
+
+
+
+
+
+
+
+import { useState, useEffect, useCallback, useContext } from 'react';
 import axios from 'axios';
 import {jwtDecode} from 'jwt-decode';
+import { UserContext } from './UserContext'; // Adjust import path
 
 export const useNotifications = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  // Get the full API base URL
+  
+  // Get token from UserContext instead of localStorage directly
+  const { token } = useContext(UserContext);
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
       console.log('🔔 PRODUCTION DEBUG - API_BASE:', API_BASE);
       console.log('🔔 PRODUCTION DEBUG - Token exists:', !!token);
       
@@ -240,7 +401,6 @@ export const useNotifications = () => {
       const decoded = jwtDecode(token);
       console.log('🔔 PRODUCTION DEBUG - Current user:', decoded.userId);
 
-      // Use full URL to your backend
       const response = await axios.get(`${API_BASE}/unread-count`, {
         headers: { 
           Authorization: `Bearer ${token}`,
@@ -251,19 +411,13 @@ export const useNotifications = () => {
       console.log('🔔 PRODUCTION DEBUG - API Success:', response.data);
       setUnreadCount(response.data.count);
     } catch (error) {
-      console.error('🔔 PRODUCTION DEBUG - API Error:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        url: error.config?.url
-      });
+      console.error('🔔 PRODUCTION DEBUG - API Error:', error);
       setUnreadCount(0);
     }
-  }, [API_BASE]);
+  }, [API_BASE, token]); // Add token to dependencies
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
       if (!token) {
         console.log('🔔 No token available for fetchNotifications');
         return;
@@ -282,77 +436,44 @@ export const useNotifications = () => {
         setNotifications([]);
       }
     }
-  }, [API_BASE]);
+  }, [API_BASE, token]); // Add token to dependencies
 
   const markAsRead = useCallback(async (reclamationId = null) => {
     try {
       console.log('Marking notifications as read...', { reclamationId });
-      const token = localStorage.getItem('token');
       await axios.post(`${API_BASE}/mark-as-read`, { reclamationId }, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-      // Refresh counts after marking as read
       await fetchUnreadCount();
     } catch (error) {
       console.error('Error marking notifications as read:', error);
     }
-  }, [API_BASE, fetchUnreadCount]);
+  }, [API_BASE, token, fetchUnreadCount]);
 
-  // Listen for token changes and login events
+  // This effect runs when the token changes
   useEffect(() => {
-    const checkTokenAndInitialize = () => {
-      const token = localStorage.getItem('token');
-      console.log('🔔 Token check:', !!token);
-      
-      if (token && !isInitialized) {
-        console.log('🔔 Initializing notifications...');
-        fetchUnreadCount();
-        fetchNotifications();
-        setIsInitialized(true);
-      }
-    };
+    console.log('🔔 Token changed in context:', !!token);
+    
+    if (token) {
+      console.log('🔔 Token available, fetching notifications...');
+      fetchUnreadCount();
+      fetchNotifications();
 
-    // Check immediately
-    checkTokenAndInitialize();
-
-    // Listen for storage events (when token is set in another tab/window)
-    const handleStorageChange = (e) => {
-      if (e.key === 'token') {
-        console.log('🔔 Token storage changed');
-        checkTokenAndInitialize();
-      }
-    };
-
-    // Listen for custom login event (you can trigger this after successful login)
-    const handleLogin = () => {
-      console.log('🔔 Login event received');
-      setTimeout(checkTokenAndInitialize, 1000); // Small delay to ensure token is saved
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('userLoggedIn', handleLogin); // Custom event
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('userLoggedIn', handleLogin);
-    };
-  }, [fetchUnreadCount, fetchNotifications, isInitialized]);
-
-  // Polling effect - only start when we have a token
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token && isInitialized) {
-      console.log('🔔 Starting notification polling');
+      // Start polling only when we have a token
       const interval = setInterval(fetchUnreadCount, 30000);
       return () => {
         console.log('🔔 Clearing notification interval');
         clearInterval(interval);
       };
+    } else {
+      console.log('🔔 No token, clearing notifications');
+      setUnreadCount(0);
+      setNotifications([]);
     }
-  }, [fetchUnreadCount, isInitialized]);
+  }, [token, fetchUnreadCount, fetchNotifications]); // Run when token changes
 
   return {
     unreadCount,

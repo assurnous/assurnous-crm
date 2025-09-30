@@ -7,10 +7,10 @@ export const UserContext = createContext();
 export const UserContextProvider = ({ children }) => {
     const [token, setToken] = useState(localStorage.getItem('token')); 
     const decodedToken = token ? jwtDecode(token) : "";
-    console.log('decodedToken', decodedToken);
+
 
     const isLoggedIn = () => {
-        if (token) {
+        if (token && decodedToken) {
             try {
                 const currentTime = Date.now() / 1000; // Convert to seconds
                 if (decodedToken.exp < currentTime) {
