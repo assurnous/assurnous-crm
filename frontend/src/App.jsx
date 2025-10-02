@@ -43,6 +43,7 @@ import Interlouteurs from "./pages/Interlouteurs";
 // import { NotificationProvider } from "./NotificationContext";
 // import NotificationUpdater from "./components/NotificationUpdater";
 import DetailsSinistres from "./pages/DetailsSinistres";
+import Clientdigital from "./pages/Clientdigital";
 
 
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -66,6 +67,8 @@ function App() {
             <Route index element={<Home />} />
             {/* Route for Leads at `/leads` */}
             <Route path="clients" element={<Leads />} />
+            <Route path="clientdigital" element={<Clientdigital />} />
+
             <Route path="leads/:id/ajouter-produit" element={<AjouterProduit />} />
             <Route path="leads/:id/ajouter-produit/:produitId" element={<AjouterProduit />} />
             <Route path="/produits" element={<Programmes />} />

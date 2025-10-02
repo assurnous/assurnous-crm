@@ -190,36 +190,74 @@ const Leads = () => {
 
   const totalPages = Math.ceil(chatData.length / pageSize);
 
-  useEffect(() => {
-    const getUserData = async () => {
-      try {
-        const response = await axios.get("/data");
-        setChatData(response.data.chatData);
-        console.log("Fetched chat data:", response.data.chatData);
+  // useEffect(() => {
+  //   const getUserData = async () => {
+  //     try {
+  //       const response = await axios.get("/data");
+  //       setChatData(response.data.chatData);
+  //       console.log("Fetched chat data:", response.data.chatData);
 
-        if (activeFilter === "prospect") {
-          setFilteredData(
-            response.data.chatData.filter((item) => item.type === "prospect")
-          );
-        } else if (activeFilter === "client") {
-          setFilteredData(
-            response.data.chatData.filter((item) => item.type === "client")
-          );
-        } else if (activeFilter === "Gelé") {
-          setFilteredData(response.data.chatData);
-        } else if (activeFilter === "tous") {
-          setFilteredData(response.data.chatData);
-        }
-      } catch (err) {
-        setError("Failed to fetch data");
-      } finally {
-        setLoading(false);
+  //       if (activeFilter === "prospect") {
+  //         setFilteredData(
+  //           response.data.chatData.filter((item) => item.type === "prospect")
+  //         );
+  //       } else if (activeFilter === "client") {
+  //         setFilteredData(
+  //           response.data.chatData.filter((item) => item.type === "client")
+  //         );
+  //       } else if (activeFilter === "Gelé") {
+  //         setFilteredData(response.data.chatData);
+  //       } else if (activeFilter === "tous") {
+  //         setFilteredData(response.data.chatData);
+  //       }
+  //     } catch (err) {
+  //       setError("Failed to fetch data");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   getUserData();
+  // }, [activeFilter, refreshTrigger]);
+// In your Leads component
+useEffect(() => {
+  const getUserData = async () => {
+    try {
+      const response = await axios.get("/data");
+      const allData = response.data.chatData;
+      
+      // Filter for regular clients - those that don't have digital-specific fields
+      const regularClients = allData.filter(item => 
+        !item.agence && 
+        !item.assurances_interessees && 
+        !item.rappel_at && 
+        !item.comment
+      );
+
+      setChatData(regularClients);
+
+      if (activeFilter === "prospect") {
+        setFilteredData(
+          regularClients.filter((item) => item.type === "prospect")
+        );
+      } else if (activeFilter === "client") {
+        setFilteredData(
+          regularClients.filter((item) => item.type === "client")
+        );
+      } else if (activeFilter === "Gelé") {
+        setFilteredData(regularClients);
+      } else if (activeFilter === "tous") {
+        setFilteredData(regularClients);
       }
-    };
+    } catch (err) {
+      setError("Failed to fetch data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    getUserData();
-  }, [activeFilter, refreshTrigger]);
-
+  getUserData();
+}, [activeFilter, refreshTrigger]);
   const handleImportSuccess = () => {
     setIsOpenModalImport(false);
     setRefreshTrigger((prev) => prev + 1);

@@ -132,6 +132,17 @@ const SideBar = () => {
       role: ["Admin"],
         },
         {
+          key: "/clientdigital",
+      icon: (
+        <FontAwesomeIcon
+          icon={faUsers}
+          style={{ fontSize: "18px", marginRight: "2px" }}
+        />
+      ),
+      label: "Client digital",
+      role: ["Admin"],
+        },
+        {
           key: "/clients-lists",
           icon: (
             <FontAwesomeIcon

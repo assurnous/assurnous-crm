@@ -12,8 +12,11 @@ import {
   TeamOutlined,
   UserOutlined,
   DeleteOutlined,
-  CloseOutlined 
-  
+  CloseOutlined,
+  CalendarOutlined,
+  BankOutlined,
+  MessageOutlined
+
 } from "@ant-design/icons";
 import { jwtDecode } from "jwt-decode";
 import PhoneInput from "react-phone-input-2";
@@ -24,6 +27,7 @@ import ContratTabContent from "../components/TabsContent/ContratTabContent";
 import DocumentTabContent from "../components/TabsContent/DocumentTabContent";
 import SinistreTabContent from "../components/TabsContent/SinistreTabContent";
 import ReclamtionTabContent from "../components/TabsContent/ReclamtionTabContent";
+import dayjs from "dayjs";
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
@@ -49,13 +53,25 @@ const ClientDetailPage = () => {
     setIsModalOpen(false);
   };
 
+  // useEffect(() => {
+  //   if (isModalOpen && client) {
+  //     // Format dates and other special fields before setting form values
+  //     const formattedData = {
+  //       ...client,
+  //       date_naissance: client.date_naissance ? moment(client.date_naissance) : null,
+  //       date_creation: client.date_creation ? moment(client.date_creation) : null,
+  //     };
+      
+  //     form.setFieldsValue(formattedData);
+  //   }
+  // }, [isModalOpen, client, form]);
   useEffect(() => {
     if (isModalOpen && client) {
-      // Format dates and other special fields before setting form values
       const formattedData = {
         ...client,
-        date_naissance: client.date_naissance ? moment(client.date_naissance) : null,
-        date_creation: client.date_creation ? moment(client.date_creation) : null,
+        date_naissance: client.date_naissance ? dayjs(client.date_naissance) : null,
+        date_creation: client.date_creation ? dayjs(client.date_creation) : null,
+        rappel_at: client.rappel_at ? dayjs(client.rappel_at) : null,
       };
       
       form.setFieldsValue(formattedData);
@@ -198,6 +214,11 @@ const ClientDetailPage = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString('fr-FR');
   };
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return date.toLocaleString('fr-FR');
+  };
 
   const renderStatusTag = (statut) => {
     const statusMap = {
@@ -218,6 +239,13 @@ const ClientDetailPage = () => {
     const category = categoryMap[categorie] || { color: 'gray', text: categorie };
     return <Tag color={category.color}>{category.text}</Tag>;
   };
+
+  const hasDigitalData = client && (
+    client.agence || 
+    client.assurances_interessees || 
+    client.rappel_at || 
+    client.comment
+  );
 
   if (loading) {
     return <div className="text-center my-10">Chargement en cours...</div>;
@@ -245,6 +273,7 @@ const ClientDetailPage = () => {
       <span className="flex gap-2">
         {renderStatusTag(client.statut)}
         {renderCategoryTag(client.categorie)}
+        {hasDigitalData && <Tag color="blue">Client Digital</Tag>}
       </span>
     </Title>
   </div>
@@ -378,6 +407,75 @@ const ClientDetailPage = () => {
                 <Option value="societe">Société</Option>
               </Select>
             </Form.Item>
+            {hasDigitalData && (
+              <>
+                <h2 className="text-sm font-semibold mt-6 mb-2">
+                  INFORMATIONS DIGITALES
+                </h2>
+
+                {/* Agence */}
+                <Form.Item
+                  label={<span className="text-xs font-medium">AGENCE</span>}
+                  name="agence"
+                  className="mb-0"
+                >
+                  <Select
+                    className="w-full text-xs h-7"
+                    placeholder="-- Choisissez l'agence --"
+                  >
+                    <Option value="LENS">LENS</Option>
+                    <Option value="VALENCIENNES">VALENCIENNES</Option>
+                    <Option value="LILLE">LILLE</Option>
+                  </Select>
+                </Form.Item>
+
+                {/* Assurances intéressées */}
+                <Form.Item
+                  label={<span className="text-xs font-medium">ASSURANCES INTÉRESSÉES</span>}
+                  name="assurances_interessees"
+                  className="mb-0"
+                >
+                  <Select
+                    mode="multiple"
+                    className="w-full text-xs"
+                    placeholder="-- Sélectionnez les assurances --"
+                  >
+                    <Option value="Assurance auto">Assurance auto</Option>
+                    <Option value="Assurance habitation">Assurance habitation</Option>
+                    <Option value="Assurance santé">Assurance santé</Option>
+                    <Option value="Assurance vie">Assurance vie</Option>
+                    <Option value="Autre">Autre</Option>
+                  </Select>
+                </Form.Item>
+
+                {/* Date de rappel */}
+                <Form.Item
+                  label={<span className="text-xs font-medium">DATE DE RAPPEL</span>}
+                  name="rappel_at"
+                  className="mb-0"
+                >
+                  <DatePicker
+                    className="w-full text-xs h-7"
+                    format="DD/MM/YYYY"
+                    // showTime
+                    placeholder="Sélectionnez la date de rappel"
+                  />
+                </Form.Item>
+
+                {/* Commentaire digital */}
+                <Form.Item
+                  label={<span className="text-xs font-medium">COMMENTAIRE DIGITAL</span>}
+                  name="comment"
+                  className="mb-0"
+                >
+                  <Input.TextArea
+                    rows={3}
+                    className="w-full text-xs"
+                    placeholder="Commentaire digital..."
+                  />
+                </Form.Item>
+              </>
+            )}
 
             {/* === INFORMATIONS PERSONNELLES === */}
             <h2 className="text-sm font-semibold mt-6 mb-2">
@@ -1210,6 +1308,42 @@ const ClientDetailPage = () => {
         {/* General Information Tab */}
         <TabPane tab="Informations Générales" key="general">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {hasDigitalData && (
+              <Card title={<><BankOutlined /> Informations Digitales</>}>
+                <Descriptions column={1} bordered size="small">
+                  {client.agence && (
+                    <Descriptions.Item label="Agence">
+                      <Tag color="blue">{client.agence}</Tag>
+                    </Descriptions.Item>
+                  )}
+                  {client.assurances_interessees && client.assurances_interessees.length > 0 && (
+                    <Descriptions.Item label="Assurances intéressées">
+                      <Space direction="vertical" size="small">
+                        {client.assurances_interessees.map((assurance, index) => (
+                          <Tag key={index} color="green">{assurance}</Tag>
+                        ))}
+                      </Space>
+                    </Descriptions.Item>
+                  )}
+                  {client.rappel_at && (
+                    <Descriptions.Item label="Rappel programmé">
+                      <div className="flex items-center gap-2">
+                        <CalendarOutlined />
+                        {formatDate(client.rappel_at)}
+                      </div>
+                    </Descriptions.Item>
+                  )}
+                  {client.comment && (
+                    <Descriptions.Item label="Commentaire">
+                      <div className="bg-gray-50 p-3 rounded border">
+                        <MessageOutlined className="mr-2" />
+                        {client.comment}
+                      </div>
+                    </Descriptions.Item>
+                  )}
+                </Descriptions>
+              </Card>
+            )}
             {/* Personal Information Card */}
             <Card title={<><IdcardOutlined /> Informations Personnelles</>}>
               <Descriptions column={1} bordered size="small">
