@@ -53,6 +53,7 @@ const DocumentTabContent = () => {
     try {
       setLoading(true);
       const response = await axios.get(`/documents/${id}`);
+      console.log("Fetched documents:", response.data);
       setDocuments(response.data);
       setFilteredDocuments(response.data);
     } catch (error) {
