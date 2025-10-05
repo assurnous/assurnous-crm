@@ -220,35 +220,75 @@ const Leads = () => {
   //   getUserData();
   // }, [activeFilter, refreshTrigger]);
 // In your Leads component
+// useEffect(() => {
+//   const getUserData = async () => {
+//     try {
+//       const response = await axios.get("/data");
+//       const allData = response.data.chatData;
+      
+//       // Filter for regular clients - those that don't have digital-specific fields
+//       const regularClients = allData.filter(item => 
+//         !item.agence || 
+//         !item.assurances_interessees || 
+//         !item.rappel_at || // Updated to use || for correct logic
+//         !item.comment
+//       );
+
+//       setChatData(regularClients);
+//       setFilteredData(regularClients); // Initialize filteredData with all regular clients
+
+//       if (activeFilter === "prospect") {
+//         setFilteredData(
+//           regularClients.filter((item) => item.type === "prospect")
+//         );
+//       } else if (activeFilter === "client") {
+//         setFilteredData(
+//           regularClients.filter((item) => item.type === "client")
+//         );
+//       } else if (activeFilter === "Gelé") {
+//         setFilteredData(regularClients);
+//       } else if (activeFilter === "tous") {
+//         setFilteredData(regularClients);
+//       }
+//     } catch (err) {
+//       setError("Failed to fetch data");
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   getUserData();
+// }, [activeFilter, refreshTrigger]);
 useEffect(() => {
   const getUserData = async () => {
     try {
       const response = await axios.get("/data");
       const allData = response.data.chatData;
       
-      // Filter for regular clients - those that don't have digital-specific fields
-      const regularClients = allData.filter(item => 
-        !item.agence || 
-        !item.assurances_interessees || 
-        !item.rappel_at || // Updated to use || for correct logic
-        !item.comment
-      );
+      // Simple filter: exclude clients that have ALL digital fields populated
+      const regularClients = allData.filter(item => {
+        // Consider it a digital client only if it has all these fields with values
+        const isDigitalClient = item.agence && 
+                              item.assurances_interessees && 
+                              item.assurances_interessees.length > 0 && 
+                              item.rappel_at && 
+                              item.comment && 
+                              item.comment.trim() !== '';
+        
+        return !isDigitalClient;
+      });
 
-      setChatData(regularClients);
-      setFilteredData(regularClients); // Initialize filteredData with all regular clients
+      // Sort by creation date (newest first)
+      const sortedData = regularClients.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
 
-      if (activeFilter === "prospect") {
-        setFilteredData(
-          regularClients.filter((item) => item.type === "prospect")
-        );
-      } else if (activeFilter === "client") {
-        setFilteredData(
-          regularClients.filter((item) => item.type === "client")
-        );
-      } else if (activeFilter === "Gelé") {
-        setFilteredData(regularClients);
-      } else if (activeFilter === "tous") {
-        setFilteredData(regularClients);
+      setChatData(sortedData);
+      setFilteredData(sortedData);
+
+      // Apply status filters
+      if (activeFilter !== "tous") {
+        setFilteredData(sortedData.filter((item) => item.statut === activeFilter));
       }
     } catch (err) {
       setError("Failed to fetch data");

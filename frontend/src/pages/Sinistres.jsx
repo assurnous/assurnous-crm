@@ -82,6 +82,40 @@ const Sinistres = () => {
 
     fetchContrats();
   }, []);
+  // useEffect(() => {
+  //   const fetchSinistres = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+  //     setLoading(true);
+  //     try {
+  //       const response = await axios.get("/sinistres");
+  //       console.log("Fetched sinistres:", response.data);
+  //       const decodedToken = jwtDecode(token);
+  //       const currentUserId = decodedToken?.userId;
+  //       const role = decodedToken.role;
+  //       const name = decodedToken.name;
+
+  //       // Fix the filtering logic
+  //       let filteredData = response.data.data || [];
+  //       if (role !== "Admin") {
+  //         filteredData = filteredData.filter(
+  //           (sinistre) =>
+  //             sinistre.session?._id === currentUserId ||
+  //             sinistre.session === currentUserId ||
+  //             sinistre.gestionnaire === name
+  //         );
+  //       }
+
+  //       setAllSinistres(filteredData);
+  //       setFilteredSinistres(filteredData);
+  //     } catch (error) {
+  //       console.error("Error fetching sinistre", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   fetchSinistres();
+  // }, [refreshTrigger]);
   useEffect(() => {
     const fetchSinistres = async () => {
       const token = localStorage.getItem("token");
@@ -94,7 +128,7 @@ const Sinistres = () => {
         const currentUserId = decodedToken?.userId;
         const role = decodedToken.role;
         const name = decodedToken.name;
-
+  
         // Fix the filtering logic
         let filteredData = response.data.data || [];
         if (role !== "Admin") {
@@ -105,9 +139,16 @@ const Sinistres = () => {
               sinistre.gestionnaire === name
           );
         }
-
-        setAllSinistres(filteredData);
-        setFilteredSinistres(filteredData);
+  
+        // Sort by creation date (newest first)
+        const sortedData = filteredData.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.dateSinistre || 0);
+          const dateB = new Date(b.createdAt || b.dateSinistre || 0);
+          return dateB - dateA; // Descending order (newest first)
+        });
+  
+        setAllSinistres(sortedData);
+        setFilteredSinistres(sortedData);
       } catch (error) {
         console.error("Error fetching sinistre", error);
       } finally {
@@ -116,7 +157,6 @@ const Sinistres = () => {
     };
     fetchSinistres();
   }, [refreshTrigger]);
-
   const handleFilterChange = (filterName, value) => {
     const newFilters = {
       ...filters,
@@ -795,16 +835,45 @@ const Sinistres = () => {
     //     return "N/A";
     //   },
     // },
+    // {
+    //   title: "Gestionnaire",
+    //   key: "gestionnaire",
+    //   render: (_, record) => {
+    //     // First check sinistreDetails.gestionnaireName (your data shows this exists)
+    //     if (record.gestionnaire?.name) {
+    //       return record.gestionnaire.name;
+    //     }
+
+    //     // Final fallback
+    //     return "N/A";
+    //   },
+    // },
     {
       title: "Gestionnaire",
       key: "gestionnaire",
       render: (_, record) => {
-        // First check sinistreDetails.gestionnaireName (your data shows this exists)
-        if (record.gestionnaire?.name) {
-          return record.gestionnaire.name;
+        const gestionnaire = record.gestionnaire;
+        
+        if (!gestionnaire) return "N/A";
+        
+        // Commercial model - has nom and prenom
+        if (gestionnaire.nom && gestionnaire.prenom) {
+          return `${gestionnaire.nom} ${gestionnaire.prenom}`;
         }
-
-        // Final fallback
+        
+        // Admin model - has name
+        if (gestionnaire.name) {
+          return gestionnaire.name;
+        }
+        
+        // Fallback - check any string field
+        const stringFields = ['nom', 'prenom', 'name', 'email'];
+        for (let field of stringFields) {
+          if (gestionnaire[field] && typeof gestionnaire[field] === 'string') {
+            return gestionnaire[field];
+          }
+        }
+        
         return "N/A";
       },
     },
@@ -1052,6 +1121,7 @@ const Sinistres = () => {
                 `${range[0]}-${range[1]} of ${total} items`,
             }}
             rowKey={(record) => record._id}
+            
             bordered
             className="custom-table text-xs sm:text-sm"
             // rowSelection={rowSelection}

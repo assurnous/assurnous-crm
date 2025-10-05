@@ -176,35 +176,82 @@ const Clientdigital = () => {
 
   //   getUserData();
   // }, [activeFilter, refreshTrigger]);
+  // useEffect(() => {
+  //   const getUserData = async () => {
+  //     try {
+  //       const response = await axios.get("/data");
+  //       const allData = response.data.chatData;
+        
+  //       // Filter for regular clients - those that don't have digital-specific fields
+  //       const regularClients = allData.filter(item => 
+  //         item.agence && 
+  //         item.assurances_interessees && 
+  //         item.rappel_at && 
+  //         item.comment
+  //       );
+  
+  //       setChatData(regularClients);
+  //       setFilteredData(regularClients); // Initialize filteredData with all regular clients
+  
+  //       if (activeFilter === "prospect") {
+  //         setFilteredData(
+  //           regularClients.filter((item) => item.type === "prospect")
+  //         );
+  //       } else if (activeFilter === "client") {
+  //         setFilteredData(
+  //           regularClients.filter((item) => item.type === "client")
+  //         );
+  //       } else if (activeFilter === "Gelé") {
+  //         setFilteredData(regularClients);
+  //       } else if (activeFilter === "tous") {
+  //         setFilteredData(regularClients);
+  //       }
+  //     } catch (err) {
+  //       setError("Failed to fetch data");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  
+  //   getUserData();
+  // }, [activeFilter, refreshTrigger]);
   useEffect(() => {
     const getUserData = async () => {
       try {
         const response = await axios.get("/data");
         const allData = response.data.chatData;
         
-        // Filter for regular clients - those that don't have digital-specific fields
-        const regularClients = allData.filter(item => 
+        // Filter for digital clients - those that have digital-specific fields
+        const digitalClients = allData.filter(item => 
           item.agence && 
           item.assurances_interessees && 
           item.rappel_at && 
           item.comment
         );
   
-        setChatData(regularClients);
-        setFilteredData(regularClients); // Initialize filteredData with all regular clients
+        // Sort by creation date (newest first)
+        const sortedData = digitalClients.sort((a, b) => {
+          const dateA = new Date(a.createdAt);
+          const dateB = new Date(b.createdAt);
+          return dateB - dateA; // Descending order (newest first)
+        });
   
+        setChatData(sortedData);
+        setFilteredData(sortedData); // Initialize filteredData with sorted data
+  
+        // Apply active filter if needed
         if (activeFilter === "prospect") {
           setFilteredData(
-            regularClients.filter((item) => item.type === "prospect")
+            sortedData.filter((item) => item.statut === "prospect")
           );
         } else if (activeFilter === "client") {
           setFilteredData(
-            regularClients.filter((item) => item.type === "client")
+            sortedData.filter((item) => item.statut === "client")
           );
         } else if (activeFilter === "Gelé") {
-          setFilteredData(regularClients);
+          setFilteredData(sortedData.filter((item) => item.statut === "Gelé"));
         } else if (activeFilter === "tous") {
-          setFilteredData(regularClients);
+          setFilteredData(sortedData);
         }
       } catch (err) {
         setError("Failed to fetch data");

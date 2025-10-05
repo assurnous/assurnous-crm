@@ -946,6 +946,25 @@ const SinistreTabContent = () => {
           showTotal: (total, range) =>
             `${range[0]}-${range[1]} of ${total} items`,
         }}
+        onRow={(record) => ({
+          onClick: (e) => {
+            // Check if the click was on an action button
+            if (e.target.closest('.ant-btn, .ant-space, .ant-tooltip')) {
+              return; // Don't navigate if clicking on actions
+            }
+            window.location.href = `/Sinistres/${record.originalData._id}`;
+          },
+          style: { 
+            cursor: 'pointer',
+            transition: 'background-color 0.2s'
+          },
+          onMouseEnter: (e) => {
+            e.currentTarget.style.backgroundColor = '#f5f5f5';
+          },
+          onMouseLeave: (e) => {
+            e.currentTarget.style.backgroundColor = '';
+          },
+        })}
         scroll={{ x: "max-content" }}
         rowKey={(record) => record._id}
       />
