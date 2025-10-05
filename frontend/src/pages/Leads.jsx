@@ -228,13 +228,14 @@ useEffect(() => {
       
       // Filter for regular clients - those that don't have digital-specific fields
       const regularClients = allData.filter(item => 
-        !item.agence && 
-        !item.assurances_interessees && 
-        !item.rappel_at && 
+        !item.agence || 
+        !item.assurances_interessees || 
+        !item.rappel_at || // Updated to use || for correct logic
         !item.comment
       );
 
       setChatData(regularClients);
+      setFilteredData(regularClients); // Initialize filteredData with all regular clients
 
       if (activeFilter === "prospect") {
         setFilteredData(
@@ -422,6 +423,7 @@ useEffect(() => {
         </Select>
       ),
     },
+   
     // {
     //   title: "GESTIONNAIRE",
     //   key: "gestionnaire",
@@ -440,13 +442,36 @@ useEffect(() => {
     //     >
     //       <Option value="">Non assigné</Option>
     //       {users.map((user) => {
-    //         const displayName =
-    //           (user.userType === "admin" || user.userType === "Manager" || user.userType === "Commercial") ? user.name
-    //             : `${user.nom} ${user.prenom}`;
+    //         // Determine display name based on user type
+    //         let displayName;
+    //         if (user.userType === "admin") {
+    //           displayName = user.name;
+    //         } else if (user.userType === "manager" || user.userType === "commercial") {
+    //           displayName = `${user.prenom || ''} ${user.nom || ''}`.trim();
+    //         } else {
+    //           // Fallback for any other user types
+    //           displayName = user.name || user.email || user._id;
+    //         }
+    
+    //         // Determine display type label
+    //         let typeLabel;
+    //         switch(user.userType) {
+    //           case "admin":
+    //             typeLabel = "Admin";
+    //             break;
+    //           case "commercial":
+    //             typeLabel = "Commercial";
+    //             break;
+    //           case "manager":
+    //             typeLabel = "Manager";
+    //             break;
+    //           default:
+    //             typeLabel = user.userType || "Utilisateur";
+    //         }
     
     //         return (
     //           <Option key={user._id} value={user._id}>
-    //             {displayName} ({user.userType === "admin" ? "Admin" : "Commercial"})
+    //             {displayName} ({typeLabel})
     //           </Option>
     //         );
     //       })}
@@ -456,56 +481,69 @@ useEffect(() => {
     {
       title: "GESTIONNAIRE",
       key: "gestionnaire",
-      render: (text, record) => (
-        <Select
-          value={record.gestionnaire?._id || ""}
-          style={{ width: 180 }}
-          className="text-xs"
-          onChange={(value) => handleGestionnaireChange(value, record)}
-          showSearch
-          optionFilterProp="children"
-          filterOption={(input, option) =>
-            option.children.toLowerCase().includes(input.toLowerCase())
-          }
-          placeholder="-- Choisissez un gestionnaire --"
-        >
-          <Option value="">Non assigné</Option>
-          {users.map((user) => {
-            // Determine display name based on user type
-            let displayName;
-            if (user.userType === "admin") {
-              displayName = user.name;
-            } else if (user.userType === "manager" || user.userType === "commercial") {
-              displayName = `${user.prenom || ''} ${user.nom || ''}`.trim();
-            } else {
-              // Fallback for any other user types
-              displayName = user.name || user.email || user._id;
-            }
+      render: (text, record) => {
+        // Check if gestionnaire exists and has data
+        const hasGestionnaire = record.gestionnaire && record.gestionnaire._id;
+        const gestionnaireName = record.gestionnaireName || 
+                                (record.gestionnaire ? 
+                                  (record.gestionnaire.userType === 'admin' ? 
+                                    record.gestionnaire.name : 
+                                    `${record.gestionnaire.nom || ''} ${record.gestionnaire.prenom || ''}`.trim()
+                                  ) : 
+                                  null
+                                );
     
-            // Determine display type label
-            let typeLabel;
-            switch(user.userType) {
-              case "admin":
-                typeLabel = "Admin";
-                break;
-              case "commercial":
-                typeLabel = "Commercial";
-                break;
-              case "manager":
-                typeLabel = "Manager";
-                break;
-              default:
-                typeLabel = user.userType || "Utilisateur";
+        return (
+          <Select
+            value={hasGestionnaire ? record.gestionnaire._id : ""}
+            style={{ width: 180 }}
+            className="text-xs"
+            onChange={(value) => handleGestionnaireChange(value, record)}
+            showSearch
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option.children.toLowerCase().includes(input.toLowerCase())
             }
+            placeholder="-- Choisissez un gestionnaire --"
+          >
+            <Option value="">Non assigné</Option>
+            {users.map((user) => {
+              // Determine display name based on user type
+              let displayName;
+              if (user.userType === "admin") {
+                displayName = user.name;
+              } else if (user.userType === "manager" || user.userType === "commercial") {
+                displayName = `${user.prenom || ''} ${user.nom || ''}`.trim();
+              } else {
+                // Fallback for any other user types
+                displayName = user.name || user.email || user._id;
+              }
     
-            return (
-              <Option key={user._id} value={user._id}>
-                {displayName} ({typeLabel})
-              </Option>
-            );
-          })}
-        </Select>
-      ),
+              // Determine display type label
+              let typeLabel;
+              switch(user.userType) {
+                case "admin":
+                  typeLabel = "Admin";
+                  break;
+                case "commercial":
+                  typeLabel = "Commercial";
+                  break;
+                case "manager":
+                  typeLabel = "Manager";
+                  break;
+                default:
+                  typeLabel = user.userType || "Utilisateur";
+              }
+    
+              return (
+                <Option key={user._id} value={user._id}>
+                  {displayName} ({typeLabel})
+                </Option>
+              );
+            })}
+          </Select>
+        );
+      },
     },
     {
       title: <span style={{ fontSize: "12px" }}>Action</span>,

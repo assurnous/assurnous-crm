@@ -71,7 +71,7 @@ const DetailsSinistres = () => {
 
   const fetchSinistreDetails = async () => {
     try {
-      const response = await axios.get(`/sinistres/${id}`, {
+      const response = await axios.get(`/sinistres-detail/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -84,6 +84,7 @@ const DetailsSinistres = () => {
       setLoading(false);
     }
   };
+
 
   const fetchCommentaires = async () => {
     try {

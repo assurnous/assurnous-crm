@@ -562,6 +562,7 @@ const Sinistres = () => {
   const handleSinistreClick = (record) => {
     navigate(`/Sinistres/${record._id}`);
   };
+  
   const columns = [
     {
       title: "N° sinistre",
@@ -581,18 +582,58 @@ const Sinistres = () => {
       ),
     },
 
+    // {
+    //   title: "Client",
+    //   key: "client",
+    //   render: (_, record) => {
+    //     const isClickable = record.sinistreExist === "oui";
+    //     let clientName = "";
+
+    //     if (isClickable) {
+    //       if (record.sinistreDetails) {
+    //         clientName = `${record.sinistreDetails.nom} ${record.sinistreDetails.prenom}`;
+    //       } else if (record.leadId && typeof record.leadId === "object") {
+    //         clientName = `${record.leadId.nom} ${record.leadId.prenom}`;
+    //       } else {
+    //         clientName = "Client (non chargé)";
+    //       }
+    //     } else {
+    //       clientName =
+    //         `${record.sinistreNom || ""} ${
+    //           record.sinistrePrenom || ""
+    //         }`.trim() ||
+    //         record.sinistreInput ||
+    //         "N/A";
+    //     }
+
+    //     return (
+    //       <span
+    //       onClick={() => handleSinistreClick(record)}
+    //         style={{
+    //           cursor: isClickable ? "pointer" : "default",
+    //           color: isClickable ? "#1890ff" : "inherit",
+    //         }}
+    //       >
+    //         {clientName}
+    //       </span>
+    //     );
+    //   },
+    // },
     {
       title: "Client",
       key: "client",
       render: (_, record) => {
         const isClickable = record.sinistreExist === "oui";
         let clientName = "";
-
+        let leadId = null;
+    
         if (isClickable) {
           if (record.sinistreDetails) {
             clientName = `${record.sinistreDetails.nom} ${record.sinistreDetails.prenom}`;
+            leadId = record.sinistreDetails._id;
           } else if (record.leadId && typeof record.leadId === "object") {
             clientName = `${record.leadId.nom} ${record.leadId.prenom}`;
+            leadId = record.leadId._id;
           } else {
             clientName = "Client (non chargé)";
           }
@@ -604,13 +645,20 @@ const Sinistres = () => {
             record.sinistreInput ||
             "N/A";
         }
-
+    
+        const handleClientClick = () => {
+          if (isClickable && leadId) {
+            navigate(`/client/${leadId}`);
+          }
+        };
+    
         return (
           <span
-          onClick={() => handleSinistreClick(record)}
+            onClick={handleClientClick}
             style={{
-              cursor: isClickable ? "pointer" : "default",
-              color: isClickable ? "#1890ff" : "inherit",
+              cursor: isClickable && leadId ? "pointer" : "default",
+              color: isClickable && leadId ? "#1890ff" : "inherit",
+              textDecoration: isClickable && leadId ? "underline" : "none",
             }}
           >
             {clientName}

@@ -281,7 +281,8 @@ leadId: reclamation.leadId,
             ? new Date(reclamation.date_reclamation).toLocaleDateString()
             : "N/A",
             issue: reclamation.issue || "N/A",
-          date_cloture: reclamation.date_cloture,
+          date_cloture: reclamation.date_cloture ?
+            new Date(reclamation.date_cloture).toLocaleDateString() : "N/A",
           intermediaire: reclamation.declarant || "N/A",
             nom_reclamant_input: reclamation.nom_reclamant_input,
   prenom_reclamant_input: reclamation.prenom_reclamant_input,
@@ -464,7 +465,9 @@ const handleEdit = (record) => {
   // Prepare form values
   const formValues = {
     numero_reclamation: record.numero_reclamation,
-    date_reclamation: record.date_reclamation ? dayjs(record.date_reclamation) : null,
+    date_reclamation: record.originalData?.date_reclamation 
+    ? dayjs(record.originalData.date_reclamation) 
+    : null,
     canal_reclamation: record.canal_reclamation,
     date_accuse: record.date_accuse ? dayjs(record.date_accuse) : null,
     declarant: record.declarant,

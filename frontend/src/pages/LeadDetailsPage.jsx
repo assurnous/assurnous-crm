@@ -529,25 +529,19 @@ const ClientDetailPage = () => {
             </Form.Item>
 
             {/* Pays de naissance */}
-            <Form.Item
-              label={
-                <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
-              }
-              name="pays_naissance"
-              className="mb-0"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez --"
-                showSearch
-              >
-                <Option value="france">France</Option>
-                <Option value="belgique">Belgique</Option>
-                <Option value="suisse">Suisse</Option>
-                <Option value="autre">Autre</Option>
-              </Select>
-            </Form.Item>
+           <Form.Item
+            label={
+              <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
+            }
+            name="pays_naissance"
+            className="mb-0"
+            rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+          >
+            <Input 
+              className="w-full text-xs h-7" 
+              placeholder="Ex: France, Belgique, Suisse..." 
+            />
+          </Form.Item>
 
             {/* Code postal de naissance */}
             <Form.Item
@@ -1431,11 +1425,12 @@ const ClientDetailPage = () => {
             <Card title={<><TeamOutlined /> Gestion</>}>
               <Descriptions column={1} bordered size="small">
                 <Descriptions.Item label="Origine">{client.type_origine}</Descriptions.Item>
-                <Descriptions.Item label="Gestionnaire">{client.gestionnaire}</Descriptions.Item>
+                <Descriptions.Item label="Gestionnaire">{client.gestionnaireName}</Descriptions.Item>
+                
                 <Descriptions.Item label="Créé par">{client.cree_par}</Descriptions.Item>
                 {client.intermediaire && client.intermediaire.length > 0 && (
                   <Descriptions.Item label="Intermédiaires">
-                    {client.intermediaire.join(', ')}
+                    {client.intermediaire}
                   </Descriptions.Item>
                 )}
                 <Descriptions.Item label="Date de création">{formatDate(client.createdAt)}</Descriptions.Item>
