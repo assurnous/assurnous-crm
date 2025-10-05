@@ -739,7 +739,23 @@ export const ASSUREURS = [
     { value: 'ivs_prevoyance', label: 'IVS PREVOYANCE' },
     { value: 'ivs_sante', label: 'IVS SANTE' },
     { value: 'ivs_vie', label: 'IVS VIE' },
-    { value: 'zephir', label: 'ZEPHIR' }
+    { value: 'zephir', label: 'ZEPHIR' },
+    { value: 'oyat_assurances', label: 'OYAT ASSURANCES' },
+    { value: 'solly_azar', label: 'Solly Azar' },
+    { value: 'netvox', label: 'Netvox' },
+    { value: 'cmam', label: 'CMAM' },
+    { value: 'jl_assur', label: 'JLAssur' },
+    { value: 'tetris', label: 'Tetris' },
+    { value: 'orus', label: 'Orus' },
+    { value: 'sada', label: 'Sada' },
+    { value: 'zephir', label: 'Zephir' },
+    { value: 'assurea', label: 'Assurea' },
+    { value: 'malj', label: 'Malj' },
+    { value: 'ami3f', label: 'Ami3f' },
+    { value: 'leader', label: 'Leader' },
+    { value: 'assurmax', label: 'Assurmax' },
+    { value: 'xenassur', label: 'Xenassur' },
+    { value: 'mila', label: 'Mila' }
   ];
 
   export const RISQUES = [
