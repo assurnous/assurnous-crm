@@ -178,6 +178,42 @@ const Reclamations = () => {
   //     setLoading(false);
   //   }
   // };
+  // const fetchReclamations = async () => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token) return;
+    
+  //   setLoading(true);
+  //   try {
+  //     const decodedToken = jwtDecode(token);
+  //     const currentUserId = decodedToken?.userId;
+  //     const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+  
+  //     // Fetch all reclamations
+  //     const response = await axios.get("/reclamations");
+  //     const allReclamations = response.data.data || [];
+  
+  //     // Filter based on role
+  //     let filteredData;
+  //     if (isAdmin) {
+  //       // Admins see all reclamations
+  //       filteredData = allReclamations;
+  //     } else {
+  //       // Commercials see their own reclamations AND assigned reclamations
+  //       filteredData = allReclamations.filter(
+  //         reclamation => 
+  //           reclamation.session?._id.toString() === currentUserId ||
+  //           reclamation.assignedTo?.toString() === currentUserId
+  //       );
+  //     }
+  
+  //     setAllReclamations(filteredData);
+      
+  //   } catch (error) {
+  //     console.error("Error fetching reclamations:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const fetchReclamations = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -206,7 +242,12 @@ const Reclamations = () => {
         );
       }
   
-      setAllReclamations(filteredData);
+      // Sort by createdAt in descending order (newest first)
+      const sortedData = filteredData.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+  
+      setAllReclamations(sortedData);
       
     } catch (error) {
       console.error("Error fetching reclamations:", error);
@@ -890,7 +931,7 @@ const Reclamations = () => {
             <Form.Item
               label="N° de la réclamation"
               name="numero_reclamation"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input
                 className="w-full text-xs h-7"
@@ -901,7 +942,7 @@ const Reclamations = () => {
             <Form.Item
               label="Date de réclamation"
               name="date_reclamation"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <DatePicker className="w-full text-xs h-7" />
             </Form.Item>
@@ -909,7 +950,7 @@ const Reclamations = () => {
             <Form.Item
               label="Canal de réclamation"
               name="canal_reclamation"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -925,7 +966,7 @@ const Reclamations = () => {
             <Form.Item
               label="Date d'accusé de réclamation"
               name="date_accuse"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <DatePicker className="w-full text-xs h-7" />
             </Form.Item>
@@ -933,7 +974,7 @@ const Reclamations = () => {
             <Form.Item
               label="Déclarant"
               name="declarant"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -959,7 +1000,7 @@ const Reclamations = () => {
             <Form.Item
               label="Statut du réclamant"
               name="statut_reclamant"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -986,7 +1027,7 @@ const Reclamations = () => {
             <Form.Item
               label="Existe-t-il dans votre CRM ?"
               name="existe_crm"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
               initialValue="oui" // Set default value
             >
               <Radio.Group>
@@ -1002,7 +1043,7 @@ const Reclamations = () => {
                     label="Nom du réclamant"
                     name="nom_reclamant"
                     rules={[
-                      { required: true, message: "Ce champ est obligatoire" },
+                      { required: false, message: "Ce champ est obligatoire" },
                     ]}
                   >
                     <Select
@@ -1075,7 +1116,7 @@ const Reclamations = () => {
             <Form.Item
               label="Motif de la réclamation"
               name="motif"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -1147,7 +1188,7 @@ const Reclamations = () => {
             <Form.Item
               label="Service concerné"
               name="service_concerne"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7 flex"
@@ -1230,7 +1271,7 @@ const Reclamations = () => {
                 label="Précisez*"
                 rules={[
                   {
-                    required: true,
+                    required: false,
                     message: "Le champ autre service est obligatoire",
                   },
                 ]}
@@ -1245,7 +1286,7 @@ const Reclamations = () => {
             <Form.Item
               label="Pris en charge par"
               name="prise_en_charge_par"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -1278,7 +1319,7 @@ const Reclamations = () => {
             <Form.Item
               label="Niveau de traitement"
               name="niveau_traitement"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"
@@ -1301,7 +1342,7 @@ const Reclamations = () => {
             <Form.Item
               label="Commentaire"
               name="commentaire"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input.TextArea
                 rows={3}
@@ -1313,7 +1354,7 @@ const Reclamations = () => {
             <Form.Item
               label="Issue"
               name="issue"
-              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Select
                 className="w-full text-xs h-7"

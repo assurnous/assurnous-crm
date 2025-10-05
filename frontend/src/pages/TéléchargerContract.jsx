@@ -378,23 +378,119 @@ if (filterValues.search) {
     }
   };
 
+  // useEffect(() => {
+  //   const fetchAllContrats = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+     
+  
+
+  //     try {
+  //       setLoading(true);
+  //           const decodedToken = jwtDecode(token);
+  //             const currentUserId = decodedToken?.userId;
+  //             const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+  //       const response = await axios.get("/contrat");
+  //       console.log("Fetched contrats:", response.data);
+
+  //       const allContrat = response.data || [];
+
+  //       let filteredData;
+  //       if (isAdmin) {
+  //         // Admins see all devis
+  //         filteredData = allContrat;
+  //       } else {
+  //         // Commercials only see their own devis
+  //         filteredData = allContrat.filter(
+  //           contrat => contrat.session?._id?.toString() === currentUserId
+  //         );
+  //       }
+
+  //       const formattedData = filteredData.map(contrat => ({
+  //         key: contrat._id,
+  //         contractNumber: contrat.contractNumber,
+  //         categorie: contrat?.lead?.categorie || "N/A",  // This is correct
+  //         clientName: contrat.lead 
+  //   ? `${contrat.lead.prenom} ${contrat.lead.nom}` 
+  //   : contrat.clientId || "N/A",
+  //   gestionnaire:  contrat.lead?.gestionnaireName || "N/A", 
+  //         riskType: contrat.riskType,
+  //         insurer: contrat.insurer,
+  //         status: contrat.status,
+  //         source: contrat.type_origine,
+  //         commissionRate: contrat.commissionRate,
+  //         recurrentCommission: contrat.recurrentCommission,
+  //         prime: contrat.prime,
+  //         clientId: contrat.clientId || "N/A",
+  //         courtier: contrat.courtier || "Assurnous EAB assurances",
+  //         paymentMethod: contrat.paymentMethod,
+  //         anniversary: contrat.anniversary,
+  //         brokerageFees: contrat.brokerageFees,
+  //         paymentType: contrat.paymentType,
+  //         cree_par: contrat.cree_par,
+  //         type_origine: contrat.type_origine,
+  //         competitionContract: contrat.competitionContract,
+  //         effectiveDate: contrat.effectiveDate,
+  //         date_effet: contrat.effectiveDate
+  //           ? new Date(contrat.effectiveDate).toLocaleDateString()
+  //           : "N/A",
+  //         originalData: contrat,
+  //         documents: contrat.documents || [],
+  //         intermediaire: contrat.intermediaire || "N/A",
+  //         isForecast: Boolean(contrat.isForecast)
+  //       }));
+  //       setContratData(formattedData);
+  //       setFilteredContrat(formattedData);
+  //     } catch (error) {
+  //       console.error(
+  //         "Error fetching contrats:",
+  //         error.response?.data || error.message
+  //       );
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+    
+  //     fetchAllContrats();
+  // }, [refreshTrigger]);
+
+  // useEffect(() => {
+  //   const fetchClientsData = async () => {
+  //     setClientLoading(true);
+  //     try {
+  //       const response = await axios.get("/data");
+  //       console.log("Clients data fetched:", response.data);
+
+  //       // Extract the chatData array from response
+  //       const clientsData = response.data?.chatData || [];
+  //       setClients(clientsData);
+  //     } catch (error) {
+  //       console.error("Error fetching clients data:", error);
+  //       setClients([]);
+  //     } finally {
+  //       setClientLoading(false);
+  //     }
+  //   };
+
+  //   fetchClientsData();
+  // }, []);
   useEffect(() => {
     const fetchAllContrats = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
-     
   
-
       try {
         setLoading(true);
-            const decodedToken = jwtDecode(token);
-              const currentUserId = decodedToken?.userId;
-              const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+        const decodedToken = jwtDecode(token);
+        const currentUserId = decodedToken?.userId;
+        const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+        
         const response = await axios.get("/contrat");
         console.log("Fetched contrats:", response.data);
-
+  
         const allContrat = response.data || [];
-
+  
         let filteredData;
         if (isAdmin) {
           // Admins see all devis
@@ -405,15 +501,20 @@ if (filterValues.search) {
             contrat => contrat.session?._id?.toString() === currentUserId
           );
         }
-
-        const formattedData = filteredData.map(contrat => ({
+  
+        // Sort by createdAt in descending order (newest first)
+        const sortedData = filteredData.sort((a, b) => {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+  
+        const formattedData = sortedData.map(contrat => ({
           key: contrat._id,
           contractNumber: contrat.contractNumber,
-          categorie: contrat?.lead?.categorie || "N/A",  // This is correct
+          categorie: contrat?.lead?.categorie || "N/A",
           clientName: contrat.lead 
-    ? `${contrat.lead.prenom} ${contrat.lead.nom}` 
-    : contrat.clientId || "N/A",
-    gestionnaire:  contrat.lead?.gestionnaireName || "N/A", 
+            ? `${contrat.lead.prenom} ${contrat.lead.nom}` 
+            : contrat.clientId || "N/A",
+          gestionnaire: contrat.lead?.gestionnaireName || "N/A", 
           riskType: contrat.riskType,
           insurer: contrat.insurer,
           status: contrat.status,
@@ -437,8 +538,11 @@ if (filterValues.search) {
           originalData: contrat,
           documents: contrat.documents || [],
           intermediaire: contrat.intermediaire || "N/A",
-          isForecast: Boolean(contrat.isForecast)
+          isForecast: Boolean(contrat.isForecast),
+          // Add createdAt for reference if needed
+          createdAt: contrat.createdAt
         }));
+        
         setContratData(formattedData);
         setFilteredContrat(formattedData);
       } catch (error) {
@@ -450,32 +554,9 @@ if (filterValues.search) {
         setLoading(false);
       }
     };
-
-    
-      fetchAllContrats();
+  
+    fetchAllContrats();
   }, [refreshTrigger]);
-
-  // useEffect(() => {
-  //   const fetchClientsData = async () => {
-  //     setClientLoading(true);
-  //     try {
-  //       const response = await axios.get("/data");
-  //       console.log("Clients data fetched:", response.data);
-
-  //       // Extract the chatData array from response
-  //       const clientsData = response.data?.chatData || [];
-  //       setClients(clientsData);
-  //     } catch (error) {
-  //       console.error("Error fetching clients data:", error);
-  //       setClients([]);
-  //     } finally {
-  //       setClientLoading(false);
-  //     }
-  //   };
-
-  //   fetchClientsData();
-  // }, []);
-
   useEffect(() => {
     const fetchClientsData = async () => {
       setClientLoading(true);
