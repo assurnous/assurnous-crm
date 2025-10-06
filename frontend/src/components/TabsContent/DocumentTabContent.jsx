@@ -53,7 +53,6 @@ const DocumentTabContent = () => {
     try {
       setLoading(true);
       const response = await axios.get(`/documents/${id}`);
-      console.log("Fetched documents:", response.data);
       setDocuments(response.data);
       setFilteredDocuments(response.data);
     } catch (error) {
@@ -183,55 +182,131 @@ const DocumentTabContent = () => {
     });
   };
 
+  // const handleFormSubmit = async (values) => {
+  //   try {
+  //     if (!uploadedDocument) {
+  //       return;
+  //     }
+  
+  //     const payload = {
+  //       family: values.family,
+  //       type: values.type,
+  //       referenceNumber: values.referenceNumber || null,
+  //       documentName: values.documentName || null,
+  //       firebaseUrl: uploadedDocument.url,
+  //       file: uploadedDocument.file,
+  //       lead: id,
+  //     };
+  
+  //     const formData = new FormData();
+  //     Object.entries(payload).forEach(([key, value]) => {
+  //       if (value !== undefined && value !== null) {
+  //         formData.append(key, value);
+  //       }
+  //     });
+  
+  //     setLoading(true);
+  //     const response = await axios.post(`/documents/${id}`, formData, {
+  //       headers: {
+  //         "Content-Type": "multipart/form-data",
+  //       },
+  //     });
+  
+  //     // Update state with the complete document data from the response
+  //     const newDocument = {
+  //       ...response.data.data,
+  //       _id: response.data.data._id, // Ensure _id is included
+  //       key: response.data.data._id, // Add key property for table rowKey
+  //     };
+  
+  //     setDocuments(prev => [...prev, newDocument]);
+  //     setFilteredDocuments(prev => [...prev, newDocument]);
+  
+  //     message.success("Document ajouté avec succès");
+  //     handleCancel();
+  //   } catch (error) {
+  //     console.error("Error submitting form:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const handleFormSubmit = async (values) => {
     try {
-      if (!uploadedDocument) {
+      console.log("=== FRONTEND: Starting form submission ===");
+      console.log("Form values:", values);
+      console.log("Uploaded document:", uploadedDocument);
+  
+      if (!uploadedDocument?.file) {
+        message.error("Veuillez sélectionner un fichier");
         return;
       }
   
-      const payload = {
-        family: values.family,
-        type: values.type,
-        referenceNumber: values.referenceNumber || null,
-        documentName: values.documentName || null,
-        firebaseUrl: uploadedDocument.url,
-        file: uploadedDocument.file,
-        lead: id,
-      };
-  
-      const formData = new FormData();
-      Object.entries(payload).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value);
-        }
-      });
-  
       setLoading(true);
+  
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', uploadedDocument.file);
+      formData.append('family', values.family);
+      formData.append('type', values.type);
+      
+      if (values.referenceNumber) {
+        formData.append('referenceNumber', values.referenceNumber);
+      }
+      
+      if (values.documentName) {
+        formData.append('documentName', values.documentName);
+      }
+  
+      // Log FormData contents
+      console.log("FormData contents:");
+      for (let [key, value] of formData.entries()) {
+        console.log(key, value instanceof File ? `${value.name} (${value.type})` : value);
+      }
+  
+      console.log("Sending request to backend...");
       const response = await axios.post(`/documents/${id}`, formData, {
-        headers: {
+        headers: { 
           "Content-Type": "multipart/form-data",
         },
+        timeout: 45000, // Increased timeout
       });
   
-      // Update state with the complete document data from the response
-      const newDocument = {
-        ...response.data.data,
-        _id: response.data.data._id, // Ensure _id is included
-        key: response.data.data._id, // Add key property for table rowKey
-      };
+      console.log("Backend response received:", response.data);
   
-      setDocuments(prev => [...prev, newDocument]);
-      setFilteredDocuments(prev => [...prev, newDocument]);
+      if (response.data.success) {
+        const newDocument = { 
+          ...response.data.data, 
+          key: response.data.data._id 
+        };
   
-      message.success("Document ajouté avec succès");
-      handleCancel();
+        setDocuments(prev => [...prev, newDocument]);
+        setFilteredDocuments(prev => [...prev, newDocument]);
+  
+        message.success("Document ajouté avec succès");
+        handleCancel();
+      } else {
+        throw new Error(response.data.message || "Upload failed");
+      }
+  
     } catch (error) {
-      console.error("Error submitting form:", error);
+      console.error("Submission error:", error);
+      
+      if (error.code === 'ECONNABORTED') {
+        message.error("Timeout - le serveur met trop de temps à répondre");
+      } else if (error.response?.status === 400) {
+        message.error(error.response.data?.message || "Erreur de validation");
+      } else if (error.response?.status === 413) {
+        message.error("Fichier trop volumineux (max 10MB)");
+      } else if (error.response?.status === 500) {
+        message.error("Erreur serveur - contactez l'administrateur");
+      } else {
+        message.error(error.response?.data?.message || "Erreur lors de l'upload");
+      }
     } finally {
       setLoading(false);
+      console.log("=== FRONTEND: Form submission finished ===");
     }
   };
-
   const handleDeleteDocument = async (documentId) => {
     Modal.confirm({
       title: 'Confirmer la suppression',
@@ -549,7 +624,7 @@ const DocumentTabContent = () => {
             </Form.Item>
           )}
 
-          <Form.Item
+          {/* <Form.Item
             name="document"
             label="Choisissez un document"
             rules={[
@@ -587,13 +662,43 @@ const DocumentTabContent = () => {
                 }}
               />
             )}
-          </Form.Item>
+          </Form.Item> */}
+<Form.Item
+  name="document"
+  label="Choisissez un document"
+  rules={[{ required: true, message: "Un document est obligatoire" }]}
+>
+  <input
+    type="file"
+    accept=".pdf,.jpg,.jpeg,.png,.gif,.webp"
+    onChange={(e) => {
+      const file = e.target.files[0];
+      if (file) {
+        setUploadedDocument({
+          file: file,
+          name: file.name,
+        });
+      }
+    }}
+    disabled={loading}
+  />
+</Form.Item>
         </Form>
-        <div className="flex justify-start mt-4 p-4 border-t">
+        {/* <div className="flex justify-start mt-4 p-4 border-t">
           <Button type="primary" onClick={() => form.submit()}>
             Ajouter le document
           </Button>
-        </div>
+        </div> */}
+        <div className="flex justify-start mt-4 p-4 border-t">
+  <Button 
+    type="primary" 
+    onClick={() => form.submit()}
+    loading={loading} // Show loading state on button
+    disabled={!uploadedDocument} // Disable if no document uploaded
+  >
+    {loading ? 'Ajout en cours...' : 'Ajouter le document'}
+  </Button>
+</div>
       </Modal>
     </div>
   );

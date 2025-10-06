@@ -220,16 +220,14 @@ const formatDevisItem = (devis) => ({
 const handleFormSubmit = async (values) => {
   const token = localStorage.getItem("token");
   const decodedToken = token ? jwtDecode(token) : null;
-  const isAdmin =
-  decodedToken.role === "Admin" || decodedToken.role === "admin";
-const sessionId = decodedToken.userId;
-const sessionModel = isAdmin ? "Admin" : "Commercial";
+  const isAdmin = decodedToken.role === "Admin" || decodedToken.role === "admin";
+  const sessionId = decodedToken.userId;
+  const sessionModel = isAdmin ? "Admin" : "Commercial";
   
   try {
-    // Prepare form data with document if exists
-    const formData = {
+    // Prepare common data
+    const commonData = {
       ...values,
-      documents: uploadedDocument ? [uploadedDocument] : [],
       session: sessionId,
       sessionModel: sessionModel,
       lead: selectedLeadId,
@@ -244,30 +242,126 @@ const sessionModel = isAdmin ? "Admin" : "Commercial";
         throw new Error("Missing devis ID for update");
       }
 
-      response = await axios.put(`/devis/${devisId}`, formData);
-    setDevisData(prev => prev.map(item => 
-      item.key === devisId ? formatDevisItem(response.data) : item
-    ));
-    setFilteredDevis(prev => prev.map(item => 
-      item.key === devisId ? formatDevisItem(response.data) : item
-    ));
+      // Handle document for update
+      let documents = editingRecord.originalData?.documents || [];
+      
+      if (uploadedDocument) {
+        console.log('Uploaded document for update:', uploadedDocument);
+        
+        if (uploadedDocument instanceof File || uploadedDocument.file) {
+          // Upload new file
+          const fileToUpload = uploadedDocument.file || uploadedDocument;
+          const uploadFormData = new FormData();
+          uploadFormData.append('document', fileToUpload);
+          
+          console.log('Uploading file for update:', fileToUpload.name);
+          
+          const uploadResponse = await axios.post('/files/upload', uploadFormData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+
+          console.log('Upload response for update:', uploadResponse.data);
+
+          // FIX: Add proper error checking
+          if (uploadResponse.data.success && uploadResponse.data.document) {
+            documents = [{
+              url: uploadResponse.data.document.url,
+              name: uploadResponse.data.document.name || fileToUpload.name,
+              originalName: uploadResponse.data.document.originalName || fileToUpload.name,
+              type: uploadResponse.data.document.mimetype || fileToUpload.type,
+              size: uploadResponse.data.document.size || fileToUpload.size,
+              path: uploadResponse.data.document.name || fileToUpload.name
+            }];
+          } else {
+            throw new Error('File upload failed or invalid response format');
+          }
+        } else if (uploadedDocument.url) {
+          // Use existing uploaded document
+          documents = [{
+            url: uploadedDocument.url,
+            name: uploadedDocument.name,
+            originalName: uploadedDocument.originalName,
+            type: uploadedDocument.type || uploadedDocument.mimetype,
+            size: uploadedDocument.size,
+            path: uploadedDocument.path || uploadedDocument.name
+          }];
+        }
+      }
+
+      response = await axios.put(`/devis/${devisId}`, {
+        ...commonData,
+        documents
+      });
+
+      // Update state
+      setDevisData(prev => prev.map(item => 
+        item.key === devisId ? formatDevisItem(response.data) : item
+      ));
+      setFilteredDevis(prev => prev.map(item => 
+        item.key === devisId ? formatDevisItem(response.data) : item
+      ));
       message.success("Devis mis à jour avec succès");
-      form.resetFields();
-      setIsModalOpen(false);
+      
     } else {
       // CREATE NEW DEVIS
-      response = await axios.post("/devis", formData);
+      let documents = [];
+      
+      if (uploadedDocument) {
+        console.log('Uploaded document for create:', uploadedDocument);
+        
+        if (uploadedDocument instanceof File || uploadedDocument.file) {
+          // Upload new file
+          const fileToUpload = uploadedDocument.file || uploadedDocument;
+          const uploadFormData = new FormData();
+          uploadFormData.append('document', fileToUpload);
+          
+          console.log('Uploading file for create:', fileToUpload.name);
+          
+          const uploadResponse = await axios.post('/files/upload', uploadFormData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+
+          console.log('Upload response for create:', uploadResponse.data);
+
+          // FIX: Add proper error checking
+          if (uploadResponse.data.success && uploadResponse.data.document) {
+            documents = [{
+              url: uploadResponse.data.document.url,
+              name: uploadResponse.data.document.name || fileToUpload.name,
+              originalName: uploadResponse.data.document.originalName || fileToUpload.name,
+              type: uploadResponse.data.document.mimetype || fileToUpload.type,
+              size: uploadResponse.data.document.size || fileToUpload.size,
+              path: uploadResponse.data.document.name || fileToUpload.name
+            }];
+          } else {
+            throw new Error('File upload failed or invalid response format');
+          }
+        } else if (uploadedDocument.url) {
+          // Use existing uploaded document
+          documents = [{
+            url: uploadedDocument.url,
+            name: uploadedDocument.name,
+            originalName: uploadedDocument.originalName,
+            type: uploadedDocument.type || uploadedDocument.mimetype,
+            size: uploadedDocument.size,
+            path: uploadedDocument.path || uploadedDocument.name
+          }];
+        }
+      }
+
+      response = await axios.post("/devis", {
+        ...commonData,
+        documents
+      });
+
       const newItem = formatDevisItem(response.data);
-    
       setDevisData(prev => [newItem, ...prev]);
       setFilteredDevis(prev => [newItem, ...prev]);
-      // setDevisData(prev => [response.data, ...prev]);
       setCurrentPage(1);
-      message.success("Devis ajoutée avec succès");
-        form.resetFields();
-    setIsModalOpen(false);
+      message.success("Devis ajouté avec succès");
     }
 
+    // Reset form and states
     setRefreshTrigger(prev => prev + 1);
     form.resetFields();
     setIsModalOpen(false);
@@ -276,10 +370,132 @@ const sessionModel = isAdmin ? "Admin" : "Commercial";
 
   } catch (error) {
     console.error("Error saving devis:", error);
+    console.error("Error details:", error.response?.data);
+    message.error("Erreur lors de la sauvegarde du devis: " + (error.response?.data?.message || error.message));
   }
 };
+// const handleFormSubmit = async (values) => {
+//   const token = localStorage.getItem("token");
+//   const decodedToken = token ? jwtDecode(token) : null;
+//   const isAdmin =
+//   decodedToken.role === "Admin" || decodedToken.role === "admin";
+// const sessionId = decodedToken.userId;
+// const sessionModel = isAdmin ? "Admin" : "Commercial";
+  
+//   try {
+//     // Prepare form data with document if exists
+//     const formData = {
+//       ...values,
+//       documents: uploadedDocument ? [uploadedDocument] : [],
+//       session: sessionId,
+//       sessionModel: sessionModel,
+//       lead: selectedLeadId,
+//     };
+
+//     let response;
+    
+//     if (editingRecord) {
+//       // UPDATE EXISTING DEVIS
+//       const devisId = editingRecord.originalData?._id;
+//       if (!devisId) {
+//         throw new Error("Missing devis ID for update");
+//       }
+
+//       response = await axios.put(`/devis/${devisId}`, formData);
+//     setDevisData(prev => prev.map(item => 
+//       item.key === devisId ? formatDevisItem(response.data) : item
+//     ));
+//     setFilteredDevis(prev => prev.map(item => 
+//       item.key === devisId ? formatDevisItem(response.data) : item
+//     ));
+//       message.success("Devis mis à jour avec succès");
+//       form.resetFields();
+//       setIsModalOpen(false);
+//     } else {
+//       // CREATE NEW DEVIS
+//       response = await axios.post("/devis", formData);
+//       const newItem = formatDevisItem(response.data);
+    
+//       setDevisData(prev => [newItem, ...prev]);
+//       setFilteredDevis(prev => [newItem, ...prev]);
+//       // setDevisData(prev => [response.data, ...prev]);
+//       setCurrentPage(1);
+//       message.success("Devis ajoutée avec succès");
+//         form.resetFields();
+//     setIsModalOpen(false);
+//     }
+
+//     setRefreshTrigger(prev => prev + 1);
+//     form.resetFields();
+//     setIsModalOpen(false);
+//     setEditingRecord(null);
+//     setUploadedDocument(null);
+
+//   } catch (error) {
+//     console.error("Error saving devis:", error);
+//   }
+// };
 
 
+// useEffect(() => {
+//   const fetchDevis = async () => {
+//     const token = localStorage.getItem("token");
+//     if (!token) return;
+    
+//     setLoading(true);
+//     try {
+//       const decodedToken = jwtDecode(token);
+//       const currentUserId = decodedToken?.userId;
+//       const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+
+//       // Fetch all devis
+//       const response = await axios.get("/devis");
+//       console.log("Fetched devis:", response.data);
+  
+//       const allDevis = response.data || [];
+
+//       // Filter based on role
+//       let filteredData;
+//       if (isAdmin) {
+//         // Admins see all devis
+//         filteredData = allDevis;
+//       } else {
+//         // Commercials only see their own devis
+//         filteredData = allDevis.filter(
+//           devis => devis.session?._id?.toString() === currentUserId
+//         );
+//       }
+
+//       // Format the data
+//       const formattedData = filteredData?.map(devis => ({
+//         key: devis._id,
+//         numero_devis: devis.numero_devis || "N/A",
+//         gestionnaire:  devis.lead?.gestionnaireName ||  
+//         "N/A",
+//         risque: devis.risque || "N/A",
+//         assureur: devis.assureur || "N/A",
+//         statut: devis.statut || "N/A",
+//         source: devis.type_origine || "N/A",
+//         date_effet: devis.date_effet,
+//         originalData: devis,
+//         documents: devis.documents || [],
+//         intermediaire: devis.intermediaire || "N/A",
+//         clientId: devis.clientId || "N/A",
+//         categorie: devis?.lead?.categorie || "N/A",  // This is correct
+//       }));
+
+//       setDevisData(formattedData);
+//       setFilteredDevis(formattedData);
+
+//     } catch (error) {
+//       console.error("Error fetching devis:", error.response?.data || error.message);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   fetchDevis();
+// }, [refreshTrigger]);
 useEffect(() => {
   const fetchDevis = async () => {
     const token = localStorage.getItem("token");
@@ -309,12 +525,16 @@ useEffect(() => {
         );
       }
 
+      // Sort by createdAt in descending order (newest first)
+      const sortedData = filteredData.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+
       // Format the data
-      const formattedData = filteredData?.map(devis => ({
+      const formattedData = sortedData?.map(devis => ({
         key: devis._id,
         numero_devis: devis.numero_devis || "N/A",
-        gestionnaire:  devis.lead?.gestionnaireName ||  
-        "N/A",
+        gestionnaire: devis.lead?.gestionnaireName || "N/A",
         risque: devis.risque || "N/A",
         assureur: devis.assureur || "N/A",
         statut: devis.statut || "N/A",
@@ -324,7 +544,9 @@ useEffect(() => {
         documents: devis.documents || [],
         intermediaire: devis.intermediaire || "N/A",
         clientId: devis.clientId || "N/A",
-        categorie: devis?.lead?.categorie || "N/A",  // This is correct
+        categorie: devis?.lead?.categorie || "N/A",
+        // Add createdAt for reference if needed
+        createdAt: devis.createdAt
       }));
 
       setDevisData(formattedData);
@@ -971,7 +1193,7 @@ const deleteDevis = async (id) => {
                   {/* === STATUT ET NUMERO === */}
                   <Form.Item
                     name="statut"
-                    label="Statut *"
+                    label="Statut"
                     rules={[
                       { required: false, message: "Veuillez sélectionner un statut" },
                     ]}
@@ -989,7 +1211,7 @@ const deleteDevis = async (id) => {
       
                   <Form.Item
                     name="numero_devis"
-                    label="N° de Devis *"
+                    label="N° de Devis"
                     rules={[
                       {
                         required: false,
