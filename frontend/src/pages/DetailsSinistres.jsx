@@ -389,6 +389,9 @@ const DetailsSinistres = () => {
       message.error("Erreur lors du téléchargement du document");
     }
   };
+  const formatDate = (date) => {
+    return dayjs(date).format("DD/MM/YYYY HH:mm");
+  };
 
   // Colonnes de la table des documents
   const documentColumns = [
@@ -478,9 +481,6 @@ const DetailsSinistres = () => {
     },
   ];
 
-  const formatDate = (date) => {
-    return dayjs(date).format("DD/MM/YYYY HH:mm");
-  };
 
   const getStatusColor = (status) => {
     const colors = {
