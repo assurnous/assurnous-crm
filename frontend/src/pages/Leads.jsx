@@ -436,12 +436,12 @@ useEffect(() => {
         </div>
       ),
     },
-    {
-      title: "Devis en cours",
-      dataIndex: "codepostal",
-      key: "codepostal",
-      render: (text) => text || "",
-    },
+    // {
+    //   title: "Devis en cours",
+    //   dataIndex: "codepostal",
+    //   key: "codepostal",
+    //   render: (text) => text || "",
+    // },
     {
       title: "Statut",
       key: "statut",

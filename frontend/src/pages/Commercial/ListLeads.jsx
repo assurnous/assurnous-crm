@@ -203,8 +203,6 @@ const ListLeads = () => {
     fetchUsers();
   }, []);
 
- 
-
   const fetchClients = async () => {
     const token = localStorage.getItem("token");
     const decodedToken = jwtDecode(token);
@@ -222,7 +220,6 @@ const ListLeads = () => {
       const allLeads = response.data?.chatData || [];
       console.log("All leads:", allLeads);
   
-
       const filteredLeads = allLeads.filter(lead => {
         const isGestionnaire = 
           (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
@@ -234,21 +231,71 @@ const ListLeads = () => {
         return isGestionnaire || isCommercial;
       });
   
-      console.log("Filtered leads for commercial:", {
-        userId,
-        filteredCount: filteredLeads.length,
-        sampleLead: filteredLeads[0]
+      // Sort by createdAt in descending order (newest first)
+      const sortedLeads = filteredLeads.sort((a, b) => {
+        return new Date(b.createdAt) - new Date(a.createdAt);
       });
   
-      setChatData(filteredLeads);
-      setFilteredData(filteredLeads);
+      console.log("Sorted leads (newest first):", {
+        userId,
+        sortedCount: sortedLeads.length,
+        sampleLead: sortedLeads[0]
+      });
+  
+      setChatData(sortedLeads);
+      setFilteredData(sortedLeads);
     } catch (error) {
       console.error("Error fetching leads:", error);
       message.error("Failed to fetch leads");
     } finally {
       setLoading(false);
     }
-  };
+  }; 
+
+  // const fetchClients = async () => {
+  //   const token = localStorage.getItem("token");
+  //   const decodedToken = jwtDecode(token);
+  //   const userId = decodedToken?.userId;
+  //   const userRole = decodedToken?.role?.toLowerCase(); // or userType
+  
+  //   try {
+  //     setLoading(true);
+      
+  //     // Always fetch all clients (admin will use all, commercial will filter)
+  //     const response = await axios.get('/data', {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     });
+  
+  //     const allLeads = response.data?.chatData || [];
+  //     console.log("All leads:", allLeads);
+  
+
+  //     const filteredLeads = allLeads.filter(lead => {
+  //       const isGestionnaire = 
+  //         (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
+  //         (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
+        
+  //       const isCommercial = 
+  //         lead.commercial?._id && lead.commercial._id.toString() === userId;
+        
+  //       return isGestionnaire || isCommercial;
+  //     });
+  
+  //     console.log("Filtered leads for commercial:", {
+  //       userId,
+  //       filteredCount: filteredLeads.length,
+  //       sampleLead: filteredLeads[0]
+  //     });
+  
+  //     setChatData(filteredLeads);
+  //     setFilteredData(filteredLeads);
+  //   } catch (error) {
+  //     console.error("Error fetching leads:", error);
+  //     message.error("Failed to fetch leads");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   // const fetchClients = async () => {
   //   const token = localStorage.getItem("token");
   //   const decodedToken = jwtDecode(token);

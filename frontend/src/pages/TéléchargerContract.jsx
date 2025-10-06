@@ -836,14 +836,14 @@ const handleLeadClick = (lead) => {
               title="Télécharger le document"
             />
           )}
-          {(userRole === "Admin" ||
+          {/* {(userRole === "Admin" ||
             record.originalData.session?._id === currentUserId) && (
             <Button
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
               type="text"
             />
-          )}
+          )} */}
           {userRole === "Admin" && (
             <Button
               icon={<DeleteOutlined />}

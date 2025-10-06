@@ -240,11 +240,19 @@ const ClientDetailPage = () => {
     return <Tag color={category.color}>{category.text}</Tag>;
   };
 
+  // const hasDigitalData = client && (
+  //   client.agence && 
+  //   client.assurances_interessees && 
+  //   client.rappel_at && 
+  //   client.comment
+  // );
   const hasDigitalData = client && (
-    client.agence || 
-    client.assurances_interessees || 
-    client.rappel_at || 
-    client.comment
+    // Check if it has meaningful digital data, not just empty values
+    (client.agence && ["LENS", "VALENCIENNES", "LILLE"].includes(client.agence)) ||
+    (client.assurances_interessees && client.assurances_interessees.length > 0 && 
+     client.assurances_interessees.some(assurance => assurance && assurance.trim() !== "")) ||
+    (client.rappel_at && new Date(client.rappel_at) > new Date()) ||
+    (client.comment && client.comment.trim() !== "")
   );
 
   if (loading) {
