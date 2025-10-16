@@ -46,6 +46,7 @@ import DetailsSinistres from "./pages/DetailsSinistres";
 import Clientdigital from "./pages/Clientdigital";
 
 
+
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL;
 axios.defaults.withCredentials = true;
 // export const callApiClient = axios.create({
@@ -91,7 +92,6 @@ function App() {
             <Route path="/Mes-comissions" element={<Commissions />} />
             <Route path="/Ma-structure" element={<Mastructure />} />
             <Route path="/Mes-interlocuteurs" element={<Interlouteurs />} />
-
 
 
 

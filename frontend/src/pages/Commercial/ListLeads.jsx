@@ -225,8 +225,14 @@ const ListLeads = () => {
           (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
           (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
         
-        const isCommercial = 
-          lead.commercial?._id && lead.commercial._id.toString() === userId;
+        // const isCommercial = 
+        //   lead.commercial?._id && lead.commercial._id.toString() === userId;
+        const commercialId = 
+        typeof lead.commercial === 'string' 
+          ? lead.commercial 
+          : lead.commercial?._id?.toString();
+
+          const isCommercial = commercialId === userId;
         
         return isGestionnaire || isCommercial;
       });

@@ -329,6 +329,17 @@ const SideBar = () => {
           role: ["Admin"],
         },
         {
+          label: "Affectation clients",
+          role: ["Admin"],
+          key: "/affect-leads",
+          icon: (
+            <FontAwesomeIcon
+              icon={faUserTag}
+              style={{ fontSize: "12px", marginRight: "2px" }}
+            />
+          ),
+        },
+        {
           key: "/Mes-interlocuteurs",
           icon: (
             <FontAwesomeIcon
