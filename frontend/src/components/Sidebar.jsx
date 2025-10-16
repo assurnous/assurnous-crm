@@ -23,8 +23,8 @@ import {
   faUserMd,
   faBuilding,
   faUsers,
-  faBell
- 
+  faBell,
+  faUserTag 
 } from "@fortawesome/free-solid-svg-icons";
 import { UserOutlined } from "@ant-design/icons";
 import { Layout, Menu, Divider, Avatar, Badge } from "antd";
