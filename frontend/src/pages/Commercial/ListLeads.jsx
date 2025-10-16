@@ -490,14 +490,14 @@ const ListLeads = () => {
       ),
     },
     {
-      title: "Commentaire",
-      dataIndex: "comment",
-      key: "comment",
+      title: "Commentaires",
+      dataIndex: "commentaire",
+      key: "commentaire",
       render: (text, record) => (
-        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
-          <div className="font-medium truncate max-w-xs">
-            {record.comment || ""}
-          </div>
+        <div className="text-gray-500 text-xs">
+          {record.commentaire && <div>{record.commentaire}</div>}
+          {record.comment && <div>{record.comment}</div>}
+          {!record.commentaire && !record.comment && "-"}
         </div>
       ),
     },

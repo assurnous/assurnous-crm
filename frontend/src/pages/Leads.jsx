@@ -586,6 +586,18 @@ useEffect(() => {
       },
     },
     {
+      title: "Commentaires",
+      dataIndex: "commentaire",
+      key: "commentaire",
+      render: (text, record) => (
+        <div className="text-gray-500 text-xs">
+          {record.commentaire && <div>{record.commentaire}</div>}
+          {record.comment && <div>{record.comment}</div>}
+          {!record.commentaire && !record.comment && "-"}
+        </div>
+      ),
+    },
+    {
       title: <span style={{ fontSize: "12px" }}>Action</span>,
       key: "action",
       render: (text, record) => (
