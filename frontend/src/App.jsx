@@ -100,7 +100,7 @@ function App() {
 
             <Route path="/import-leads" element={<ImportLeads />} />
             {/* <Route path="/lead/:id" element={<LeadDetailsPage />}/> */}
-            <Route path="/affect-leads" element={<AffectuerLead />} />
+            <Route path="/affecter-clients" element={<AffectuerLead />} />
             <Route path="/Paramètres" element={<CommerciauxPage />} />
             <Route path="/clients-lists" element={<ListLeads />} />
             {/* <Route path="/clients-list" element={<ListManagerLeads />} /> */}

@@ -329,9 +329,9 @@ const SideBar = () => {
           role: ["Admin"],
         },
         {
-          label: "Affectation clients",
+          label: "Affecter clients",
           role: ["Admin"],
-          key: "/affect-leads",
+          key: "/affecter-clients",
           icon: (
             <FontAwesomeIcon
               icon={faUserTag}

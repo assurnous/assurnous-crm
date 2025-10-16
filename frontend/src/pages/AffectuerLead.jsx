@@ -728,9 +728,7 @@ const AffectuerLead = () => {
     const getUserData = async () => {
       try {
         const response = await axios.get("/data");
-        console.log("Fetched data leads:", response.data);
-        console.log("Fetched leads:", response.data.chatData);
-
+     
         setChatData(response.data.chatData);
       } catch (err) {
         console.error("Failed to fetch data:", err);
@@ -778,7 +776,7 @@ const AffectuerLead = () => {
       setFilteredData(response.data);
     } catch (error) {
       console.error("Error in search:", error);
-      message.error("Error while searching.");
+      message.error("Error on recherche.");
     }
   };
 
@@ -814,12 +812,12 @@ const AffectuerLead = () => {
       });
       
       setChatData(updatedLeads);
-      message.success("Leads assigned to commercial successfully");
+      message.success("clients affectés au commercial avec succès");
       setIsAssignModalVisible(false);
       setSelectedLeads([]);
     } catch (error) {
       console.error("Error assigning leads:", error);
-      message.error("Failed to assign leads");
+      message.error("Échec de l'affectation des clients");
     }
   };
 
@@ -829,8 +827,8 @@ const AffectuerLead = () => {
       setCommercials(response.data);
       console.log("Fetched commercials:", response.data);
     } catch (error) {
-      console.error("Error fetching commercials:", error);
-      message.error("Failed to fetch commercials");
+      console.error("Error :", error);
+      message.error("Échec de la récupération des commerciaux");
     }
   };
 
@@ -862,12 +860,12 @@ const AffectuerLead = () => {
         return lead;
       });
       setChatData(updatedLeads);
-      message.success("Leads unassigned from commercial successfully");
+      message.success("Leads désaffectés du commercial avec succès");
       setIsUnassignModalVisible(false);
       setSelectedLeads([]);
     } catch (error) {
       console.error("Error unassigning leads:", error);
-      message.error("Failed to unassign leads");
+      message.error("Échec de la désaffectation des clients");
     }
   };
 
@@ -876,10 +874,10 @@ const AffectuerLead = () => {
       const response = await axios.delete(`/lead/${id}`);
       console.log("Chat deleted successfully:", response.data);
       setChatData(chatData.filter((lead) => lead._id !== id));
-      message.success("Lead deleted successfully");
+      message.success("Lead supprimé avec succès");
     } catch (error) {
       console.error("Error deleting lead:", error);
-      message.error("Failed to delete lead");
+      message.error("Échec de la suppression du client");
     }
   };
 
@@ -1021,7 +1019,7 @@ const AffectuerLead = () => {
 
   return (
     <div className="md:p-4 p-1 w-full">
-      <h1 className="text-xl font-bold mb-4">Affectation des Leads</h1>
+      <h1 className="text-xl font-bold mb-4">Affectation des clients</h1>
 
       <div className="flex-1 space-y-4 justify-between mb-4">
         <div className="flex md:flex-row md:space-y-0 flex-col space-y-4">
@@ -1031,7 +1029,7 @@ const AffectuerLead = () => {
             onClick={() => setIsAssignModalVisible(true)}
             disabled={selectedLeads.length === 0}
           >
-            Affecter les Leads au Commercial ({selectedLeads.length})
+            Affecter les clients au Commercial ({selectedLeads.length})
           </Button>
           <Button
             type=""
@@ -1039,14 +1037,14 @@ const AffectuerLead = () => {
             className="bg-yellow-400 hover:bg-yellow-500 text-black font-semibold lg:ml-2"
             disabled={selectedLeads.length === 0}
           >
-            Désaffecter les leads du Commercial ({selectedLeads.length})
+            Désaffecter les clients du Commercial ({selectedLeads.length})
           </Button>
         </div>
       </div>
 
       <div className="mb-4">
         <span className="font-semibold text-gray-700">
-          Total Leads: {sortedData.length}
+          Total clients: {sortedData.length}
           {filteredData.length > 0 && ` (Filtered: ${filteredData.length})`}
         </span>
       </div>
