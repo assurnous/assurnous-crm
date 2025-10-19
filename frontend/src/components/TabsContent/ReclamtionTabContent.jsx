@@ -66,34 +66,106 @@ const ReclamtionTabContent = () => {
 
 
   useEffect(() => {
-    const fetchClients = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) return;
+      const fetchClients = async () => {
+                 const token = localStorage.getItem("token");
+                 const decodedToken = jwtDecode(token);
+                 const userId = decodedToken?.userId;
+                 const userRole = decodedToken?.role?.toLowerCase(); // or userType
+               
+                 try {
+                   setLoading(true);
+                   
+                   // Always fetch all clients (admin will use all, commercial will filter)
+                   const response = await axios.get('/data', {
+                     headers: { Authorization: `Bearer ${token}` }
+                   });
+               
+                   const allLeads = response.data?.chatData || [];
+                   console.log("All leads:", allLeads);
+               
+                   const filteredLeads = allLeads.filter(lead => {
+                     // ADMIN: See all clients
+                     if (userRole === 'admin') {
+                       return true;
+                     }
+               
+                     // COMMERCIAL: Only see clients assigned to them via commercial field
+                     if (userRole === 'commercial') {
+                       const commercialId = 
+                         typeof lead.commercial === 'string' 
+                           ? lead.commercial 
+                           : lead.commercial?._id?.toString();
+                       return commercialId === userId;
+                     }
+               
+                     // MANAGER: Only see clients assigned to them via manager field
+                     if (userRole === 'manager') {
+                       const managerId = 
+                         typeof lead.manager === 'string' 
+                           ? lead.manager 
+                           : lead.manager?._id?.toString();
+                       return managerId === userId;
+                     }
+               
+                     // Default: no access if role not recognized
+                     return false;
+                   });
+               
+                   // Sort by createdAt in descending order (newest first)
+                   const sortedLeads = filteredLeads.sort((a, b) => {
+                     return new Date(b.createdAt) - new Date(a.createdAt);
+                   });
+               
+                   console.log("Filtered and sorted leads:", {
+                     userId,
+                     userRole,
+                     totalLeads: allLeads.length,
+                     filteredCount: sortedLeads.length,
+                     sampleLead: sortedLeads[0],
+                     breakdown: {
+                       admin: userRole === 'admin' ? 'ALL' : 'N/A',
+                       commercial: userRole === 'commercial' ? sortedLeads.length : 'N/A',
+                       manager: userRole === 'manager' ? sortedLeads.length : 'N/A'
+                     }
+                   });
+               
+                   setChatData(sortedLeads);
+                 } catch (error) {
+                   console.error("Error fetching leads:", error);
+                   message.error("Failed to fetch leads");
+                 } finally {
+                   setLoading(false);
+                 }
+               };
+               fetchClients();
+    // const fetchClients = async () => {
+    //   const token = localStorage.getItem("token");
+    //   if (!token) return;
       
-      const decodedToken = jwtDecode(token);
-      console.log("Decoded token:", decodedToken); // Debug token
+    //   const decodedToken = jwtDecode(token);
+    //   console.log("Decoded token:", decodedToken); // Debug token
       
-      const currentUserId = decodedToken?.userId;
-      const userName = decodedToken?.name;
-      const userRole = decodedToken?.role || decodedToken?.userType; // Check both possible role fields
+    //   const currentUserId = decodedToken?.userId;
+    //   const userName = decodedToken?.name;
+    //   const userRole = decodedToken?.role || decodedToken?.userType; // Check both possible role fields
       
-      try {
-        setLoading(true);
-        const response = await axios.get("/data", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+    //   try {
+    //     setLoading(true);
+    //     const response = await axios.get("/data", {
+    //       headers: { Authorization: `Bearer ${token}` },
+    //     });
   
-        const allLeads = response.data?.chatData || [];
+    //     const allLeads = response.data?.chatData || [];
 
-        setChatData(allLeads);
-      } catch (error) {
-        console.error("Error fetching leads:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    //     setChatData(allLeads);
+    //   } catch (error) {
+    //     console.error("Error fetching leads:", error);
+    //   } finally {
+    //     setLoading(false);
+    //   }
+    // };
   
-    fetchClients();
+    // fetchClients();
   }, [id, currentUserId, token]); // Removed userRole from dependencies
  
   useEffect(() => {
@@ -170,15 +242,16 @@ const ReclamtionTabContent = () => {
       return;
     }
     const isAdmin = decodedToken.role === 'Admin' || decodedToken.role === 'admin';
+    const isManager = decodedToken.role === 'Manager' || decodedToken.role === 'manager';
     const sessionId = decodedToken.userId;
-    const sessionModel = isAdmin ? 'Admin' : 'Commercial';
+    const sessionModel = isAdmin ? "Admin" : isManager ? "Manager" : "Commercial";
     
     try {
       // Prepare form data with document if exists
       const formData = {
         ...values,
         documents: uploadedDocument ? [uploadedDocument] : [],
-        gestionnaire: gestionnaire.name || gestionnaire._id,
+        // gestionnaire: gestionnaire.name || gestionnaire._id,
         session: sessionId,
         sessionModel: sessionModel,
         leadId: id,
@@ -306,9 +379,10 @@ leadId: reclamation.leadId,
     const fetchUsers = async () => {
       try {
         // Fetch both admins and commercials
-        const [adminsRes, commercialsRes] = await Promise.all([
+        const [adminsRes, commercialsRes, managersRes] = await Promise.all([
           axios.get("/admin"),
           axios.get("/commercials"),
+          axios.get("/manager"),
         ]);
 
         // Combine and format the data
@@ -321,6 +395,10 @@ leadId: reclamation.leadId,
             ...commercial,
             userType: "commercial",
           })),
+          ...managersRes.data.map((manager) => ({
+            ...manager,
+            userType: "manager",
+          }))
         ];
 
         setUsers(combinedUsers);
@@ -385,6 +463,27 @@ leadId: reclamation.leadId,
       title: "Date de clôture",
       dataIndex: "date_cloture",
       key: "date_cloture",
+    },
+    {
+      title: "Gestionnaire",
+      dataIndex: "gestionnaire",
+      key: "gestionnaire",
+      render: (gestionnaire, record) => {
+        // Use the original data that contains the session object
+        const originalRecord = record.originalData || record;
+        
+        if (gestionnaire && gestionnaire !== "N/A") {
+          return <>{gestionnaire}</>;
+        }
+        
+        if (originalRecord.session && originalRecord.session.nom) {
+          const nom = originalRecord.session.nom || "";
+          const prenom = originalRecord.session.prenom || "";
+          return <>{`${nom} ${prenom}`.trim()}</>;
+        }
+        
+        return <>N/A</>;
+      },
     },
     {
       title: "Actions",
@@ -1029,7 +1128,7 @@ const handleEdit = (record) => {
                       value={displayName}
                     >
                       {displayName} (
-                      {user.userType === "admin" ? "Admin" : "Commercial"})
+                        {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
                     </Option>
                   );
                 })}

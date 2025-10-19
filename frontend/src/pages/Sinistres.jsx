@@ -353,14 +353,15 @@ const Sinistres = () => {
       }
   
       const isAdmin = decodedToken.role === "Admin" || decodedToken.role === "admin";
+      const isManager = decodedToken.role === "Manager" || decodedToken.role === "manager";
       const sessionId = decodedToken.userId;
-      const sessionModel = isAdmin ? "Admin" : "Commercial";
+      const sessionModel = isAdmin ? "Admin" : isManager ? "Manager" : "Commercial";
   
       // Déterminer le modèle du gestionnaire basé sur l'utilisateur sélectionné
       let gestionnaireModel = null;
       if (values.gestionnaire) {
         const selectedUser = users.find(user => user._id === values.gestionnaire);
-        gestionnaireModel = selectedUser?.userType === "admin" ? "Admin" : "Commercial";
+        gestionnaireModel = selectedUser?.userType === "admin" ? "Admin" : selectedUser?.userType === "manager" ? "Manager" : "Commercial";
       }
   
       const formData = {
@@ -434,10 +435,11 @@ const Sinistres = () => {
     const fetchUsers = async () => {
       try {
         // Fetch both admins and commercials
-        const [adminsRes, commercialsRes] = await Promise.all([
-          axios.get("/admin"),
-          axios.get("/commercials"),
-        ]);
+          const [adminsRes, commercialsRes, managersRes] = await Promise.all([
+                          axios.get("/admin"),
+                          axios.get("/commercials"),
+                          axios.get("/manager"),
+                        ]);
 
         // Combine and format the data
         const combinedUsers = [
@@ -449,6 +451,10 @@ const Sinistres = () => {
             ...commercial,
             userType: "commercial",
           })),
+          ...managersRes.data.map((manager) => ({
+            ...manager,
+            userType: "manager",
+          }))
         ];
 
         setUsers(combinedUsers);
@@ -463,19 +469,91 @@ const Sinistres = () => {
   }, []);
 
   useEffect(() => {
-    const fetchClients = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get("/data");
-        setClients(response.data.chatData || []);
-      } catch (error) {
-        console.error("Error fetching clients:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // const fetchClients = async () => {
+    //   setLoading(true);
+    //   try {
+    //     const response = await axios.get("/data");
+    //     setClients(response.data.chatData || []);
+    //   } catch (error) {
+    //     console.error("Error fetching clients:", error);
+    //   } finally {
+    //     setLoading(false);
+    //   }
+    // };
 
-    fetchClients();
+    // fetchClients();
+        const fetchClients = async () => {
+              const token = localStorage.getItem("token");
+              const decodedToken = jwtDecode(token);
+              const userId = decodedToken?.userId;
+              const userRole = decodedToken?.role?.toLowerCase(); // or userType
+            
+              try {
+                setLoading(true);
+                
+                // Always fetch all clients (admin will use all, commercial will filter)
+                const response = await axios.get('/data', {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+            
+                const allLeads = response.data?.chatData || [];
+                console.log("All leads:", allLeads);
+            
+                const filteredLeads = allLeads.filter(lead => {
+                  // ADMIN: See all clients
+                  if (userRole === 'admin') {
+                    return true;
+                  }
+            
+                  // COMMERCIAL: Only see clients assigned to them via commercial field
+                  if (userRole === 'commercial') {
+                    const commercialId = 
+                      typeof lead.commercial === 'string' 
+                        ? lead.commercial 
+                        : lead.commercial?._id?.toString();
+                    return commercialId === userId;
+                  }
+            
+                  // MANAGER: Only see clients assigned to them via manager field
+                  if (userRole === 'manager') {
+                    const managerId = 
+                      typeof lead.manager === 'string' 
+                        ? lead.manager 
+                        : lead.manager?._id?.toString();
+                    return managerId === userId;
+                  }
+            
+                  // Default: no access if role not recognized
+                  return false;
+                });
+            
+                // Sort by createdAt in descending order (newest first)
+                const sortedLeads = filteredLeads.sort((a, b) => {
+                  return new Date(b.createdAt) - new Date(a.createdAt);
+                });
+            
+                console.log("Filtered and sorted leads:", {
+                  userId,
+                  userRole,
+                  totalLeads: allLeads.length,
+                  filteredCount: sortedLeads.length,
+                  sampleLead: sortedLeads[0],
+                  breakdown: {
+                    admin: userRole === 'admin' ? 'ALL' : 'N/A',
+                    commercial: userRole === 'commercial' ? sortedLeads.length : 'N/A',
+                    manager: userRole === 'manager' ? sortedLeads.length : 'N/A'
+                  }
+                });
+            
+                setClients(sortedLeads);
+              } catch (error) {
+                console.error("Error fetching leads:", error);
+                message.error("Failed to fetch leads");
+              } finally {
+                setLoading(false);
+              }
+            };
+            fetchClients();
   }, []);
 
   const showDeleteConfirm = (id) => {
@@ -847,34 +925,58 @@ const Sinistres = () => {
     //     // Final fallback
     //     return "N/A";
     //   },
+    // // },
+    // {
+    //   title: "Gestionnaire",
+    //   key: "gestionnaire",
+    //   render: (_, record) => {
+    //     const gestionnaire = record.gestionnaire;
+        
+    //     if (!gestionnaire) return "N/A";
+        
+    //     // Commercial model - has nom and prenom
+    //     if (gestionnaire.nom && gestionnaire.prenom) {
+    //       return `${gestionnaire.nom} ${gestionnaire.prenom}`;
+    //     }
+        
+    //     // Admin model - has name
+    //     if (gestionnaire.name) {
+    //       return gestionnaire.name;
+    //     }
+        
+    //     // Fallback - check any string field
+    //     const stringFields = ['nom', 'prenom', 'name', 'email'];
+    //     for (let field of stringFields) {
+    //       if (gestionnaire[field] && typeof gestionnaire[field] === 'string') {
+    //         return gestionnaire[field];
+    //       }
+    //     }
+        
+    //     return "N/A";
+    //   },
     // },
     {
       title: "Gestionnaire",
+      dataIndex: "gestionnaire",
       key: "gestionnaire",
-      render: (_, record) => {
-        const gestionnaire = record.gestionnaire;
+      render: (gestionnaireId, record) => {
+        // For sinistres: session is directly on the record
+        // For contrats: session is also directly on the record
         
-        if (!gestionnaire) return "N/A";
-        
-        // Commercial model - has nom and prenom
-        if (gestionnaire.nom && gestionnaire.prenom) {
-          return `${gestionnaire.nom} ${gestionnaire.prenom}`;
-        }
-        
-        // Admin model - has name
-        if (gestionnaire.name) {
-          return gestionnaire.name;
-        }
-        
-        // Fallback - check any string field
-        const stringFields = ['nom', 'prenom', 'name', 'email'];
-        for (let field of stringFields) {
-          if (gestionnaire[field] && typeof gestionnaire[field] === 'string') {
-            return gestionnaire[field];
-          }
-        }
-        
-        return "N/A";
+        const gestionnaireName = 
+          record.session?.nom && record.session?.prenom 
+            ? `${record.session.nom} ${record.session.prenom}`
+            : record.session?.nom 
+            ? record.session.nom
+            : record.intermediaire 
+            ? record.intermediaire
+            : "N/A";
+    
+        return (
+          <h1 style={{ padding: 0 }}>
+            {gestionnaireName}
+          </h1>
+        );
       },
     },
     {
@@ -1523,7 +1625,7 @@ const Sinistres = () => {
       return (
         <Option key={user._id} value={user._id}>
           {displayName} (
-          {user.userType === "admin" ? "Admin" : "Commercial"})
+            {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
         </Option>
       );
     })}

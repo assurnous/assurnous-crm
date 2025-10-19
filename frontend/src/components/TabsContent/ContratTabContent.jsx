@@ -136,10 +136,11 @@ const ContratTabContent = () => {
     const decodedToken = token ? jwtDecode(token) : null;
     // const currentUserId = decodedToken?.userId;
 
-    const isAdmin =
-    decodedToken.role === "Admin" || decodedToken.role === "admin";
+    const isAdmin = decodedToken.role === "Admin" || decodedToken.role === "admin";
+    const isManager = decodedToken.role === "Manager" || decodedToken.role === "manager";
   const sessionId = decodedToken.userId;
-  const sessionModel = isAdmin ? "Admin" : "Commercial";
+  // const sessionModel = isAdmin ? "Admin" : "Commercial";
+  const sessionModel = isAdmin ? "Admin" : isManager ? "Manager" : "Commercial";
     
     try {
       // Prepare form data with document if exists
@@ -270,10 +271,12 @@ const ContratTabContent = () => {
     const fetchUsers = async () => {
       try {
         // Fetch both admins and commercials
-        const [adminsRes, commercialsRes] = await Promise.all([
-          axios.get("/admin"),
-          axios.get("/commercials"),
-        ]);
+      const [adminsRes, commercialsRes, managersRes] = await Promise.all([
+              axios.get("/admin"),
+              axios.get("/commercials"),
+              axios.get("/manager"),
+            ]);
+    
 
         // Combine and format the data
         const combinedUsers = [
@@ -284,6 +287,10 @@ const ContratTabContent = () => {
           ...commercialsRes.data.map((commercial) => ({
             ...commercial,
             userType: "commercial",
+          })),
+          ...managersRes.data.map((manager) => ({
+            ...manager,
+            userType: "manager",
           })),
         ];
 
@@ -306,15 +313,36 @@ const ContratTabContent = () => {
       key: "contractNumber",
       sorter: (a, b) => a.contractNumber.localeCompare(b.contractNumber),
     },
+    // {
+    //   title: "Gestionnaire",
+    //   dataIndex: "gestionnaire",
+    //   key: "gestionnaire",
+    //   render: (gestionnaire, record) => (
+    //     <>
+    //       {gestionnaire}
+    //     </>
+    //   ),
+    // },
     {
       title: "Gestionnaire",
       dataIndex: "gestionnaire",
       key: "gestionnaire",
-      render: (gestionnaire, record) => (
-        <>
-          {gestionnaire}
-        </>
-      ),
+      render: (gestionnaire, record) => {
+        // Use the original data that contains the session object
+        const originalRecord = record.originalData || record;
+        
+        if (gestionnaire && gestionnaire !== "N/A") {
+          return <>{gestionnaire}</>;
+        }
+        
+        if (originalRecord.session && originalRecord.session.nom) {
+          const nom = originalRecord.session.nom || "";
+          const prenom = originalRecord.session.prenom || "";
+          return <>{`${nom} ${prenom}`.trim()}</>;
+        }
+        
+        return <>N/A</>;
+      },
     },
     {
       title: "Risque",
@@ -382,7 +410,7 @@ const ContratTabContent = () => {
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
-             {record.documents?.length > 0 && (
+ 
         <Button
           icon={<DownloadOutlined />}
           onClick={() => {
@@ -392,15 +420,13 @@ const ContratTabContent = () => {
           type="text"
           title="Télécharger le document"
         />
-      )}
-          {(userRole === "Admin" ||
-            record.originalData.session?._id === currentUserId) && (
+
             <Button
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
               type="text"
             />
-          )}
+     
           {userRole === "Admin" && (
             <Button
               icon={<DeleteOutlined />}
@@ -821,7 +847,8 @@ const handleEdit = (record) => {
                             value={displayName}
                           >
                             {displayName} (
-                            {user.userType === "admin" ? "Admin" : "Commercial"})
+                            {/* {user.userType === "admin" ? "Admin" : "Commercial"}) */}
+                            {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
                           </Option>
                         );
                       })}

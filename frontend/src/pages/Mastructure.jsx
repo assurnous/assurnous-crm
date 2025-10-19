@@ -135,59 +135,6 @@ const Mastructure = () => {
             </div>
           </TabPane>
 
-          {/* Codes Assureurs Tab */}
-          {/* <TabPane tab="Codes assureurs" key="2">
-            <div className="mb-4 flex justify-end">
-              <Button type="primary" icon={<PlusOutlined />}>
-                AJOUTER UN CODE ASSUREUR EXTERNE
-              </Button>
-            </div>
-            <Table 
-              columns={[
-                ...codesAssureursColumns.map((col) => ({
-                  ...col,
-                  title: (
-                    <div className="flex flex-col items-center">
-                      <div className="text-xs">{col.title}</div>
-                    </div>
-                  ),
-                })),
-              ]}
-              dataSource={[]} 
-              rowKey="id"
-              locale={{ emptyText: 'Aucun code assureur enregistré' }}
-              className="custom-table text-xs sm:text-sm"
-            />
-          </TabPane> */}
-
-          {/* Bordereaux Tab */}
-          {/* <TabPane tab="Bordereaux" key="3">
-            <div className="mb-4">
-              <span className="mr-2">Mois du bordereaux:</span>
-              <Select placeholder="--Choisissez--" style={{ width: 200 }}>
-                <Option value="janvier">Janvier</Option>
-                <Option value="fevrier">Février</Option>
-            
-              </Select>
-            </div>
-            <Table 
-              columns={[
-                ...bordereauxColumns.map((col) => ({
-                  ...col,
-                  title: (
-                    <div className="flex flex-col items-center">
-                      <div className="text-xs">{col.title}</div>
-                    </div>
-                  ),
-                })),
-              ]}
-              dataSource={[]} 
-              rowKey="id"
-              locale={{ emptyText: 'Aucun bordereau enregistré' }}
-              className="custom-table text-xs sm:text-sm"
-            />
-          </TabPane> */}
-
           {/* Documents Tab */}
           <TabPane tab="Autres documents" key="4">
             <div className="mb-4 flex justify-end">

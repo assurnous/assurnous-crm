@@ -223,9 +223,10 @@ if (filterValues.search) {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const [adminsRes, commercialsRes] = await Promise.all([
+        const [adminsRes, commercialsRes, managersRes] = await Promise.all([
           axios.get("/admin"),
           axios.get("/commercials"),
+          axios.get("/manager"),
         ]);
   
         const combinedUsers = [
@@ -243,6 +244,14 @@ if (filterValues.search) {
             // Ensure all commercial have nom/prenom
             nom: commercial.nom || commercial.name?.split(' ')[0] || "",
             prenom: commercial.prenom || commercial.name?.split(' ')[1] || ""
+          })),
+          ...managersRes.data.map(manager => ({
+            ...manager,
+            userType: "manager",
+            id: manager._id,
+            // Standardize name fields
+            nom: manager.nom || manager.name?.split(' ')[0] || "",
+            prenom: manager.prenom || manager.name?.split(' ')[1] || ""
           }))
         ];
   
@@ -315,8 +324,9 @@ if (filterValues.search) {
     const decodedToken = token ? jwtDecode(token) : null;
     const isAdmin =
     decodedToken.role === "Admin" || decodedToken.role === "admin";
-  const sessionId = decodedToken.userId;
-  const sessionModel = isAdmin ? "Admin" : "Commercial";
+    const isManager = decodedToken.role === "Manager" || decodedToken.role === "manager";
+    const sessionId = decodedToken.userId;
+    const sessionModel = isAdmin ? "Admin" : isManager ? "Manager" : "Commercial";
 
     try {
       // Prepare form data with document if exists
@@ -558,30 +568,100 @@ if (filterValues.search) {
     fetchAllContrats();
   }, [refreshTrigger]);
   useEffect(() => {
-    const fetchClientsData = async () => {
-      setClientLoading(true);
+    // const fetchClientsData = async () => {
+    //   setClientLoading(true);
+    //   try {
+    //     const response = await axios.get("/data");
+    //     console.log("Full clients data:", {
+    //       rawResponse: response.data,
+    //       chatData: response.data?.chatData?.map(c => ({
+    //         _id: c._id,
+    //         nom: c.nom,
+    //         prenom: c.prenom,
+    //         gestionnaire: c.gestionnaire,
+    //         gestionnaireName: c.gestionnaireName
+    //       }))
+    //     });
+    //     setClients(response.data?.chatData || []);
+    //   } catch (error) {
+    //     console.error("Error fetching clients data:", error);
+    //     setClients([]);
+    //   } finally {
+    //     setClientLoading(false);
+    //   }
+    // };
+    const fetchClients = async () => {
+      const token = localStorage.getItem("token");
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken?.userId;
+      const userRole = decodedToken?.role?.toLowerCase(); // or userType
+    
       try {
-        const response = await axios.get("/data");
-        console.log("Full clients data:", {
-          rawResponse: response.data,
-          chatData: response.data?.chatData?.map(c => ({
-            _id: c._id,
-            nom: c.nom,
-            prenom: c.prenom,
-            gestionnaire: c.gestionnaire,
-            gestionnaireName: c.gestionnaireName
-          }))
+        setLoading(true);
+        
+        // Always fetch all clients (admin will use all, commercial will filter)
+        const response = await axios.get('/data', {
+          headers: { Authorization: `Bearer ${token}` }
         });
-        setClients(response.data?.chatData || []);
+    
+        const allLeads = response.data?.chatData || [];
+        console.log("All leads:", allLeads);
+    
+        const filteredLeads = allLeads.filter(lead => {
+          // ADMIN: See all clients
+          if (userRole === 'admin') {
+            return true;
+          }
+    
+          // COMMERCIAL: Only see clients assigned to them via commercial field
+          if (userRole === 'commercial') {
+            const commercialId = 
+              typeof lead.commercial === 'string' 
+                ? lead.commercial 
+                : lead.commercial?._id?.toString();
+            return commercialId === userId;
+          }
+    
+          // MANAGER: Only see clients assigned to them via manager field
+          if (userRole === 'manager') {
+            const managerId = 
+              typeof lead.manager === 'string' 
+                ? lead.manager 
+                : lead.manager?._id?.toString();
+            return managerId === userId;
+          }
+    
+          // Default: no access if role not recognized
+          return false;
+        });
+    
+        // Sort by createdAt in descending order (newest first)
+        const sortedLeads = filteredLeads.sort((a, b) => {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+    
+        console.log("Filtered and sorted leads:", {
+          userId,
+          userRole,
+          totalLeads: allLeads.length,
+          filteredCount: sortedLeads.length,
+          sampleLead: sortedLeads[0],
+          breakdown: {
+            admin: userRole === 'admin' ? 'ALL' : 'N/A',
+            commercial: userRole === 'commercial' ? sortedLeads.length : 'N/A',
+            manager: userRole === 'manager' ? sortedLeads.length : 'N/A'
+          }
+        });
+    
+        setClients(sortedLeads);
       } catch (error) {
-        console.error("Error fetching clients data:", error);
-        setClients([]);
+        console.error("Error fetching leads:", error);
+        message.error("Failed to fetch leads");
       } finally {
-        setClientLoading(false);
+        setLoading(false);
       }
     };
-  
-    fetchClientsData();
+    fetchClients();
   }, []);
   const showDeleteConfirm = (id) => {
     Modal.confirm({
@@ -638,12 +718,10 @@ if (filterValues.search) {
       paymentType: record.paymentType,
       paymentMethod: record.paymentMethod,
       brokerageFees: record.brokerageFees,
-      competitionContract: record.competitionContract,
       type_origine: record.type_origine,
       insurer: record.insurer,
       status: record.status,
       lead: record.lead?._id || record.lead,
-      type_origine: record.type_origine,
       prime: record.prime,
       commissionRate: record.commissionRate,
       recurrentCommission: record.recurrentCommission,
@@ -799,33 +877,56 @@ const handleLeadClick = (lead) => {
       key: "recurrentCommission",
     },
 
+    // {
+    //   title: "Gestionnaire",
+    //   dataIndex: "gestionnaire",
+    //   key: "gestionnaire",
+    //   render: (gestionnaireId, record) => {
+    //     // Get the name from the most reliable source in your data structure
+    //     const gestionnaireName = 
+    //     record.originalData?.session?.name ||          // From populated session
+    //     record.originalData?.lead?.gestionnaireName || // From lead
+    //     record.originalData?.intermediaire ||          // From intermediaire
+    //     "N/A";// Final fallback                             // Final fallback
+    
+    //     return (
+    //       <h1 
+    //         style={{ padding: 0 }}
+    //       >
+    //         {gestionnaireName}
+    //       </h1>
+    //     );
+    //   },
+    // },
     {
       title: "Gestionnaire",
       dataIndex: "gestionnaire",
       key: "gestionnaire",
       render: (gestionnaireId, record) => {
-        // Get the name from the most reliable source in your data structure
+        // Use the record directly, not originalData
         const gestionnaireName = 
-        record.originalData?.session?.name ||          // From populated session
-        record.originalData?.lead?.gestionnaireName || // From lead
-        record.originalData?.intermediaire ||          // From intermediaire
-        "N/A";// Final fallback                             // Final fallback
+          record.session?.nom && record.session?.prenom 
+            ? `${record.session.nom} ${record.session.prenom}`
+            : record.session?.nom 
+            ? record.session.nom
+            : record.intermediaire 
+            ? record.intermediaire
+            : "N/A";
     
         return (
-          <h1 
-            style={{ padding: 0 }}
-          >
+          <h1 style={{ padding: 0 }}>
             {gestionnaireName}
           </h1>
         );
       },
     },
+ 
     {
       title: "Actions",
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
-          {record.documents?.length > 0 && (
+    
             <Button
               icon={<DownloadOutlined />}
               onClick={() => {
@@ -835,23 +936,22 @@ const handleLeadClick = (lead) => {
               type="text"
               title="Télécharger le document"
             />
-          )}
-          {/* {(userRole === "Admin" ||
+      
+          {(userRole === "Admin" ||
             record.originalData.session?._id === currentUserId) && (
             <Button
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
               type="text"
             />
-          )} */}
-          {userRole === "Admin" && (
+          )}
+      
             <Button
               icon={<DeleteOutlined />}
               onClick={() => showDeleteConfirm(record.key)}
               type="text"
               danger
             />
-          )}
         </Space>
       ),
     },
@@ -1374,15 +1474,29 @@ const handleLeadClick = (lead) => {
     }
     disabled={loading}
   >
-    {users.map((user) => {
+    {/* {users.map((user) => {
       const displayName =
         user.userType === "admin"
           ? user.name
           : `${user.nom} ${user.prenom}`;
 
       return (
-        <Option key={user._id} value={displayName}>  {/* Use display name as value */}
-          {displayName} ({user.userType === "admin" ? "Admin" : "Commercial"})
+        <Option key={user._id} value={user._id}>
+          {displayName} (
+            {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
+        </Option>
+      );
+    })} */}
+      {users.map((user) => {
+      const displayName =
+        user.userType === "admin"
+          ? user.name
+          : `${user.nom} ${user.prenom}`;
+
+      return (
+        <Option key={user._id} value={user._id}>
+          {displayName} (
+            {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
         </Option>
       );
     })}
@@ -1423,12 +1537,9 @@ const handleLeadClick = (lead) => {
                         : `${user.nom} ${user.prenom}`;
 
                     return (
-                      <Option
-                        key={`${user.userType}-${user._id}`}
-                        value={displayName}
-                      >
+                      <Option key={user._id} value={user._id}>
                         {displayName} (
-                        {user.userType === "admin" ? "Admin" : "Commercial"})
+                          {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
                       </Option>
                     );
                   })}
@@ -1466,7 +1577,7 @@ const handleLeadClick = (lead) => {
                         value={displayName}
                       >
                         {displayName} (
-                        {user.userType === "admin" ? "Admin" : "Commercial"})
+                          {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
                       </Option>
                     );
                   })}

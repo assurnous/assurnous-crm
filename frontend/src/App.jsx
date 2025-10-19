@@ -44,6 +44,7 @@ import Interlouteurs from "./pages/Interlouteurs";
 // import NotificationUpdater from "./components/NotificationUpdater";
 import DetailsSinistres from "./pages/DetailsSinistres";
 import Clientdigital from "./pages/Clientdigital";
+import ManagerAffectation from "./pages/ManagerAffectation";
 
 
 
@@ -101,6 +102,7 @@ function App() {
             <Route path="/import-leads" element={<ImportLeads />} />
             {/* <Route path="/lead/:id" element={<LeadDetailsPage />}/> */}
             <Route path="/affecter-clients" element={<AffectuerLead />} />
+            <Route path="/affecter-client" element={<ManagerAffectation />} />
             <Route path="/Paramètres" element={<CommerciauxPage />} />
             <Route path="/clients-lists" element={<ListLeads />} />
             {/* <Route path="/clients-list" element={<ListManagerLeads />} /> */}

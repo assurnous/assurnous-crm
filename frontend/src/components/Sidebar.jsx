@@ -151,19 +151,19 @@ const SideBar = () => {
             />
           ),
           label: "Mes clients",
-          role: "Commercial",
+          role: ["Commercial", "Manager"],
         },
-        {
-          key: "/clients-list",
-          icon: (
-            <FontAwesomeIcon
-              icon={faUsers}
-              style={{ fontSize: "18px", marginRight: "2px" }}
-            />
-          ),
-          label: "Mes clients",
-          role: "Manager",
-        },
+        // {
+        //   key: "/clients-list",
+        //   icon: (
+        //     <FontAwesomeIcon
+        //       icon={faUsers}
+        //       style={{ fontSize: "18px", marginRight: "2px" }}
+        //     />
+        //   ),
+        //   label: "Mes clients",
+        //   role: "Manager",
+        // },
         {
           key: "/Contrats",
           icon: (
@@ -221,7 +221,7 @@ const SideBar = () => {
             />
           ),
           label: "Compagnies",
-          role: ["Admin", "Commercial", "Manager"],
+          role: ["Admin",  "Manager"],
         },
         {
           key: "/devis",
@@ -267,7 +267,7 @@ const SideBar = () => {
             />
           ),
           label: "Liste de conformité",
-          role: ["Admin", "Commercial", "Manager"],
+          role: ["Admin", "Manager"],
         },
         // {
         //   key: "/Guide-de-conformité",
@@ -332,6 +332,17 @@ const SideBar = () => {
           label: "Affecter clients",
           role: ["Admin"],
           key: "/affecter-clients",
+          icon: (
+            <FontAwesomeIcon
+              icon={faUserTag}
+              style={{ fontSize: "12px", marginRight: "2px" }}
+            />
+          ),
+        },
+        {
+          label: "Affecter clients",
+          role: ["Manager"],
+          key: "/affecter-client",
           icon: (
             <FontAwesomeIcon
               icon={faUserTag}

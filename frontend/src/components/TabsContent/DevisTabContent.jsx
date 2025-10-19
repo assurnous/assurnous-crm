@@ -140,17 +140,19 @@ const DevisTabContent = () => {
     console.log("Form values:", values);
     const token = localStorage.getItem("token");
     const decodedToken = token ? jwtDecode(token) : null;
-    const isAdmin =
-    decodedToken.role === "Admin" || decodedToken.role === "admin";
+    const isAdmin = decodedToken.role === "Admin" || decodedToken.role === "admin";
+    const isManager = decodedToken.role === "Manager" || decodedToken.role === "manager";
+
   const sessionId = decodedToken.userId;
-  const sessionModel = isAdmin ? "Admin" : "Commercial";
+  // const sessionModel = isAdmin ? "Admin" : "Commercial";
+  const sessionModel = isAdmin ? "Admin" : isManager ? "Manager" : "Commercial";
     
     try {
       // Prepare form data with document if exists
       const formData = {
         ...values,
         documents: uploadedDocument ? [uploadedDocument] : [],
-        gestionnaire:  gestionnaire,
+        gestionnaire: gestionnaire,
         session: sessionId,
         sessionModel: sessionModel,
         lead: id,
@@ -274,9 +276,10 @@ const DevisTabContent = () => {
     const fetchUsers = async () => {
       try {
         // Fetch both admins and commercials
-        const [adminsRes, commercialsRes] = await Promise.all([
+        const [adminsRes, commercialsRes, managersRes] = await Promise.all([
           axios.get("/admin"),
           axios.get("/commercials"),
+          axios.get("/manager"),
         ]);
 
         // Combine and format the data
@@ -288,6 +291,10 @@ const DevisTabContent = () => {
           ...commercialsRes.data.map((commercial) => ({
             ...commercial,
             userType: "commercial",
+          })),
+          ...managersRes.data.map((manager) => ({
+            ...manager,
+            userType: "manager",
           })),
         ];
 
@@ -310,20 +317,41 @@ const DevisTabContent = () => {
       key: "numero_devis",
       sorter: (a, b) => a.numero_devis.localeCompare(b.numero_devis),
     },
+    // {
+    //   title: "Gestionnaire",
+    //   dataIndex: "gestionnaire",
+    //   key: "gestionnaire",
+    //   render: (gestionnaire, record) => (
+    //     <>
+    //       {client.gestionnaireName}
+    //       {/* {userRole === "Admin" && (
+    //         <div style={{ fontSize: 12, color: "#666" }}>
+    //           {record.originalData.session?.email}
+    //         </div>
+    //       )} */}
+    //     </>
+    //   ),
+    // },
     {
       title: "Gestionnaire",
       dataIndex: "gestionnaire",
       key: "gestionnaire",
-      render: (gestionnaire, record) => (
-        <>
-          {client.gestionnaireName}
-          {/* {userRole === "Admin" && (
-            <div style={{ fontSize: 12, color: "#666" }}>
-              {record.originalData.session?.email}
-            </div>
-          )} */}
-        </>
-      ),
+      render: (gestionnaire, record) => {
+        // Use the original data that contains the session object
+        const originalRecord = record.originalData || record;
+        
+        if (gestionnaire && gestionnaire !== "N/A") {
+          return <>{gestionnaire}</>;
+        }
+        
+        if (originalRecord.session && originalRecord.session.nom) {
+          const nom = originalRecord.session.nom || "";
+          const prenom = originalRecord.session.prenom || "";
+          return <>{`${nom} ${prenom}`.trim()}</>;
+        }
+        
+        return <>N/A</>;
+      },
     },
     {
       title: "Risque",
@@ -348,7 +376,7 @@ const DevisTabContent = () => {
         };
         return (
           <Tag color={statusMap[statut]?.color || "default"}>
-            {statusMap[statut]?.text || statut}
+            {statusMap[statut]?.text}
           </Tag>
         );
       },
@@ -383,7 +411,7 @@ const DevisTabContent = () => {
       key: "actions",
       render: (_, record) => (
         <Space size="middle">
-             {record.documents?.length > 0 && (
+             {/* {record.documents?.length > 0 && ( */}
         <Button
           icon={<DownloadOutlined />}
           onClick={() => {
@@ -393,15 +421,15 @@ const DevisTabContent = () => {
           type="text"
           title="Télécharger le document"
         />
-      )}
-          {(userRole === "Admin" ||
-            record.originalData.session?._id === currentUserId) && (
+      {/* )} */}
+          {/* {(userRole === "Admin" && userRole === "Manager" || */}
+            {/* record.originalData.session?._id === currentUserId) && ( */}
             <Button
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
               type="text"
             />
-          )}
+          {/* )} */}
           {userRole === "Admin" && (
             <Button
               icon={<DeleteOutlined />}
@@ -826,7 +854,9 @@ const handleEdit = (record) => {
                       value={displayName}
                     >
                       {displayName} (
-                      {user.userType === "admin" ? "Admin" : "Commercial"})
+                      {/* {user.userType === "admin" ? "Admin" : "Commercial"}) */}
+                     
+                        {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
                     </Option>
                   );
                 })}
@@ -861,7 +891,8 @@ const handleEdit = (record) => {
                       value={displayName}
                     >
                       {displayName} (
-                      {user.userType === "admin" ? "Admin" : "Commercial"})
+                      {/* {user.userType === "admin" ? "Admin" : "Commercial"}) */}
+                      {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
                     </Option>
                   );
                 })}

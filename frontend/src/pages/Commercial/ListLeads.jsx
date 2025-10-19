@@ -60,22 +60,7 @@ const ListLeads = () => {
     applyFilters(newFilters);
   };
 
-  // const handleFormSubmit = async (values) => {
-  //   console.log("Form values:", values);
-  //   try {
-  //     const response = await axios.post("/data", values);
-  //     console.log("Lead added successfully:", response.data);
-  //     form.resetFields();
-  //     setIsModalOpen(false);
-  //     setChatData((prev) => [...prev, response.data]); // Update chatData with the new lead
-  //     setFilteredData((prev) => [...prev, response.data]); // Update filteredData with the new lead
-  //     alert("Le client à été créé avec succès !");
-  //     // Handle successful submission, e.g., show a success message or reset form
-  //   } catch (error) {
-  //     console.error("Error adding lead:", error);
-  //     message.error("Erreur lors de l'ajout du client"); // Handle error (e.g., show error message)
-  //   }
-  // };
+
   const handleFormSubmit = async (values) => {
     console.log("Form values:", values);
     
@@ -135,20 +120,6 @@ const ListLeads = () => {
       );
     }
 
-    // Apply search filter
-    // if (filterValues.search) {
-    //   const searchTerm = filterValues.search;
-    //   result = result.filter(
-    //     (item) =>
-    //       item.email?.includes(searchTerm) ||
-    //       item.client?.includes(filterValues.search) ||
-    //       item.gestionnaire?.includes(searchTerm) ||
-    //       item.portable?.includes(searchTerm) ||
-    //       item.categorie?.includes(searchTerm) ||
-    //       item.codepostal?.includes(searchTerm)
-
-    //   );
-    // }
     if (filterValues.search) {
       const searchTerm = filterValues.search.toLowerCase();
       result = result.filter((item) => {
@@ -203,6 +174,60 @@ const ListLeads = () => {
     fetchUsers();
   }, []);
 
+  // const fetchClients = async () => {
+  //   const token = localStorage.getItem("token");
+  //   const decodedToken = jwtDecode(token);
+  //   const userId = decodedToken?.userId;
+  //   const userRole = decodedToken?.role?.toLowerCase(); // or userType
+  
+  //   try {
+  //     setLoading(true);
+      
+  //     // Always fetch all clients (admin will use all, commercial will filter)
+  //     const response = await axios.get('/data', {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     });
+  
+  //     const allLeads = response.data?.chatData || [];
+  //     console.log("All leads:", allLeads);
+  
+  //     const filteredLeads = allLeads.filter(lead => {
+  //       const isGestionnaire = 
+  //         (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
+  //         (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
+        
+  //       // const isCommercial = 
+  //       //   lead.commercial?._id && lead.commercial._id.toString() === userId;
+  //       const commercialId = 
+  //       typeof lead.commercial === 'string' 
+  //         ? lead.commercial 
+  //         : lead.commercial?._id?.toString();
+
+  //         const isCommercial = commercialId === userId;
+        
+  //       return isGestionnaire || isCommercial;
+  //     });
+  
+  //     // Sort by createdAt in descending order (newest first)
+  //     const sortedLeads = filteredLeads.sort((a, b) => {
+  //       return new Date(b.createdAt) - new Date(a.createdAt);
+  //     });
+  
+  //     console.log("Sorted leads (newest first):", {
+  //       userId,
+  //       sortedCount: sortedLeads.length,
+  //       sampleLead: sortedLeads[0]
+  //     });
+  
+  //     setChatData(sortedLeads);
+  //     setFilteredData(sortedLeads);
+  //   } catch (error) {
+  //     console.error("Error fetching leads:", error);
+  //     message.error("Failed to fetch leads");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }; 
   const fetchClients = async () => {
     const token = localStorage.getItem("token");
     const decodedToken = jwtDecode(token);
@@ -221,20 +246,27 @@ const ListLeads = () => {
       console.log("All leads:", allLeads);
   
       const filteredLeads = allLeads.filter(lead => {
+        // Check if user is the gestionnaire (creator)
         const isGestionnaire = 
           (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
           (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
         
-        // const isCommercial = 
-        //   lead.commercial?._id && lead.commercial._id.toString() === userId;
+        // Check if user is the assigned commercial
         const commercialId = 
-        typeof lead.commercial === 'string' 
-          ? lead.commercial 
-          : lead.commercial?._id?.toString();
-
-          const isCommercial = commercialId === userId;
+          typeof lead.commercial === 'string' 
+            ? lead.commercial 
+            : lead.commercial?._id?.toString();
+        const isCommercial = commercialId === userId;
+  
+        // Check if user is the assigned manager
+        const managerId = 
+          typeof lead.manager === 'string' 
+            ? lead.manager 
+            : lead.manager?._id?.toString();
+        const isManager = managerId === userId;
+  
         
-        return isGestionnaire || isCommercial;
+        return isGestionnaire || isCommercial || isManager; // || isAdmin;
       });
   
       // Sort by createdAt in descending order (newest first)
@@ -242,10 +274,34 @@ const ListLeads = () => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
   
-      console.log("Sorted leads (newest first):", {
+      console.log("Filtered and sorted leads:", {
         userId,
-        sortedCount: sortedLeads.length,
-        sampleLead: sortedLeads[0]
+        userRole,
+        totalLeads: allLeads.length,
+        filteredCount: sortedLeads.length,
+        sampleLead: sortedLeads[0],
+        breakdown: {
+          createdByUser: sortedLeads.filter(lead => {
+            const isGestionnaire = 
+              (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
+              (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
+            return isGestionnaire;
+          }).length,
+          assignedToCommercial: sortedLeads.filter(lead => {
+            const commercialId = 
+              typeof lead.commercial === 'string' 
+                ? lead.commercial 
+                : lead.commercial?._id?.toString();
+            return commercialId === userId;
+          }).length,
+          assignedToManager: sortedLeads.filter(lead => {
+            const managerId = 
+              typeof lead.manager === 'string' 
+                ? lead.manager 
+                : lead.manager?._id?.toString();
+            return managerId === userId;
+          }).length
+        }
       });
   
       setChatData(sortedLeads);
@@ -256,109 +312,9 @@ const ListLeads = () => {
     } finally {
       setLoading(false);
     }
-  }; 
-
-  // const fetchClients = async () => {
-  //   const token = localStorage.getItem("token");
-  //   const decodedToken = jwtDecode(token);
-  //   const userId = decodedToken?.userId;
-  //   const userRole = decodedToken?.role?.toLowerCase(); // or userType
-  
-  //   try {
-  //     setLoading(true);
-      
-  //     // Always fetch all clients (admin will use all, commercial will filter)
-  //     const response = await axios.get('/data', {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
-  
-  //     const allLeads = response.data?.chatData || [];
-  //     console.log("All leads:", allLeads);
-  
-
-  //     const filteredLeads = allLeads.filter(lead => {
-  //       const isGestionnaire = 
-  //         (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
-  //         (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
-        
-  //       const isCommercial = 
-  //         lead.commercial?._id && lead.commercial._id.toString() === userId;
-        
-  //       return isGestionnaire || isCommercial;
-  //     });
-  
-  //     console.log("Filtered leads for commercial:", {
-  //       userId,
-  //       filteredCount: filteredLeads.length,
-  //       sampleLead: filteredLeads[0]
-  //     });
-  
-  //     setChatData(filteredLeads);
-  //     setFilteredData(filteredLeads);
-  //   } catch (error) {
-  //     console.error("Error fetching leads:", error);
-  //     message.error("Failed to fetch leads");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-  // const fetchClients = async () => {
-  //   const token = localStorage.getItem("token");
-  //   const decodedToken = jwtDecode(token);
-  //   const userId = decodedToken?.userId;
-  //   const userName = decodedToken?.name; // Get user name for string comparison
-  
-  //   try {
-  //     setLoading(true);
-      
-  //     // Always fetch all clients
-  //     const response = await axios.get('/data', {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
-  
-  //     const allLeads = response.data?.chatData || [];
-  //     console.log("All leads:", allLeads);
-  
-  //     const filteredLeads = allLeads.filter(lead => {
-  //       console.log("Checking lead:", {
-  //         leadId: lead._id,
-  //         gestionnaire: lead.gestionnaire,
-  //         // cree_par: lead.cree_par,
-  //         userId,
-  //         userName
-  //       });
-  
-  //       // Check if this lead belongs to the current user
-  //       const isGestionnaire = 
-  //         // Check by ObjectId (direct comparison)
-  //         (lead.gestionnaire && lead.gestionnaire.toString() === userId) ||
-  //         // Check by name in cree_par field
-  //         (lead.cree_par && lead.cree_par.includes(userName));
-  
-  //       const isCommercial = 
-  //         lead.commercial?._id && lead.commercial._id.toString() === userId;
-  
-  //       console.log(`Lead ${lead._id} - isGestionnaire: ${isGestionnaire}, isCommercial: ${isCommercial}`);
-        
-  //       return isGestionnaire || isCommercial;
-  //     });
-  
-  //     console.log("Filtered leads for commercial:", {
-  //       userId,
-  //       userName,
-  //       filteredCount: filteredLeads.length,
-  //       sampleLead: filteredLeads[0]
-  //     });
-  
-  //     setChatData(filteredLeads);
-  //     setFilteredData(filteredLeads);
-  //   } catch (error) {
-  //     console.error("Error fetching leads:", error);
-  //     message.error("Failed to fetch leads");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+  };
+ 
+ 
   useEffect(() => {
     fetchCommercials();
     fetchClients();
