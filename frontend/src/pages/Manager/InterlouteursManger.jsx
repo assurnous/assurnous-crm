@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import axios from "axios";
 import {
   Table,
@@ -25,9 +25,8 @@ import {
   TeamOutlined,
   SearchOutlined,
   FilterOutlined,
-  CrownOutlined
 } from "@ant-design/icons";
-import ListAdmin from "./Admin/ListAdmin";
+import { UserContext } from "../../UserContext";
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -43,111 +42,179 @@ const statusColors = {
   pending: "orange"
 };
 
-const Interlouteurs = () => {
+const InterlouteursManager = () => {
   const [commercials, setCommercials] = useState([]);
-  const [managers, setManagers] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userType, setUserType] = useState("commercial"); // "commercial" or "manager"
-  const [activeTab, setActiveTab] = useState("commerciaux");
+  const [currentCommercial, setCurrentCommercial] = useState(null);
   const [searchText, setSearchText] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [loading, setLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false); // Add this to prevent multiple fetches
   const [form] = Form.useForm();
+  
+  // Use your UserContext
+  const { token, decodedToken, isLoggedIn } = useContext(UserContext);
 
-  useEffect(() => {
-    fetchCommercials();
-    fetchManagers();
-  }, []);
+  // Get current manager from decoded token - use useMemo to prevent unnecessary recalculations
+  const currentManager = React.useMemo(() => {
+    if (!decodedToken) return null;
+    
+    return {
+      id: decodedToken.userId,
+      role: decodedToken.role,
+      name: decodedToken.name,
+      nom: decodedToken.name.split(' ').slice(1).join(' ') || '',
+      prenom: decodedToken.name.split(' ')[0] || '',
+    };
+  }, [decodedToken]); // Only recalculate when decodedToken changes
 
-  const fetchCommercials = async () => {
+  // Memoize the fetch function
+  const fetchCommercials = useCallback(async () => {
+    if (!currentManager || !token || hasFetched) return;
+    
+    setLoading(true);
     try {
-      const response = await axios.get("/commercials");
+      const response = await axios.get(`/commercials/manager/${currentManager.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
       console.log("Commercials fetched:", response.data);
       setCommercials(response.data);
+      setHasFetched(true); // Mark as fetched to prevent future calls
     } catch (error) {
       console.error("Error fetching commercials:", error);
+      
+      if (error.response?.status === 401) {
+        message.error("Session expirée, veuillez vous reconnecter");
+      } else {
+        message.error("Erreur lors du chargement des commerciaux");
+      }
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [currentManager, token, hasFetched]);
 
-  const fetchManagers = async () => {
-    try {
-      const response = await axios.get("/manager");
-      console.log("Managers fetched:", response.data);
-      setManagers(response.data);
-    } catch (error) {
-      console.error("Error fetching managers:", error);
+  // Check authentication and authorization - FIXED useEffect
+  useEffect(() => {
+    // Only run if we have a valid manager and haven't fetched yet
+    if (currentManager && currentManager.role.toLowerCase() === 'manager' && !hasFetched) {
+      fetchCommercials();
     }
-  };
+  }, [currentManager, hasFetched, fetchCommercials]); // Add fetchCommercials to dependencies
 
-  const handleAddUser = (type) => {
+  // Separate useEffect for authentication checks
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      message.error("Veuillez vous connecter");
+      return;
+    }
+
+    if (currentManager && currentManager.role.toLowerCase() !== 'manager') {
+      message.error("Accès non autorisé - Réservé aux managers");
+      return;
+    }
+  }, [isLoggedIn, currentManager]);
+
+  const handleAddCommercial = () => {
+    if (!isLoggedIn() || !currentManager) {
+      message.error("Veuillez vous connecter");
+      return;
+    }
+    
     setIsEditing(false);
-    setCurrentUser(null);
-    setUserType(type);
+    setCurrentCommercial(null);
     setIsModalVisible(true);
   };
 
-  const handleEditUser = (user, type) => {
+  const handleEditCommercial = (commercial) => {
+    // Additional security check - ensure the commercial belongs to this manager
+    if (commercial.createdBy !== currentManager.id) {
+      message.error("Vous ne pouvez modifier que vos propres commerciaux");
+      return;
+    }
+    
     setIsEditing(true);
-    setCurrentUser(user);
-    setUserType(type);
+    setCurrentCommercial(commercial);
     form.setFieldsValue({
-      ...user,
+      ...commercial,
       password: "", 
     });
     setIsModalVisible(true);
   };
 
-  const handleDeleteUser = async (userId, type) => {
+  const handleDeleteCommercial = async (commercialId) => {
     try {
-      const endpoint = type === "commercial" ? `/commercials/${userId}` : `/manager/${userId}`;
-      await axios.delete(endpoint);
-      message.success(`${type === "commercial" ? "Commercial" : "Manager"} supprimé avec succès`);
+      await axios.delete(`/commercials/${commercialId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
-      if (type === "commercial") {
-        fetchCommercials();
-      } else {
-        fetchManagers();
-      }
+      message.success("Commercial supprimé avec succès");
+      // Reset hasFetched to allow refetching
+      setHasFetched(false);
     } catch (error) {
-      console.error(`Error deleting ${type}:`, error);
-      message.error(`Erreur lors de la suppression du ${type === "commercial" ? "commercial" : "manager"}`);
+      console.error("Error deleting commercial:", error);
+      
+      if (error.response?.status === 401) {
+        message.error("Session expirée");
+      } else if (error.response?.status === 403) {
+        message.error("Vous n'avez pas la permission de supprimer ce commercial");
+      } else {
+        message.error("Erreur lors de la suppression du commercial");
+      }
     }
   };
 
   const handleCancel = () => {
     setIsModalVisible(false);
     form.resetFields();
-    setCurrentUser(null);
+    setCurrentCommercial(null);
   };
 
   const handleSave = async (values) => {
+    if (!isLoggedIn() || !currentManager) {
+      message.error("Veuillez vous connecter");
+      return;
+    }
+
     try {
       if (isEditing) {
-        const endpoint = userType === "commercial" 
-          ? `/commercials/${currentUser._id}` 
-          : `/manager/${currentUser._id}`;
-        const res = await axios.put(endpoint, values);
-        console.log(`${userType} updated:`, res.data);
-        message.success(`${userType === "commercial" ? "Commercial" : "Manager"} mis à jour avec succès`);
+        const res = await axios.put(`/commercials/${currentCommercial._id}`, values, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        console.log("Commercial updated:", res.data);
+        message.success("Commercial mis à jour avec succès");
       } else {
-        const endpoint = userType === "commercial" ? "/commercials" : "/manager";
-        const res = await axios.post(endpoint, values);
-        console.log(`${userType} added:`, res.data);
-        message.success(`${userType === "commercial" ? "Commercial" : "Manager"} ajouté avec succès`);
+        // Use the manager-specific endpoint
+        const res = await axios.post("/commercial", values, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        console.log("Commercial added:", res.data);
+        message.success("Commercial ajouté avec succès");
       }
       
       setIsModalVisible(false);
       form.resetFields();
-      
-      if (userType === "commercial") {
-        fetchCommercials();
-      } else {
-        fetchManagers();
-      }
+      // Reset hasFetched to trigger refetch
+      setHasFetched(false);
     } catch (error) {
-      console.error(`Error saving ${userType}:`, error);
-      message.error(`Erreur lors de la sauvegarde du ${userType === "commercial" ? "commercial" : "manager"}`);
+      console.error("Error saving commercial:", error);
+      
+      if (error.response?.status === 401) {
+        message.error("Session expirée");
+      } else if (error.response?.status === 400) {
+        message.error("Données invalides");
+      } else {
+        message.error("Erreur lors de la sauvegarde du commercial");
+      }
     }
   };
 
@@ -164,71 +231,56 @@ const Interlouteurs = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const filteredManagers = managers.filter(manager => {
-    const matchesSearch = 
-      manager.nom?.toLowerCase().includes(searchText.toLowerCase()) ||
-      manager.prenom?.toLowerCase().includes(searchText.toLowerCase()) ||
-      manager.email?.toLowerCase().includes(searchText.toLowerCase()) ||
-      manager.phone?.toLowerCase().includes(searchText.toLowerCase());
-    
-    const matchesStatus = 
-      filterStatus === "all" || manager.status === filterStatus;
-    
-    return matchesSearch && matchesStatus;
-  });
-
   const formatLastActivity = (dateString) => {
-    if (!dateString) return 'Never active';
+    if (!dateString) return 'Jamais actif';
     
     const now = new Date();
     const activityDate = new Date(dateString);
     const diffInSeconds = Math.floor((now - activityDate) / 1000);
     
-    // Time intervals in seconds
     const minute = 60;
     const hour = minute * 60;
     const day = hour * 24;
     const month = day * 30;
     const year = day * 365;
 
-    if (diffInSeconds < minute) return 'Just now';
+    if (diffInSeconds < minute) return 'À l\'instant';
     if (diffInSeconds < hour) {
       const mins = Math.floor(diffInSeconds / minute);
-      return `${mins} ${mins === 1 ? 'min' : 'mins'} ago`;
+      return `Il y a ${mins} ${mins === 1 ? 'minute' : 'minutes'}`;
     }
     if (diffInSeconds < day) {
       const hours = Math.floor(diffInSeconds / hour);
-      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+      return `Il y a ${hours} ${hours === 1 ? 'heure' : 'heures'}`;
     }
     if (diffInSeconds < month) {
       const days = Math.floor(diffInSeconds / day);
-      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+      return `Il y a ${days} ${days === 1 ? 'jour' : 'jours'}`;
     }
     if (diffInSeconds < year) {
-      return activityDate.toLocaleDateString('en-US', {
+      return activityDate.toLocaleDateString('fr-FR', {
         month: 'short',
         day: 'numeric'
       });
     }
     
-    // For dates older than 1 year
-    return activityDate.toLocaleDateString('en-US', {
+    return activityDate.toLocaleDateString('fr-FR', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
   };
 
-  const userColumns = (type) => [
+  const commercialColumns = [
     {
-      title: type === "commercial" ? "COMMERCIAL" : "MANAGER",
+      title: "COMMERCIAL",
       key: "nomPrenom",
       render: (text, record) => (
         <div className="flex items-center">
           {record.image ? (
             <img
               src={record.image}
-              alt={type}
+              alt="commercial"
               className="w-10 h-10 rounded-full mr-3"
             />
           ) : (
@@ -243,6 +295,9 @@ const Interlouteurs = () => {
           <div>
             <div className="font-medium text-gray-900">
               {record.prenom} {record.nom}
+              <Tag color="blue" className="ml-2 text-xs">
+                Votre commercial
+              </Tag>
             </div>
             <div className="text-gray-500 text-sm">{record.email}</div>
           </div>
@@ -250,12 +305,12 @@ const Interlouteurs = () => {
       ),
     },
     {
-      title: "STATUS",
+      title: "STATUT",
       dataIndex: "status",
       key: "status",
       render: (status) => (
         <Tag color={statusColors[status] || "blue"} className="capitalize">
-          {status}
+          {status === 'active' ? 'Actif' : status === 'inactive' ? 'Inactif' : 'En attente'}
         </Tag>
       ),
     },
@@ -270,13 +325,13 @@ const Interlouteurs = () => {
       ),
     },
     {
-      title: "LAST ACTIVITY",
+      title: "DERNIÈRE ACTIVITÉ",
       key: "lastActivity",
       render: (_, record) => (
         <div className="text-gray-600">
           {formatLastActivity(record.lastActivity)}
           <div className="text-xs text-gray-400">
-            {record.lastActivity && new Date(record.lastActivity).toLocaleString()}
+            {record.lastActivity && new Date(record.lastActivity).toLocaleString('fr-FR')}
           </div>
         </div>
       )
@@ -289,12 +344,12 @@ const Interlouteurs = () => {
           <Button
             type="text"
             icon={<EditOutlined className="text-blue-600" />}
-            onClick={() => handleEditUser(record, type)}
+            onClick={() => handleEditCommercial(record)}
             className="action-button"
           />
           <Popconfirm
-            title={`Êtes-vous sûr de vouloir supprimer ce ${type === "commercial" ? "commercial" : "manager"}?`}
-            onConfirm={() => handleDeleteUser(record._id, type)}
+            title="Êtes-vous sûr de vouloir supprimer ce commercial?"
+            onConfirm={() => handleDeleteCommercial(record._id)}
             okText="Oui"
             cancelText="Non"
             placement="left"
@@ -310,45 +365,52 @@ const Interlouteurs = () => {
     },
   ];
 
+  // Show loading or error state
+  if (!isLoggedIn()) {
+    return (
+      <div className="p-4 text-center">
+        <div className="text-red-500">Veuillez vous connecter pour accéder à cette page</div>
+      </div>
+    );
+  }
+
+  if (currentManager && currentManager.role.toLowerCase() !== 'manager') {
+    return (
+      <div className="p-4 text-center">
+        <div className="text-red-500">Accès non autorisé. Cette page est réservée aux managers.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 mb-6">
       <div className="crm-header">
         <h1 className="crm-title">
-          <TeamOutlined className="mr-2" /> Gestion des Utilisateurs
+          <TeamOutlined className="mr-2" /> 
+          Gestion de Mes Commerciaux
+          <Tag color="orange" className="ml-2">
+            Manager: {currentManager?.prenom} {currentManager?.nom}
+          </Tag>
         </h1>
         <div className="crm-actions">
-          <Space>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => handleAddUser("commercial")}
-              className="add-button"
-            >
-              Nouveau Commercial
-            </Button>
-            <Button
-              type="primary"
-              icon={<CrownOutlined />}
-              onClick={() => handleAddUser("manager")}
-              className="add-button"
-              style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
-            >
-              Nouveau Manager
-            </Button>
-          </Space>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAddCommercial}
+            className="add-button"
+            loading={loading}
+          >
+            Nouveau Commercial
+          </Button>
         </div>
       </div>
 
       <Card className="crm-card">
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          className="crm-tabs"
-        >
+        <Tabs defaultActiveKey="commerciaux" className="crm-tabs">
           <TabPane
             tab={
               <span>
-                <UserOutlined /> Commerciaux
+                <UserOutlined /> Mes Commerciaux
                 {commercials.length > 0 && (
                   <Badge
                     count={commercials.length}
@@ -386,18 +448,19 @@ const Interlouteurs = () => {
 
             <Divider className="crm-divider" />
 
+            <div className="mb-4 bg-blue-50 p-3 rounded-lg">
+              <p className="text-blue-700 text-sm">
+                💡 <strong>Information:</strong> Vous gérez ici uniquement les commerciaux que vous avez créés. 
+                Chaque commercial que vous créez vous est automatiquement attribué.
+              </p>
+            </div>
+
             <Table
-              columns={userColumns("commercial").map((col) => ({
-                ...col,
-                title: (
-                  <div className="flex flex-col items-center">
-                    <div className="text-xs">{col.title}</div>
-                  </div>
-                ),
-              }))}
+              columns={commercialColumns}
               dataSource={filteredCommercials}
               rowKey="_id"
               className="crm-table"
+              loading={loading}
               scroll={{ x: '100%' }}
               pagination={{
                 showSizeChanger: true,
@@ -406,79 +469,6 @@ const Interlouteurs = () => {
               }}
             />
           </TabPane>
-          
-          <TabPane
-            tab={
-              <span>
-                <CrownOutlined /> Managers
-                {managers.length > 0 && (
-                  <Badge
-                    count={managers.length}
-                    style={{ backgroundColor: '#52c41a', marginLeft: 8 }}
-                  />
-                )}
-              </span>
-            }
-            key="managers"
-          >
-            <div className="crm-filters">
-              <Input
-                placeholder="Rechercher un manager..."
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="search-input"
-              />
-              <Select
-                placeholder="Statut"
-                value={filterStatus}
-                onChange={setFilterStatus}
-                className="status-filter"
-                allowClear
-              >
-                <Option value="all">Tous les statuts</Option>
-                <Option value="active">Actif</Option>
-                <Option value="inactive">Inactif</Option>
-                <Option value="pending">En attente</Option>
-              </Select>
-              <Button icon={<FilterOutlined />} className="advanced-filter">
-                Filtres avancés
-              </Button>
-            </div>
-
-            <Divider className="crm-divider" />
-
-            <Table
-              columns={userColumns("manager").map((col) => ({
-                ...col,
-                title: (
-                  <div className="flex flex-col items-center">
-                    <div className="text-xs">{col.title}</div>
-                  </div>
-                ),
-              }))}
-              dataSource={filteredManagers}
-              rowKey="_id"
-              className="crm-table"
-              scroll={{ x: '100%' }}
-              pagination={{
-                showSizeChanger: true,
-                pageSizeOptions: ['10', '25', '50', '100'],
-                showTotal: (total) => `Total: ${total} managers`,
-              }}
-            />
-          </TabPane>
-          
-          <TabPane
-            tab={
-              <span>
-                <UserOutlined /> Administrateurs
-              </span>
-            }
-            key="administrateurs"
-          >
-            <ListAdmin />
-          </TabPane>
         </Tabs>
       </Card>
 
@@ -486,9 +476,12 @@ const Interlouteurs = () => {
         title={
           <span className="modal-title">
             {isEditing 
-              ? `Modifier le ${userType === "commercial" ? "Commercial" : "Manager"}` 
-              : `Nouveau ${userType === "commercial" ? "Commercial" : "Manager"}`
+              ? "Modifier le Commercial" 
+              : "Nouveau Commercial"
             }
+            <Tag color="blue" className="ml-2">
+              Votre commercial
+            </Tag>
           </span>
         }
         visible={isModalVisible}
@@ -522,7 +515,10 @@ const Interlouteurs = () => {
             <Form.Item
               name="email"
               label="Email"
-              rules={[{ required: true, message: "Veuillez entrer l'email" }]}
+              rules={[
+                { required: true, message: "Veuillez entrer l'email" },
+                { type: 'email', message: "Email invalide" }
+              ]}
               className="form-item"
             >
               <Input type="email" placeholder="Entrez l'email" />
@@ -560,12 +556,24 @@ const Interlouteurs = () => {
                   required: !isEditing,
                   message: "Veuillez entrer le mot de passe",
                 },
+                {
+                  min: 6,
+                  message: "Le mot de passe doit contenir au moins 6 caractères"
+                }
               ]}
               className="form-item"
             >
               <Input.Password placeholder="Entrez le mot de passe" />
             </Form.Item>
           </div>
+
+          {!isEditing && (
+            <div className="bg-blue-50 p-3 rounded-lg mb-4">
+              <p className="text-blue-700 text-sm">
+                ℹ️ Ce commercial vous sera automatiquement attribué et ne sera visible que par vous.
+              </p>
+            </div>
+          )}
 
           <Form.Item className="form-actions">
             <Space>
@@ -576,6 +584,7 @@ const Interlouteurs = () => {
                 type="primary"
                 htmlType="submit"
                 className="submit-button"
+                loading={loading}
               >
                 {isEditing ? "Mettre à jour" : "Créer"}
               </Button>
@@ -587,4 +596,4 @@ const Interlouteurs = () => {
   );
 };
 
-export default Interlouteurs;
+export default InterlouteursManager;

@@ -361,6 +361,17 @@ const SideBar = () => {
           label: "Mes interlocuteurs",
           role: ["Admin"],
         },
+        {
+          key: "/Interlocuteurs",
+          icon: (
+            <FontAwesomeIcon
+              icon={faUsers} // Example icon for devis
+              style={{ fontSize: "18px", marginRight: "2px" }}
+            />
+          ),
+          label: "Mes interlocuteurs",
+          role: ["Manager"],
+        },
       ],
     },
    

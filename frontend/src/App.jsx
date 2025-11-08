@@ -45,6 +45,7 @@ import Interlouteurs from "./pages/Interlouteurs";
 import DetailsSinistres from "./pages/DetailsSinistres";
 import Clientdigital from "./pages/Clientdigital";
 import ManagerAffectation from "./pages/ManagerAffectation";
+import InterlouteursManger from "./pages/Manager/InterlouteursManger";
 
 
 
@@ -93,6 +94,8 @@ function App() {
             <Route path="/Mes-comissions" element={<Commissions />} />
             <Route path="/Ma-structure" element={<Mastructure />} />
             <Route path="/Mes-interlocuteurs" element={<Interlouteurs />} />
+            <Route path="/Interlocuteurs" element={<InterlouteursManger />} />
+
 
 
 
