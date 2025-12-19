@@ -15,7 +15,8 @@ import {
   CloseOutlined,
   CalendarOutlined,
   BankOutlined,
-  MessageOutlined
+  MessageOutlined,
+  FileTextOutlined 
 
 } from "@ant-design/icons";
 import { jwtDecode } from "jwt-decode";
@@ -45,6 +46,27 @@ const ClientDetailPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [gestionnaire, setGestionnaire] = useState(null);
     const [form] = Form.useForm();
+    const [hasDevoirConseil, setHasDevoirConseil] = useState(false); // ADD THIS STATE
+
+    // Function to check if client has Devoir de Conseil documents
+    const checkDevoirConseilDocuments = async () => {
+      if (!id) return;
+      
+      try {
+        const response = await axios.get(`/documents/${id}`);
+        const devoirDocs = response.data.filter(doc => doc.family === 'Devoir de Conseil');
+        setHasDevoirConseil(devoirDocs.length > 0);
+        console.log("Devoir de Conseil check:", {
+          totalDocuments: response.data.length,
+          devoirDocsCount: devoirDocs.length,
+          hasDevoirConseil: devoirDocs.length > 0,
+          devoirDocs: devoirDocs
+        });
+      } catch (error) {
+        console.error("Error checking Devoir de Conseil documents:", error);
+        setHasDevoirConseil(false);
+      }
+    };
 
   const showModal = () => {
     setIsModalOpen(true);
@@ -119,7 +141,7 @@ const ClientDetailPage = () => {
         const clientData = response.data.chat;
         setClient(clientData);
         setLoading(false);
-        
+        await checkDevoirConseilDocuments();
         if (isModalOpen) {
           form.setFieldsValue({
             ...clientData,
@@ -134,6 +156,8 @@ const ClientDetailPage = () => {
             gestionnaireName: clientData.gestionnaireName
           });
         }
+
+        
       } catch (error) {
         console.error("Error fetching client details:", error);
         setLoading(false);
@@ -283,6 +307,15 @@ const ClientDetailPage = () => {
         {renderStatusTag(client.statut)}
         {renderCategoryTag(client.categorie)}
         {hasDigitalData && <Tag color="blue">Client Digital</Tag>}
+        {hasDevoirConseil && (
+                <Tag 
+                  color="purple" 
+                  icon={<FileTextOutlined />}
+                  className="flex items-center gap-1"
+                >
+                  Devoir de Conseil
+                </Tag>
+              )}
       </span>
     </Title>
   </div>
