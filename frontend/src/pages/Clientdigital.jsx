@@ -10,10 +10,15 @@ import {
   Space,
   message,
   Input,
+  Modal, Typography, Card
 } from "antd";
 import { useNavigate } from "react-router-dom";
-import { DeleteOutlined } from "@ant-design/icons";
+import { DeleteOutlined, SwapOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { jwtDecode } from "jwt-decode";
+
+
+
+const { Title, Text } = Typography;
 
 const { Option } = Select;
 
@@ -30,6 +35,15 @@ const Clientdigital = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+
+const [transferModalVisible, setTransferModalVisible] = useState(false);
+const [selectedClient, setSelectedClient] = useState(null);
+const [selectedCommercial, setSelectedCommercial] = useState(null);
+const [selectedManager, setSelectedManager] = useState(null);
+const [commercials, setCommercials] = useState([]);
+const [managers, setManagers] = useState([]);
+const [transferring, setTransferring] = useState(false);
+
   const [filters, setFilters] = useState({
     gestionaire: "tous",
     categorie: "tous",
@@ -45,6 +59,89 @@ const Clientdigital = () => {
     setFilters(newFilters);
     applyFilters(newFilters);
   };
+
+  // Fetch commercials and managers for transfer
+const fetchUsersForTransfer = async () => {
+  try {
+    const [commercialsRes, managersRes] = await Promise.all([
+      axios.get("/commercials"),
+      axios.get("/manager"),
+    ]);
+    
+    setCommercials(commercialsRes.data);
+    setManagers(managersRes.data);
+  } catch (error) {
+    console.error("Error fetching users for transfer:", error);
+  }
+};
+
+// Add this useEffect to fetch users on component mount
+useEffect(() => {
+  fetchUsersForTransfer();
+}, []);
+
+// Open Transfer Modal
+const openTransferModal = (client) => {
+  setSelectedClient(client);
+  setSelectedCommercial(null);
+  setSelectedManager(null);
+  setTransferModalVisible(true);
+};
+
+// Handle Transfer
+const handleTransfer = async () => {
+  if (!selectedCommercial && !selectedManager) {
+    message.warning("Veuillez sélectionner un commercial ou un manager");
+    return;
+  }
+
+  try {
+    setTransferring(true);
+    const token = localStorage.getItem("token");
+    
+    // First, unassign from current gestionnaire if exists
+    if (selectedClient.gestionnaire?._id) {
+      try {
+        await axios.post("/transfer-leads", {
+          leadIds: [selectedClient._id],
+          commercialId: selectedClient.gestionnaire._id,
+          id: [selectedClient._id]
+        }, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (unassignError) {
+        console.log("No existing assignment or error unassigning:", unassignError);
+      }
+    }
+
+    // Assign to new gestionnaire
+    if (selectedCommercial) {
+      await axios.post("/transfer-leads", {
+        leadIds: [selectedClient._id],
+        commercialId: selectedCommercial
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } else if (selectedManager) {
+      await axios.post("/transfer-leads", {
+        leadIds: [selectedClient._id],
+        managerId: selectedManager
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    }
+
+    message.success("Client transféré avec succès");
+    setTransferModalVisible(false);
+    setRefreshTrigger(prev => prev + 1);
+    
+  } catch (error) {
+    console.error("Error transferring client:", error);
+    message.error("Erreur lors du transfert: " + (error.response?.data?.message || error.message));
+  } finally {
+    setTransferring(false);
+  }
+};
   
   const applyFilters = (filterValues) => {
     let result = [...chatData];
@@ -623,14 +720,29 @@ const Clientdigital = () => {
         </div>
       ),
     },
+    // {
+    //   title: "Commentaire",
+    //   dataIndex: "comment",
+    //   key: "comment",
+    //   render: (text, record) => (
+    //     <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+    //       <div className="font-medium truncate max-w-xs">
+    //         {record.comment || ""}
+    //       </div>
+    //     </div>
+    //   ),
+    // },
     {
       title: "Commentaire",
       dataIndex: "comment",
       key: "comment",
       render: (text, record) => (
         <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
-          <div className="font-medium truncate max-w-xs">
-            {record.comment || ""}
+          <div className="font-medium truncate max-w-xs" title={record.comment || ""}>
+            {record.comment ? 
+              record.comment.split(/\s+/).slice(0, 4).join(' ') + (record.comment.split(/\s+/).length > 4 ? '...' : '') 
+              : ""
+            }
           </div>
         </div>
       ),
@@ -774,27 +886,65 @@ const Clientdigital = () => {
     //     );
     //   },
     // },
+    // {
+    //   title: <span style={{ fontSize: "12px" }}>Action</span>,
+    //   key: "action",
+    //   render: (text, record) => (
+    //     <Space size="middle">
+    //       <Popconfirm
+    //         title="Êtes-vous sûr de vouloir supprimer ce lead ?"
+    //         onConfirm={() => handleDelete(record._id)}
+    //         okText="Yes"
+    //         cancelText="No"
+    //       >
+    //         <Button
+    //           icon={<DeleteOutlined />}
+    //           style={{ backgroundColor: "red", color: "white" }}
+    //           danger
+    //           size="small"
+    //         />
+    //       </Popconfirm>
+    //     </Space>
+    //   ),
+    // },
     {
-      title: <span style={{ fontSize: "12px" }}>Action</span>,
-      key: "action",
-      render: (text, record) => (
-        <Space size="middle">
-          <Popconfirm
-            title="Êtes-vous sûr de vouloir supprimer ce lead ?"
-            onConfirm={() => handleDelete(record._id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button
-              icon={<DeleteOutlined />}
-              style={{ backgroundColor: "red", color: "white" }}
-              danger
-              size="small"
-            />
-          </Popconfirm>
-        </Space>
-      ),
-    },
+      title: <span style={{ fontSize: "12px" }}>Actions</span>,
+      key: "actions",
+      render: (text, record) => {
+        const currentUser = getCurrentUser();
+        const canTransfer = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Manager');
+        
+        return (
+          <Space size="small">
+            {canTransfer && (
+              <Button
+                type="primary"
+                icon={<SwapOutlined />}
+                size="small"
+                onClick={() => openTransferModal(record)}
+                style={{ backgroundColor: "#1890ff" }}
+              >
+                Transférer
+              </Button>
+            )}
+            
+            <Popconfirm
+              title="Êtes-vous sûr de vouloir supprimer ce lead ?"
+              onConfirm={() => handleDelete(record._id)}
+              okText="Oui"
+              cancelText="Non"
+            >
+              <Button
+                icon={<DeleteOutlined />}
+                style={{ backgroundColor: "red", color: "white" }}
+                danger
+                size="small"
+              />
+            </Popconfirm>
+          </Space>
+        );
+      },
+    }
   ];
 
   if (loading && showSpinner) return <Spin tip="Loading..." />;
@@ -954,6 +1104,112 @@ const Clientdigital = () => {
           tableLayout="auto"
         />
       </div>
+      {/* Transfer Modal */}
+<Modal
+  title={
+    <div className="flex items-center gap-2">
+      <SwapOutlined className="text-blue-600" />
+      <span>Transférer le client</span>
+    </div>
+  }
+  open={transferModalVisible}
+  onCancel={() => setTransferModalVisible(false)}
+  footer={[
+    <Button key="cancel" onClick={() => setTransferModalVisible(false)}>
+      Annuler
+    </Button>,
+    <Button 
+      key="submit" 
+      type="primary" 
+      loading={transferring}
+      onClick={handleTransfer}
+      disabled={!selectedCommercial && !selectedManager}
+    >
+      Transférer
+    </Button>,
+  ]}
+  width={600}
+>
+  {selectedClient && (
+    <div className="space-y-4">
+      <Card size="small">
+        <div className="flex items-center justify-between">
+          <div>
+            <Text strong>Client sélectionné:</Text>
+            <div className="mt-1">
+              <div className="font-medium">{selectedClient.nom} {selectedClient.prenom}</div>
+              <div className="text-sm text-gray-500">{selectedClient.email}</div>
+              <div className="text-sm text-gray-500">{selectedClient.portable}</div>
+            </div>
+          </div>
+          <div className="text-right">
+            <Text type="secondary">Actuellement assigné à:</Text>
+            <div className="font-medium">
+              {selectedClient.gestionnaireName || "Non transferer"}
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Transférer à un Commercial
+          </label>
+          <Select
+            placeholder="Sélectionner un commercial"
+            style={{ width: '100%' }}
+            value={selectedCommercial}
+            onChange={setSelectedCommercial}
+            showSearch
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option.children.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            <Option value="">-- Non transféré --</Option>
+            {commercials.map((commercial) => (
+              <Option key={commercial._id} value={commercial._id}>
+                {commercial.prenom} {commercial.nom} - {commercial.email}
+              </Option>
+            ))}
+          </Select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Transférer à un Manager
+          </label>
+          <Select
+            placeholder="Sélectionner un manager"
+            style={{ width: '100%' }}
+            value={selectedManager}
+            onChange={setSelectedManager}
+            showSearch
+            optionFilterProp="children"
+            filterOption={(input, option) =>
+              option.children.toLowerCase().includes(input.toLowerCase())
+            }
+          >
+            <Option value="">-- Non transféré --</Option>
+            {managers.map((manager) => (
+              <Option key={manager._id} value={manager._id}>
+                {manager.prenom} {manager.nom} - {manager.email}
+              </Option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      <div className="p-3 bg-blue-50 rounded-lg">
+        <Text type="secondary" className="text-sm">
+          <InfoCircleOutlined className="mr-2" />
+          Note: Le client sera désassigné de son gestionnaire actuel et réassigné au nouveau gestionnaire sélectionné.
+        </Text>
+      </div>
+    </div>
+  )}
+</Modal>
     </section>
   );
 };
