@@ -28,6 +28,7 @@ import DocumentTabContent from "../components/TabsContent/DocumentTabContent";
 import SinistreTabContent from "../components/TabsContent/SinistreTabContent";
 import ReclamtionTabContent from "../components/TabsContent/ReclamtionTabContent";
 import dayjs from "dayjs";
+import DevoirConseil from "../components/TabsContent/DevoirConseil";
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
@@ -1457,6 +1458,9 @@ const ClientDetailPage = () => {
         </TabPane>
         <TabPane tab="Documents" key="documents">
           <DocumentTabContent />
+        </TabPane>
+        <TabPane tab=" Devoir Conseil" key="devoirCconseil">
+          < DevoirConseil />
         </TabPane>
         <TabPane tab="Sinistres" key="sinistres">
           <SinistreTabContent />
