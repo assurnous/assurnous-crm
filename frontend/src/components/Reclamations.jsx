@@ -713,7 +713,7 @@ const Reclamations = () => {
       <div className="mb-12 md:p-1 p-1">
         <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
           <h2 className="text-xs sm:text-sm font-semibold text-blue-900 text-center md:text-left">
-            RECLAMTIONS ({allReclamations.length})
+            RECLAMATIONS ({allReclamations.length})
           </h2>
 
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">

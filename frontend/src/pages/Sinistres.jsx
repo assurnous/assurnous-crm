@@ -834,25 +834,25 @@ const Sinistres = () => {
           .padStart(2, "0")}/${d.getFullYear()}`;
       },
     },
-    {
-      title: "Statut",
-      dataIndex: "statutSinistre",
-      key: "statutSinistre",
-      render: (status) => {
-        const statusMap = {
-          en_cours: "En cours",
-          clo: "Clôturé",
-          reouvert: "Réouvert",
-        };
-        return statusMap[status] || status;
-      },
-      filters: [
-        { text: "En cours", value: "en_cours" },
-        { text: "Clôturé", value: "clo" },
-        { text: "Réouvert", value: "reouvert" },
-      ],
-      onFilter: (value, record) => record.statutSinistre === value,
-    },
+    // {
+    //   title: "Statut",
+    //   dataIndex: "statutSinistre",
+    //   key: "statutSinistre",
+    //   render: (status) => {
+    //     const statusMap = {
+    //       en_cours: "En cours",
+    //       clo: "Clôturé",
+    //       reouvert: "Réouvert",
+    //     };
+    //     return statusMap[status] || status;
+    //   },
+    //   filters: [
+    //     { text: "En cours", value: "en_cours" },
+    //     { text: "Clôturé", value: "clo" },
+    //     { text: "Réouvert", value: "reouvert" },
+    //   ],
+    //   onFilter: (value, record) => record.statutSinistre === value,
+    // },
     {
       title: "Type",
       dataIndex: "typeSinistre",
@@ -866,29 +866,29 @@ const Sinistres = () => {
         return typeMap[type] || type;
       },
     },
-    {
-      title: "Responsabilité",
-      dataIndex: "responsabilite",
-      key: "responsabilite",
-    },
-    {
-      title: "Montant",
-      dataIndex: "montantSinistre",
-      key: "montantSinistre",
-      render: (amount) => (amount ? `${amount.toLocaleString()} €` : "N/A"),
-      sorter: (a, b) => (a.montantSinistre || 0) - (b.montantSinistre || 0),
-    },
-    {
-      title: "Délégation",
-      dataIndex: "delegation",
-      key: "delegation",
-      render: (delegation) => (delegation === "oui" ? "Oui" : "Non"),
-      filters: [
-        { text: "Oui", value: "oui" },
-        { text: "Non", value: "non" },
-      ],
-      onFilter: (value, record) => record.delegation === value,
-    },
+    // {
+    //   title: "Responsabilité",
+    //   dataIndex: "responsabilite",
+    //   key: "responsabilite",
+    // },
+    // {
+    //   title: "Montant",
+    //   dataIndex: "montantSinistre",
+    //   key: "montantSinistre",
+    //   render: (amount) => (amount ? `${amount.toLocaleString()} €` : "N/A"),
+    //   sorter: (a, b) => (a.montantSinistre || 0) - (b.montantSinistre || 0),
+    // },
+    // {
+    //   title: "Délégation",
+    //   dataIndex: "delegation",
+    //   key: "delegation",
+    //   render: (delegation) => (delegation === "oui" ? "Oui" : "Non"),
+    //   filters: [
+    //     { text: "Oui", value: "oui" },
+    //     { text: "Non", value: "non" },
+    //   ],
+    //   onFilter: (value, record) => record.delegation === value,
+    // },
     {
       title: "Expert",
       dataIndex: "coordonnees_expert",
@@ -979,13 +979,13 @@ const Sinistres = () => {
         );
       },
     },
-    {
-      title: "Créé le",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      render: (date) => formatDate(date),
-      sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
-    },
+    // {
+    //   title: "Créé le",
+    //   dataIndex: "createdAt",
+    //   key: "createdAt",
+    //   render: (date) => formatDate(date),
+    //   sorter: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+    // },
     {
       title: "Actions",
       key: "action",
@@ -1021,7 +1021,7 @@ const Sinistres = () => {
   };
 
   return (
-    <section className="container mx-auto">
+    <section className=" mx-auto">
       <div className="mb-12 md:p-1 p-1">
         <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
           <h2 className="text-xs sm:text-sm font-semibold text-blue-800 text-center md:text-left">
