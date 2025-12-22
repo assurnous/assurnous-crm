@@ -1492,7 +1492,7 @@ const ClientDetailPage = () => {
         <TabPane tab="Documents" key="documents">
           <DocumentTabContent />
         </TabPane>
-        <TabPane tab=" Devoir Conseil" key="devoirCconseil">
+        <TabPane tab=" Devoir de conseil" key="devoirConseil">
           < DevoirConseil />
         </TabPane>
         <TabPane tab="Sinistres" key="sinistres">
