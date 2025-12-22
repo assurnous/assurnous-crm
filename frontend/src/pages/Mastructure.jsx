@@ -230,136 +230,170 @@ const Mastructure = () => {
   };
 
 
-  const fetchCabinetData = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
+  // const fetchCabinetData = async () => {
+  //   try {
+  //     setLoading(true);
+  //     const token = localStorage.getItem('token');
       
-      // Get user info from token
-      const currentUser = getUserFromToken();
-      setUserInfo(currentUser);
+  //     // Get user info from token
+  //     const currentUser = getUserFromToken();
+  //     setUserInfo(currentUser);
       
-      const [cabinetRes, historyRes] = await Promise.all([
-        axios.get('/cabinet', {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get('/cabinet/history', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-      ]);
+  //     const [cabinetRes, historyRes] = await Promise.all([
+  //       axios.get('/cabinet', {
+  //         headers: { Authorization: `Bearer ${token}` }
+  //       }),
+  //       axios.get('/cabinet/history', {
+  //         headers: { Authorization: `Bearer ${token}` }
+  //       })
+  //     ]);
       
-      setCabinet(cabinetRes.data);
-      setLastUpdate(historyRes.data);
+  //     setCabinet(cabinetRes.data);
+  //     setLastUpdate(historyRes.data);
       
-      // Set form values if data exists
-      if (cabinetRes.data) {
-        form.setFieldsValue({
-          raisonSociale: cabinetRes.data.raisonSociale || '',
-          adresse: cabinetRes.data.coordonnees?.adresse || '',
-          codePostal: cabinetRes.data.coordonnees?.codePostal || '',
-          ville: cabinetRes.data.coordonnees?.ville || '',
-          phoneCoordonnés: cabinetRes.data.coordonnees?.phoneCoordonnés || '',
-          coordonneesEmail: cabinetRes.data.coordonnees?.email || ''
-        });
-      }
+  //     // Set form values if data exists
+  //     if (cabinetRes.data) {
+  //       form.setFieldsValue({
+  //         raisonSociale: cabinetRes.data.raisonSociale || '',
+  //         adresse: cabinetRes.data.coordonnees?.adresse || '',
+  //         codePostal: cabinetRes.data.coordonnees?.codePostal || '',
+  //         ville: cabinetRes.data.coordonnees?.ville || '',
+  //         phoneCoordonnés: cabinetRes.data.coordonnees?.phoneCoordonnés || '',
+  //         coordonneesEmail: cabinetRes.data.coordonnees?.email || ''
+  //       });
+  //     }
       
-    } catch (error) {
-      console.error('Error fetching cabinet data:', error);
-    } finally {
-      setLoading(false);
+  //   } catch (error) {
+  //     console.error('Error fetching cabinet data:', error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+// In Mastructure.js
+const fetchCabinetData = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem('token');
+    
+    const [cabinetRes, historyRes] = await Promise.all([
+      axios.get('/cabinet', {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      axios.get('/cabinet/history', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    ]);
+    
+    console.log('Cabinet data for current user:', cabinetRes.data);
+    console.log('Current user ID from token:', getUserFromToken());
+    
+    setCabinet(cabinetRes.data);
+    setLastUpdate(historyRes.data);
+    
+    // Set form values
+    if (cabinetRes.data) {
+      form.setFieldsValue({
+        raisonSociale: cabinetRes.data.raisonSociale || '',
+        phone: cabinetRes.data.dirigeant?.phone || getUserFromToken()?.phone || '',
+        adresse: cabinetRes.data.coordonnees?.adresse || '',
+        codePostal: cabinetRes.data.coordonnees?.codePostal || '',
+        ville: cabinetRes.data.coordonnees?.ville || '',
+        phoneCoordonnés: cabinetRes.data.coordonnees?.phoneCoordonnés || '',
+        coordonneesEmail: cabinetRes.data.coordonnees?.email || ''
+      });
     }
-  };
-
+    
+  } catch (error) {
+    console.error('Error fetching cabinet data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
     fetchCabinetData();
   }, []);
 
-  // Handle form submission
-  // const handleSave = async (values) => {
-  //   try {
-  //     setSaving(true);
-  //     const token = localStorage.getItem('token');
+  const handleSave = async (values) => {
+    try {
+      setSaving(true);
+      const token = localStorage.getItem('token');
       
-  //     const cabinetData = {
-  //       raisonSociale: values.raisonSociale,
-  //       dirigeant: {
-
-  //         phone: values.phone,
-     
-  //       },
-  //       coordonnees: {
-  //         adresse: values.adresse,
-  //         codePostal: values.codePostal,
-  //         ville: values.ville,
-  //         phoneCoordonnés: values.phoneCoordonnés,
-  //         email: values.coordonneesEmail
-  //       }
-  //     };
+      const cabinetData = {
+        raisonSociale: values.raisonSociale,
+        dirigeant: {
+          phone: values.phone
+        },
+        coordonnees: {
+          adresse: values.adresse,
+          codePostal: values.codePostal,
+          ville: values.ville,
+          phoneCoordonnés: values.phoneCoordonnés,
+          email: values.coordonneesEmail
+        }
+      };
       
-  //     const response = await axios.post('/cabinet', cabinetData, {
-  //       headers: { 
-  //         'Authorization': `Bearer ${token}`,
-  //         'Content-Type': 'application/json'
-  //       }
-  //     });
+      console.log('Saving cabinet data for current user');
       
-  //     if (!response.ok) {
-  //       throw new Error('Failed to update');
-  //     }
+      const response = await axios.post('/cabinet', cabinetData, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
       
-  //     message.success('Informations mises à jour avec succès');
-  //     setEditing(false);
-  //     fetchCabinetData();
+      message.success('Informations mises à jour avec succès');
+      setEditing(false);
+      fetchCabinetData(); // This will now fetch user-specific data
       
-  //   } catch (error) {
-  //     console.error('Save error:', error);
-  //   } finally {
-  //     setSaving(false);
-  //   }
-  // };
-  // Handle form submission
-const handleSave = async (values) => {
-  try {
-    setSaving(true);
-    const token = localStorage.getItem('token');
+    } catch (error) {
+      console.error('Save error:', error);
+      message.error('Erreur lors de la mise à jour');
+    } finally {
+      setSaving(false);
+    }
+  };
+// const handleSave = async (values) => {
+//   try {
+//     setSaving(true);
+//     const token = localStorage.getItem('token');
     
-    // Get current user info from token
-    const currentUser = getUserFromToken();
+//     // Get current user info from token
+//     const currentUser = getUserFromToken();
     
-    const cabinetData = {
-      raisonSociale: values.raisonSociale,
-      dirigeant: {
-        phone: values.phone // Send phone only
-      },
-      coordonnees: {
-        adresse: values.adresse,
-        codePostal: values.codePostal,
-        ville: values.ville,
-        phoneCoordonnés: values.phoneCoordonnés,
-        email: values.coordonneesEmail
-      }
-    };
+//     const cabinetData = {
+//       raisonSociale: values.raisonSociale,
+//       dirigeant: {
+//         phone: values.phone // Send phone only
+//       },
+//       coordonnees: {
+//         adresse: values.adresse,
+//         codePostal: values.codePostal,
+//         ville: values.ville,
+//         phoneCoordonnés: values.phoneCoordonnés,
+//         email: values.coordonneesEmail
+//       }
+//     };
     
-    console.log('Sending cabinet data:', cabinetData); // Debug log
+//     console.log('Sending cabinet data:', cabinetData); // Debug log
     
-    const response = await axios.post('/cabinet', cabinetData, {
-      headers: { 
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+//     const response = await axios.post('/cabinet', cabinetData, {
+//       headers: { 
+//         'Authorization': `Bearer ${token}`,
+//         'Content-Type': 'application/json'
+//       }
+//     });
     
-    message.success('Informations mises à jour avec succès');
-    setEditing(false);
-    fetchCabinetData();
+//     message.success('Informations mises à jour avec succès');
+//     setEditing(false);
+//     fetchCabinetData();
     
-  } catch (error) {
-    console.error('Save error:', error.response?.data || error.message);
-    message.error('Erreur lors de la mise à jour: ' + (error.response?.data?.error || error.message));
-  } finally {
-    setSaving(false);
-  }
-};
+//   } catch (error) {
+//     console.error('Save error:', error.response?.data || error.message);
+//     message.error('Erreur lors de la mise à jour: ' + (error.response?.data?.error || error.message));
+//   } finally {
+//     setSaving(false);
+//   }
+// };
 
 // Update the toggleEdit function to include phone field:
 const toggleEdit = () => {

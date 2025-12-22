@@ -140,7 +140,7 @@ const SideBar = () => {
         />
       ),
       label: "Client digital",
-      role: ["Admin"],
+      role: ["Admin", "Manager"],
         },
         {
           key: "/clients-lists",
@@ -326,7 +326,7 @@ const SideBar = () => {
             />
           ),
           label: "Ma structure",
-          role: ["Admin"],
+          role: ["Admin", "Manager"],
         },
         {
           label: "Affecter clients",
