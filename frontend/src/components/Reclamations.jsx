@@ -725,7 +725,7 @@ const Reclamations = () => {
               <div className="flex items-center justify-center gap-2">
                 <span className="text-lg">+</span>
                 <span className="text-[10px] sm:text-xs whitespace-nowrap">
-                  ENREGISTRER UNE RECLAMTION
+                  ENREGISTRER UNE RECLAMATION
                 </span>
               </div>
             </Button>
