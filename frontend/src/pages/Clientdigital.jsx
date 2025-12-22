@@ -307,183 +307,119 @@ const handleTransfer = async () => {
       return null;
     }
   };
-  useEffect(() => {
-    const getUserData = async () => {
-      try {
-        setLoading(true);
-        setError(null); // Clear any previous errors
+  // useEffect(() => {
+  //   const getUserData = async () => {
+  //     try {
+  //       setLoading(true);
+  //       setError(null); // Clear any previous errors
         
-        // Check if user is authenticated
-        const user = getCurrentUser();
-        console.log('Decoded user from token:', user);
+  //       // Check if user is authenticated
+  //       const user = getCurrentUser();
+  //       console.log('Decoded user from token:', user);
         
-        if (!user) {
-          console.log('No user found, redirecting to login');
-          navigate("/login");
-          return;
-        }
+  //       if (!user) {
+  //         console.log('No user found, redirecting to login');
+  //         navigate("/login");
+  //         return;
+  //       }
         
-        // Get token for authorization header
-        const token = localStorage.getItem("token");
-        console.log('Token from localStorage:', token);
+  //       // Get token for authorization header
+  //       const token = localStorage.getItem("token");
+  //       console.log('Token from localStorage:', token);
         
-        if (!token) {
-          console.log('No token in localStorage');
-          navigate("/login");
-          return;
-        }
+  //       if (!token) {
+  //         console.log('No token in localStorage');
+  //         navigate("/login");
+  //         return;
+  //       }
         
-        // Make the request with fetch API
-        console.log('Making request to /data with token');
+  //       // Make the request with fetch API
+  //       console.log('Making request to /data with token');
         
-        try {
-          const fetchResponse = await axios.get('/datas', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
+  //       try {
+  //         const fetchResponse = await axios.get('/datas', {
+  //           method: 'GET',
+  //           headers: {
+  //             'Authorization': `Bearer ${token}`,
+  //             'Content-Type': 'application/json'
+  //           }
+  //         });
           
-          console.log('Fetch response status:', fetchResponse.status);
+  //         console.log('Fetch response status:', fetchResponse.status);
           
-          if (!fetchResponse.ok) {
-            const errorText = await fetchResponse.text();
-            console.log('Fetch error response:', errorText);
-            throw new Error(`Fetch failed: ${fetchResponse.status} ${errorText}`);
-          }
+  //         if (!fetchResponse.ok) {
+  //           const errorText = await fetchResponse.text();
+  //           console.log('Fetch error response:', errorText);
+  //           throw new Error(`Fetch failed: ${fetchResponse.status} ${errorText}`);
+  //         }
           
-          const fetchData = await fetchResponse.json();
-          console.log('Fetch success - Data received:', fetchData);
-          console.log('Number of clients:', fetchData.chatData?.length);
-          console.log('User can see villes:', fetchData.userVilles);
+  //         const fetchData = await fetchResponse.json();
+  //         console.log('Fetch success - Data received:', fetchData);
+  //         console.log('Number of clients:', fetchData.chatData?.length);
+  //         console.log('User can see villes:', fetchData.userVilles);
           
-          // PROCESS THE DATA HERE - This is the missing part!
-          const allData = fetchData.chatData;
+  //         // PROCESS THE DATA HERE - This is the missing part!
+  //         const allData = fetchData.chatData;
           
-          if (!allData || !Array.isArray(allData)) {
-            console.error('Invalid chatData in response:', fetchData);
-            setError("No valid data received from server");
-            return;
-          }
+  //         if (!allData || !Array.isArray(allData)) {
+  //           console.error('Invalid chatData in response:', fetchData);
+  //           setError("No valid data received from server");
+  //           return;
+  //         }
           
-          // Filter for digital clients
-          const digitalClients = allData.filter(item => 
-            item.agence && 
-            item.assurances_interessees && 
-            item.rappel_at && 
-            item.comment
-          );
+  //         // Filter for digital clients
+  //         const digitalClients = allData.filter(item => 
+  //           item.agence && 
+  //           item.assurances_interessees && 
+  //           item.rappel_at && 
+  //           item.comment
+  //         );
           
-          console.log(`Filtered ${digitalClients.length} digital clients from ${allData.length} total records`);
+  //         console.log(`Filtered ${digitalClients.length} digital clients from ${allData.length} total records`);
     
-          // Sort by creation date
-          const sortedData = digitalClients.sort((a, b) => {
-            const dateA = new Date(a.createdAt || a.date_creation || 0);
-            const dateB = new Date(b.createdAt || b.date_creation || 0);
-            return dateB - dateA;
-          });
+  //         // Sort by creation date
+  //         const sortedData = digitalClients.sort((a, b) => {
+  //           const dateA = new Date(a.createdAt || a.date_creation || 0);
+  //           const dateB = new Date(b.createdAt || b.date_creation || 0);
+  //           return dateB - dateA;
+  //         });
     
-          console.log('Setting chatData with', sortedData.length, 'items');
-          setChatData(sortedData);
-          setFilteredData(sortedData);
+  //         console.log('Setting chatData with', sortedData.length, 'items');
+  //         setChatData(sortedData);
+  //         setFilteredData(sortedData);
           
-          // Apply active filter
-          let filteredResults = [...sortedData];
-          if (activeFilter === "prospect") {
-            filteredResults = sortedData.filter((item) => item.statut === "prospect");
-            console.log('Applied prospect filter:', filteredResults.length, 'results');
-          } else if (activeFilter === "client") {
-            filteredResults = sortedData.filter((item) => item.statut === "client");
-            console.log('Applied client filter:', filteredResults.length, 'results');
-          } else if (activeFilter === "Gelé") {
-            filteredResults = sortedData.filter((item) => item.statut === "Gelé");
-            console.log('Applied Gelé filter:', filteredResults.length, 'results');
-          } else {
-            console.log('Applied tous filter:', filteredResults.length, 'results');
-          }
+ 
           
-          setFilteredData(filteredResults);
-          
-        } catch (fetchError) {
-          console.error('Fetch API error:', fetchError);
-          
-          // Fallback to axios
-          console.log('Trying with axios as fallback...');
-          const response = await axios.get("/data", {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          console.log('✅ Axios response received:', response.status);
-          
-          const allData = response.data.chatData;
-          
-          if (!allData) {
-            console.error('No chatData in response:', response.data);
-            setError("No data received from server");
-            return;
-          }
-          
-          // Filter for digital clients
-          const digitalClients = allData.filter(item => 
-            item.agence && 
-            item.assurances_interessees && 
-            item.rappel_at && 
-            item.comment
-          );
-          
-          console.log(`Filtered ${digitalClients.length} digital clients from ${allData.length} total records`);
-    
-          // Sort by creation date
-          const sortedData = digitalClients.sort((a, b) => {
-            const dateA = new Date(a.createdAt || a.date_creation || 0);
-            const dateB = new Date(b.createdAt || b.date_creation || 0);
-            return dateB - dateA;
-          });
-    
-          setChatData(sortedData);
-          setFilteredData(sortedData);
-          
-          // Apply active filter
-          let filteredResults = [...sortedData];
-          if (activeFilter === "prospect") {
-            filteredResults = sortedData.filter((item) => item.statut === "prospect");
-          } else if (activeFilter === "client") {
-            filteredResults = sortedData.filter((item) => item.statut === "client");
-          } else if (activeFilter === "Gelé") {
-            filteredResults = sortedData.filter((item) => item.statut === "Gelé");
-          }
-          
-          setFilteredData(filteredResults);
-        }
+  //       } catch (fetchError) {
+  //         console.error('Fetch API error:', fetchError);
         
-      } catch (err) {
-        console.error('Error in getUserData:', {
-          name: err.name,
-          message: err.message,
-          response: err.response ? {
-            status: err.response.status,
-            data: err.response.data
-          } : 'No response'
-        });
+
+  //       }
         
-        if (err.response?.status === 401) {
-          console.log('401 Unauthorized');
-          localStorage.removeItem("token");
-          navigate("/login");
-        } else {
-          setError("Failed to fetch data: " + (err.message || "Unknown error"));
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+  //     } catch (err) {
+  //       console.error('Error in getUserData:', {
+  //         name: err.name,
+  //         message: err.message,
+  //         response: err.response ? {
+  //           status: err.response.status,
+  //           data: err.response.data
+  //         } : 'No response'
+  //       });
+        
+  //       if (err.response?.status === 401) {
+  //         console.log('401 Unauthorized');
+  //         localStorage.removeItem("token");
+  //         navigate("/login");
+  //       } else {
+  //         setError("Failed to fetch data: " + (err.message || "Unknown error"));
+  //       }
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
     
-    getUserData();
-  }, [activeFilter, refreshTrigger, navigate]);
+  //   getUserData();
+  // }, [activeFilter, refreshTrigger, navigate]);
   // Update your useEffect to include authentication
   // useEffect(() => {
   //   const getUserData = async () => {
@@ -557,7 +493,100 @@ const handleTransfer = async () => {
 
   //   getUserData();
   // }, [activeFilter, refreshTrigger, navigate]);
-
+  useEffect(() => {
+    const getUserData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const user = getCurrentUser();
+        
+        if (!user) {
+          navigate("/login");
+          return;
+        }
+        
+        const token = localStorage.getItem("token");
+        
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+        
+        // Make the request
+        const response = await axios.get('/datas', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('Data received:', response.data);
+        console.log('User can see villes:', response.data.userVilles);
+        console.log('Total clients received:', response.data.chatData?.length);
+        
+        const allData = response.data.chatData;
+        const userAllowedAgences = response.data.userVilles || [];
+        
+        if (!allData || !Array.isArray(allData)) {
+          console.error('Invalid chatData in response:', response.data);
+          setError("No valid data received from server");
+          return;
+        }
+        
+        // First, filter by user's allowed agences
+        let filteredByAgence = allData;
+        
+        if (userAllowedAgences.length > 0) {
+          filteredByAgence = allData.filter(item => {
+            const itemAgence = item.agence?.toUpperCase() || '';
+            return userAllowedAgences.some(allowedAgence => 
+              itemAgence === allowedAgence?.toUpperCase()
+            );
+          });
+          
+          console.log(`After agence filtering: ${filteredByAgence.length} clients (from ${allData.length})`);
+        }
+        
+        // Then filter for digital clients
+        const digitalClients = filteredByAgence.filter(item => 
+          item.agence && 
+          item.assurances_interessees && 
+          item.rappel_at && 
+          item.comment
+        );
+        
+        console.log(`After digital filtering: ${digitalClients.length} digital clients`);
+        
+        // Sort by creation date
+        const sortedData = digitalClients.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.date_creation || 0);
+          const dateB = new Date(b.createdAt || b.date_creation || 0);
+          return dateB - dateA;
+        });
+        
+        console.log('Final data to display:', sortedData.length, 'items');
+        console.log('Sample items:', sortedData.slice(0, 2));
+        
+        setChatData(sortedData);
+        setFilteredData(sortedData);
+        
+      } catch (err) {
+        console.error('Error in getUserData:', err);
+        
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+          navigate("/login");
+        } else {
+          setError("Failed to fetch data: " + (err.message || "Unknown error"));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    getUserData();
+  }, [activeFilter, refreshTrigger, navigate]);
   const handleGestionnaireChange = async (selectedId, record) => {
     try {
       const selectedUser = users.find(user => user._id === selectedId);
