@@ -1223,33 +1223,45 @@ const Home = () => {
     conversionRate: 0,
     averageValue: 0
   });
-  const [hasToken, setHasToken] = useState(false);
-  const token = localStorage.getItem("token");
-  const decodedToken = token ? jwtDecode(token) : null;
-  const currentUserId = decodedToken?.userId;
-  const userRole = decodedToken?.role;
-  const currentUserName = decodedToken?.name;
 
+  const [token, setToken] = useState(null);
+  const [decodedToken, setDecodedToken] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [userRole, setUserRole] = useState(null);
+  const [currentUserName, setCurrentUserName] = useState(null);
 
   useEffect(() => {
-    // Check if token exists
-    const token = localStorage.getItem("token");
-    if (token) {
-      setHasToken(true);
+    // Check if token exists and decode it
+    const storedToken = localStorage.getItem("token");
+    if (storedToken) {
+      setToken(storedToken);
+      try {
+        const decoded = jwtDecode(storedToken);
+        setDecodedToken(decoded);
+        setCurrentUserId(decoded?.userId);
+        setUserRole(decoded?.role);
+        setCurrentUserName(decoded?.name);
+        console.log("Token found and decoded:", decoded);
+      } catch (error) {
+        console.error("Error decoding token:", error);
+        setLoading(false);
+      }
     } else {
-      setLoading(false); // Stop loading if no token
+      console.log("No token found in localStorage");
+      setLoading(false);
     }
   }, []);
 
-
-
   useEffect(() => {
     const fetchStats = async () => {
-      if (!hasToken) return;
+      // Don't fetch if no token or decoded token
+      if (!token || !decodedToken) {
+        setLoading(false);
+        return;
+      }
+
       try {
-
-
-        const token = localStorage.getItem("token");
+        setLoading(true);
         
         // For Manager: First fetch the manager's team data
         let teamMembers = [];
@@ -1260,12 +1272,8 @@ const Home = () => {
             });
             console.log("Manager profile response:", managerResponse.data);
             
-            // The endpoint returns the manager's own profile
-            const managerProfile = managerResponse.data;
-            
             // Try to get team members from a different endpoint
             try {
-              // Try /users with manager filter or /manager/team endpoint
               const teamResponse = await axios.get(`/users?managerId=${currentUserId}`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
@@ -1279,7 +1287,7 @@ const Home = () => {
           }
         }
 
-        // Fetch all data - including new /datas endpoint for digital clients
+        // Fetch all data
         const [reclamationsRes, sinistresRes, clientsRes, contratsRes, digitalRes] =
           await Promise.all([
             axios.get("/reclamations", { headers: { Authorization: `Bearer ${token}` } }),
@@ -1299,41 +1307,21 @@ const Home = () => {
         console.log("=== DIGITAL CLIENTS DEBUG ===");
         console.log("User Role:", userRole);
         console.log("User ID:", currentUserId);
-        console.log("Full digital response:", digitalResponse);
         
-        // Extract digital clients from the response structure
+        // Extract digital clients
         let digitalClients = [];
         if (digitalResponse && digitalResponse.chatData && Array.isArray(digitalResponse.chatData)) {
           digitalClients = digitalResponse.chatData;
-          console.log(`✓ Extracted ${digitalClients.length} digital clients from chatData`);
-          
-          // Log the structure of digital clients
-          if (digitalClients.length > 0) {
-            console.log("Digital clients structure sample:", digitalClients.map(client => ({
-              id: client._id,
-              nom: client.nom,
-              prenom: client.prenom,
-              gestionnaire: client.gestionnaire,
-              commercial: client.commercial,
-              manager: client.manager,
-              agence: client.agence,
-              statut: client.statut
-            })));
-          }
+          console.log(`✓ Extracted ${digitalClients.length} digital clients`);
         } else {
-          console.log("✗ No digital clients found in response");
           digitalClients = [];
         }
 
-        // IMPORTANT: Based on the API response, digital clients are already filtered by backend
-        // The response includes: userRole, userId, userVilles, etc.
-        // So we should NOT filter digital clients again on the frontend for managers!
-        
-        // FILTERING LOGIC BASED ON USER ROLE
+        // FILTERING LOGIC
         if (userRole !== "Admin" && userRole !== "admin") {
           console.log(`Filtering regular data for ${userRole} user`);
           
-          // Filter regular clients (from /data endpoint)
+          // Filter regular clients
           clients = clients.filter(client => {
             const isGestionnaire = 
               (client.gestionnaire?._id && client.gestionnaire._id.toString() === currentUserId) ||
@@ -1354,11 +1342,8 @@ const Home = () => {
             return isGestionnaire || isCommercial || isManager;
           });
 
-          // CRITICAL CHANGE: DO NOT FILTER DIGITAL CLIENTS FOR MANAGERS!
-          // The /datas endpoint already filters by agency (LILLE) for this manager
+          // Only filter digital clients for Commercial users
           if (userRole === "Commercial") {
-            console.log("Filtering digital clients for Commercial user");
-            // Only filter for Commercial users
             digitalClients = digitalClients.filter(client => {
               const createdById = client.createdBy?._id?.toString() || client.createdBy || client.userId;
               const commercialId = client.commercialId?._id?.toString() || client.commercialId;
@@ -1368,10 +1353,7 @@ const Home = () => {
                      commercialId === currentUserId ||
                      gestionnaireId === currentUserId;
             });
-            
-            console.log(`Commercial filtered: ${digitalClients.length} digital clients`);
           }
-          // For Manager: Use ALL digital clients returned by the API (already filtered by backend)
 
           // Filter other data types...
           reclamations = reclamations.filter(item => {
@@ -1391,16 +1373,12 @@ const Home = () => {
             const createdById = contract.createdBy?._id?.toString() || contract.createdBy;
             return gestionnaireId === currentUserId || createdById === currentUserId;
           });
-        } else {
-          console.log("Admin user - showing all data without filtering");
         }
 
         // Process digital client statistics
         const processDigitalStats = (digitalClients) => {
           const clientsArray = Array.isArray(digitalClients) ? digitalClients : [];
           const totalClients = clientsArray.length;
-          
-          console.log(`Processing digital stats for ${totalClients} clients`);
           
           if (totalClients === 0) {
             return {
@@ -1416,10 +1394,8 @@ const Home = () => {
           const currentYear = new Date().getFullYear();
           const newThisMonth = clientsArray.filter(client => {
             if (!client) return false;
-            
             const clientDate = client.createdAt || client.dateCreated || client.created_date || client.date_created || client.date;
             if (!clientDate) return false;
-            
             try {
               const date = new Date(clientDate);
               return date.getMonth() === currentMonth && 
@@ -1429,7 +1405,7 @@ const Home = () => {
             }
           }).length;
           
-          // Calculate conversion rate based on status
+          // Calculate conversion rate
           const convertedClients = clientsArray.filter(client => 
             client && (client.statut === 'client' || client.status === 'client' || client.statut === 'Client')
           ).length;
@@ -1440,25 +1416,15 @@ const Home = () => {
           // Calculate average value
           const totalValue = clientsArray.reduce((sum, client) => {
             if (!client) return sum;
-            
-            // Try different possible value fields
             const value = client.prime || client.montant || client.value || 
                           client.revenue || client.chiffre_affaire || 
                           client.averagePrime || client.primeTTC || 
                           client.montant_prime || 0;
-            
             return sum + (Number(value) || 0);
           }, 0);
           
           const averageValue = totalClients > 0 ? 
             Math.round(totalValue / totalClients) : 0;
-          
-          console.log("Digital stats calculated:", {
-            totalClients,
-            newThisMonth,
-            conversionRate,
-            averageValue
-          });
           
           return {
             totalClients,
@@ -1495,10 +1461,10 @@ const Home = () => {
       }
     };
 
-    if (currentUserId && userRole) {
+    if (token && decodedToken && currentUserId && userRole) {
       fetchStats();
     }
-  }, [currentUserId, userRole, currentUserName, hasToken]);
+  }, [token, decodedToken, currentUserId, userRole, currentUserName]);
 
   const processStats = (reclamations, sinistres, clients, contrats) => {
     if (
@@ -1704,9 +1670,14 @@ const Home = () => {
   };
 
   if (loading) {
+    const hasToken = localStorage.getItem("token");
+    if (!hasToken) {
+      return <div className="p-4">Redirection vers la connexion...</div>;
+    }
     return <div className="p-4">Chargement des statistiques...</div>;
   }
-  if (!hasToken) {
+
+  if (!token) {
     return <div className="p-4">Veuillez vous connecter pour voir les statistiques.</div>;
   }
   return (
@@ -1722,7 +1693,7 @@ const Home = () => {
         )}
         {userRole === "Manager" && (
           <p className="text-sm text-gray-600">
-            Vue d'ensemble - Agence LILLE
+            Vue d'ensemble
           </p>
         )}
       </div>
