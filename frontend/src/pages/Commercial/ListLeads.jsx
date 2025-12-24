@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { Table, Select, message, Spin, Input, 
 Button, Popconfirm, Alert, Space,
-Modal, Form, DatePicker, Radio, InputNumber 
+Modal, Form, DatePicker, Radio, InputNumber, Tooltip
  } from "antd";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import "tailwindcss/tailwind.css";
 import { useNavigate } from "react-router-dom";
 import {
-  DeleteOutlined,
-  UserAddOutlined,
+ 
   CloseOutlined,
+
+    EyeOutlined 
 } from "@ant-design/icons";
 import PhoneInput from "react-phone-input-2";
 
@@ -148,6 +149,7 @@ const ListLeads = () => {
         const [adminsRes, commercialsRes] = await Promise.all([
           axios.get("/admin"),
           axios.get("/commercials"),
+
         ]);
 
         // Combine and format the data
@@ -445,17 +447,36 @@ const ListLeads = () => {
         </div>
       ),
     },
+    // {
+    //   title: "Commentaires",
+    //   dataIndex: "commentaire",
+    //   key: "commentaire",
+    //   render: (text, record) => (
+    //     <div className="text-gray-500 text-xs">
+    //       {record.commentaire && <div>{record.commentaire}</div>}
+    //       {record.comment && <div>{record.comment}</div>}
+    //       {!record.commentaire && !record.comment && "-"}
+    //     </div>
+    //   ),
+    // },
     {
       title: "Commentaires",
       dataIndex: "commentaire",
       key: "commentaire",
-      render: (text, record) => (
-        <div className="text-gray-500 text-xs">
-          {record.commentaire && <div>{record.commentaire}</div>}
-          {record.comment && <div>{record.comment}</div>}
-          {!record.commentaire && !record.comment && "-"}
-        </div>
-      ),
+      render: (text, record) => {
+        const commentText = record.commentaire || record.comment || "";
+        
+        // Truncate to 3-5 words
+        const words = commentText.split(" ");
+        const truncated = words.slice(0, 5).join(" ");
+        const displayText = words.length > 5 ? `${truncated}...` : truncated;
+        
+        return (
+          <div className="text-gray-500 text-xs">
+            {commentText ? displayText : "-"}
+          </div>
+        );
+      },
     },
     // {
     //   title: "Devis en cours",
@@ -477,6 +498,23 @@ const ListLeads = () => {
         </Select>
       ),
     },
+      {
+              title: "Action",
+              key: "action",
+              render: (text, record) => (
+                <Space size="middle">
+                  <Tooltip title="Voir détails">
+                    <Button
+                      icon={<EyeOutlined />}
+                      type="primary"
+                      size="small"
+                      onClick={() => handleLeadClick(record)}
+                    />
+                  </Tooltip>
+                 
+                </Space>
+              ),
+            },
     // {
     //   title: "Gestionnaire",
     //   dataIndex: "gestionnaire",
@@ -1498,7 +1536,7 @@ const ListLeads = () => {
       option.children.toLowerCase().includes(input.toLowerCase())
     }
   >
-    {users.map((user) => {
+    {/* {users.map((user) => {
       const displayName =
         user.userType === "admin"
           ? user.name
@@ -1513,7 +1551,17 @@ const ListLeads = () => {
           {user.userType === "admin" ? "Admin" : "Commercial"})
         </Option>
       );
-    })}
+    })} */}{users
+  .filter(user => user.userType !== "admin") // Only keep non-admin users
+  .map((user) => (
+    <Option
+      key={`${user.userType}-${user._id}`}
+      value={user._id}
+    >
+      {`${user.nom} ${user.prenom}`} (Commercial)
+    </Option>
+  ))
+}
   </Select>
 </Form.Item>
 <Form.Item name="gestionnaireModel" hidden>
@@ -1535,7 +1583,7 @@ const ListLeads = () => {
                   option.children.toLowerCase().includes(input.toLowerCase())
                 }
               >
-                {users.map((user) => {
+                {/* {users.map((user) => {
                   const displayName =
                     user.userType === "admin"
                       ? user.name
@@ -1550,7 +1598,18 @@ const ListLeads = () => {
                       {user.userType === "admin" ? "Admin" : "Commercial"})
                     </Option>
                   );
-                })}
+                })} */}
+                {users
+  .filter(user => user.userType !== "admin") // Only keep non-admin users
+  .map((user) => (
+    <Option
+      key={`${user.userType}-${user._id}`}
+      value={user._id}
+    >
+      {`${user.nom} ${user.prenom}`} (Commercial)
+    </Option>
+  ))
+}
               </Select>
             </Form.Item>
 
@@ -1569,7 +1628,7 @@ const ListLeads = () => {
                             option.children.toLowerCase().includes(input.toLowerCase())
                           }
                         >
-                          {users.map((user) => {
+                          {/* {users.map((user) => {
                             const displayName =
                               user.userType === "admin"
                                 ? user.name
@@ -1584,7 +1643,18 @@ const ListLeads = () => {
                                 {user.userType === "admin" ? "Admin" : "Commercial"})
                               </Option>
                             );
-                          })}
+                          })} */}
+                          {users
+  .filter(user => user.userType !== "admin") // Only keep non-admin users
+  .map((user) => (
+    <Option
+      key={`${user.userType}-${user._id}`}
+      value={user._id}
+    >
+      {`${user.nom} ${user.prenom}`} (Commercial)
+    </Option>
+  ))
+}
                         </Select>
                       </Form.Item>
           </Form>

@@ -46,6 +46,7 @@ import DetailsSinistres from "./pages/DetailsSinistres";
 import Clientdigital from "./pages/Clientdigital";
 import ManagerAffectation from "./pages/ManagerAffectation";
 import InterlouteursManger from "./pages/Manager/InterlouteursManger";
+import ListManagerLeads from "./pages/Manager/ListManagerLeads";
 
 
 
@@ -108,7 +109,7 @@ function App() {
             <Route path="/affecter-client" element={<ManagerAffectation />} />
             <Route path="/Paramètres" element={<CommerciauxPage />} />
             <Route path="/clients-lists" element={<ListLeads />} />
-            {/* <Route path="/clients-list" element={<ListManagerLeads />} /> */}
+            <Route path="/clients-list" element={<ListManagerLeads />} />
 
             <Route path="/magic-sms" element={<MagicSms />} />
             <Route path="/publicités" element={<Publicités />} />
