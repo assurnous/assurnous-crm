@@ -86,6 +86,7 @@ const SideBar = () => {
 
   const Logout = async () => {
     await axios.post("/logout");
+    localStorage.removeItem("token");
     setToken(null);
     navigate("/SignIn");
   };

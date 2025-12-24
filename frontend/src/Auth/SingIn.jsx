@@ -34,6 +34,7 @@ const SignIn = () => {
         password,
       });
       const token = response.data.token;
+      localStorage.setItem("token", token);
       setToken(token);
       const decodedToken = jwtDecode(token);
  
