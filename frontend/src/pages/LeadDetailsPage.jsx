@@ -1213,7 +1213,7 @@ const ClientDetailPage = () => {
             {/* === GESTION === */}
             <h2 className="text-sm font-semibold mt-6 mb-2">GESTION</h2>
 
-            {/* Type d'origine */}
+       
             <Form.Item
               label={
                 <span className="text-xs font-medium">TYPE D'ORIGINE</span>
@@ -1236,7 +1236,7 @@ const ClientDetailPage = () => {
                 <Option value="autre">Autre</Option>
               </Select>
             </Form.Item>
-         <Form.Item
+         {/* <Form.Item
   label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
   className="mb-0"
 >
@@ -1245,10 +1245,10 @@ const ClientDetailPage = () => {
     value={client?.gestionnaireName || "Non spécifié"}
     disabled
   />
-</Form.Item>
+</Form.Item> */}
 
-{/* Hidden fields for form submission */}
-<Form.Item name="gestionnaire" noStyle>
+
+{/* <Form.Item name="gestionnaire" noStyle>
   <Input type="hidden" />
 </Form.Item>
 <Form.Item name="gestionnaireModel" noStyle>
@@ -1292,7 +1292,7 @@ const ClientDetailPage = () => {
               </Select>
             </Form.Item>
 
-            {/* Intermédiaire(s) */}
+     
              <Form.Item
                           label={<span className="text-xs font-medium">INTERMÉDIAIRE</span>}
                           name="intermediaire"
@@ -1325,7 +1325,7 @@ const ClientDetailPage = () => {
                               );
                             })}
                           </Select>
-                        </Form.Item>
+                        </Form.Item> */}
       
           </Form>
           <Button

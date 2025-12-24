@@ -269,18 +269,18 @@ const Interlouteurs = () => {
         </div>
       ),
     },
-    {
-      title: "LAST ACTIVITY",
-      key: "lastActivity",
-      render: (_, record) => (
-        <div className="text-gray-600">
-          {formatLastActivity(record.lastActivity)}
-          <div className="text-xs text-gray-400">
-            {record.lastActivity && new Date(record.lastActivity).toLocaleString()}
-          </div>
-        </div>
-      )
-    },
+    // {
+    //   title: "LAST ACTIVITY",
+    //   key: "lastActivity",
+    //   render: (_, record) => (
+    //     <div className="text-gray-600">
+    //       {formatLastActivity(record.lastActivity)}
+    //       <div className="text-xs text-gray-400">
+    //         {record.lastActivity && new Date(record.lastActivity).toLocaleString()}
+    //       </div>
+    //     </div>
+    //   )
+    // },
     {
       title: "ACTIONS",
       key: "actions",
