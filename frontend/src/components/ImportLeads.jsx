@@ -59,7 +59,7 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
   
           setFileData(processedLeads);
           setFileName(file.name);
-          message.success(`${processedLeads.length} leads chargés`);
+          message.success(`${processedLeads.length} clients chargés`);
         } else {
           message.error("Fichier vide - aucune donnée trouvée");
         }
@@ -87,7 +87,7 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
       });
   
       if (response.status === 200) {
-        message.success(`${response.data.count} leads importés avec succès`);
+        message.success(`${response.data.count} clients importés avec succès`);
         onImportSuccess();
         setFileData(null);
         setFileName(null);
@@ -274,7 +274,7 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
                 <List.Item.Meta 
                   avatar={<FileExcelOutlined />} 
                   title={item} 
-                  description={`${fileData?.length || 0} leads trouvés`}
+                  description={`${fileData?.length || 0} clients trouvés`}
                 />
               </List.Item>
             )}
@@ -294,7 +294,7 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
       )}
       
       <Modal
-        title={`Aperçu du fichier (${fileData?.length || 0} leads)`}
+        title={`Aperçu du fichier (${fileData?.length || 0} clients)`}
         visible={isPreviewVisible}
         onCancel={() => setIsPreviewVisible(false)}
         footer={null}
