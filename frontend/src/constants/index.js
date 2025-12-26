@@ -1,5 +1,6 @@
 export const ASSUREURS = [
     { value: '+simple', label: '+Simple' },
+    { value: 'kereis', label: 'Kereis' },
     { value: 'a_comme_assure', label: 'A COMME ASSURE' },
     { value: 'abeille_epargne_retraite', label: 'ABEILLE EPARGNE RETRAITE' },
     { value: 'abeille_iard_sante', label: 'ABEILLE IARD & SANTE' },
