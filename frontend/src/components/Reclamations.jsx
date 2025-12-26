@@ -143,41 +143,7 @@ const Reclamations = () => {
     setIsModalOpen(false);
     setEditingRecord(null);
   };
-  // const fetchReclamations = async () => {
-  //   const token = localStorage.getItem("token");
-  //   if (!token) return;
-    
-  //   setLoading(true);
-  //   try {
-  //     const decodedToken = jwtDecode(token);
-  //     const currentUserId = decodedToken?.userId;
-  //     const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
 
-  //     // Fetch all reclamations
-  //     const response = await axios.get("/reclamations");
-  //     const allReclamations = response.data.data || [];
-
-  //     // Filter based on role
-  //     let filteredData;
-  //     if (isAdmin) {
-  //       // Admins see all reclamations
-  //       filteredData = allReclamations;
-  //     } else {
-  //       // Commercials only see their own reclamations
-  //       filteredData = allReclamations.filter(
-  //         reclamation => reclamation.session?._id.toString() === currentUserId
-  //       );
-  //     }
-
-  //     setAllReclamations(filteredData);
-     
-      
-  //   } catch (error) {
-  //     console.error("Error fetching reclamations:", error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
   // const fetchReclamations = async () => {
   //   const token = localStorage.getItem("token");
   //   if (!token) return;
@@ -206,7 +172,12 @@ const Reclamations = () => {
   //       );
   //     }
   
-  //     setAllReclamations(filteredData);
+  //     // Sort by createdAt in descending order (newest first)
+  //     const sortedData = filteredData.sort((a, b) => {
+  //       return new Date(b.createdAt) - new Date(a.createdAt);
+  //     });
+  
+  //     setAllReclamations(sortedData);
       
   //   } catch (error) {
   //     console.error("Error fetching reclamations:", error);
@@ -236,9 +207,23 @@ const Reclamations = () => {
       } else {
         // Commercials see their own reclamations AND assigned reclamations
         filteredData = allReclamations.filter(
-          reclamation => 
-            reclamation.session?._id.toString() === currentUserId ||
-            reclamation.assignedTo?.toString() === currentUserId
+          reclamation => {
+            // Check if created by this user
+            const isCreatedByUser = reclamation.session?._id?.toString() === currentUserId;
+            
+            // Check if assigned to this user
+            let isAssignedToUser = false;
+            if (reclamation.assignedTo) {
+              // Handle both object and string formats
+              if (typeof reclamation.assignedTo === 'object') {
+                isAssignedToUser = reclamation.assignedTo._id?.toString() === currentUserId;
+              } else if (typeof reclamation.assignedTo === 'string') {
+                isAssignedToUser = reclamation.assignedTo === currentUserId;
+              }
+            }
+            
+            return isCreatedByUser || isAssignedToUser;
+          }
         );
       }
   
@@ -255,7 +240,6 @@ const Reclamations = () => {
       setLoading(false);
     }
   };
-  
   useEffect(() => {
 
     fetchReclamations();
@@ -268,6 +252,27 @@ const Reclamations = () => {
       });
     }
   }, [isModalOpen, form]);
+
+  // useEffect(() => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token || !allReclamations.length) return;
+    
+  //   const decodedToken = jwtDecode(token);
+  //   const currentUserId = decodedToken?.userId;
+  //   const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+  
+  //   let filtered = allReclamations;
+  //   if (!isAdmin) {
+  //     filtered = allReclamations.filter(
+  //       reclamation => 
+  //         reclamation.session?._id.toString() === currentUserId ||
+  //         reclamation.assignedTo?.toString() === currentUserId
+  //     );
+  //   }
+    
+  //   setFilteredReclamationsForChat(filtered);
+  // }, [allReclamations]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token || !allReclamations.length) return;
@@ -279,11 +284,33 @@ const Reclamations = () => {
     let filtered = allReclamations;
     if (!isAdmin) {
       filtered = allReclamations.filter(
-        reclamation => 
-          reclamation.session?._id.toString() === currentUserId ||
-          reclamation.assignedTo?.toString() === currentUserId
+        reclamation => {
+          // Check if created by this user
+          const isCreatedByUser = reclamation.session?._id?.toString() === currentUserId;
+          
+          // Check if assigned to this user
+          let isAssignedToUser = false;
+          if (reclamation.assignedTo) {
+            // Handle both object and string formats
+            if (typeof reclamation.assignedTo === 'object') {
+              isAssignedToUser = reclamation.assignedTo._id?.toString() === currentUserId;
+            } else if (typeof reclamation.assignedTo === 'string') {
+              isAssignedToUser = reclamation.assignedTo === currentUserId;
+            }
+          }
+          
+          return isCreatedByUser || isAssignedToUser;
+        }
       );
     }
+    
+    console.log("Filtered for chat:", {
+      allCount: allReclamations.length,
+      filteredCount: filtered.length,
+      isAdmin,
+      currentUserId,
+      sampleReclamation: filtered[0]
+    });
     
     setFilteredReclamationsForChat(filtered);
   }, [allReclamations]);
