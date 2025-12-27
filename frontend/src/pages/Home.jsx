@@ -1274,7 +1274,7 @@ const Home = () => {
             
             // Try to get team members from a different endpoint
             try {
-              const teamResponse = await axios.get(`/users?managerId=${currentUserId}`, {
+              const teamResponse = await axios.get(`/manager/${currentUserId}`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
               teamMembers = teamResponse.data || [];
@@ -1319,7 +1319,7 @@ const Home = () => {
 
         // FILTERING LOGIC
         if (userRole !== "Admin" && userRole !== "admin") {
-          console.log(`Filtering regular data for ${userRole} user`);
+ 
           
           // Filter regular clients
           clients = clients.filter(client => {
@@ -1345,13 +1345,12 @@ const Home = () => {
           // Only filter digital clients for Commercial users
           if (userRole === "Commercial") {
             digitalClients = digitalClients.filter(client => {
-              const createdById = client.createdBy?._id?.toString() || client.createdBy || client.userId;
+              // const createdById = client.createdBy?._id?.toString() || client.createdBy || client.userId;
               const commercialId = client.commercialId?._id?.toString() || client.commercialId;
-              const gestionnaireId = client.gestionnaire?._id?.toString() || client.gestionnaire;
+              // const gestionnaireId = client.gestionnaire?._id?.toString() || client.gestionnaire;
               
-              return createdById === currentUserId || 
-                     commercialId === currentUserId ||
-                     gestionnaireId === currentUserId;
+              return commercialId === currentUserId 
+                   
             });
           }
 
@@ -1451,8 +1450,10 @@ const Home = () => {
           reclamations,
           sinistres,
           clients,
-          contrats
+          contrats,
+          digitalClients 
         );
+        
         setStats(processedStats);
       } catch (error) {
         console.error("Error fetching statistics:", error);
@@ -1466,7 +1467,7 @@ const Home = () => {
     }
   }, [token, decodedToken, currentUserId, userRole, currentUserName]);
 
-  const processStats = (reclamations, sinistres, clients, contrats) => {
+  const processStats = (reclamations, sinistres, clients, contrats, digitalClients = []) => {
     if (
       !Array.isArray(reclamations) ||
       !Array.isArray(sinistres) ||
@@ -1539,8 +1540,33 @@ const Home = () => {
       else if (type === "professionnel") clientCategories.professionnels++;
       else if (type === "entreprise") clientCategories.entreprises++;
     });
+    if (Array.isArray(digitalClients)) {
+      digitalClients.forEach((client) => {
+        const type = client.categorie?.toLowerCase();
+        if (type === "particulier") clientCategories.particuliers++;
+        else if (type === "professionnel") clientCategories.professionnels++;
+        else if (type === "entreprise") clientCategories.entreprises++;
+      });
+    }
+  
+    const totalRegularClients = clients.length;
+    const totalDigitalClients = digitalClients?.length || 0;
+    const totalClients = totalRegularClients + totalDigitalClients;
+  
+    // ========== ADD DEBUG LOG HERE ==========
+    console.log("=== CLIENT STATISTICS DEBUG ===");
+    console.log({
+      regularClientsCount: totalRegularClients,
+      digitalClientsCount: totalDigitalClients,
+      totalClients: totalClients,
+      categories: clientCategories,
+      digitalClientsArray: digitalClients ? digitalClients.map(c => ({
+        name: `${c.nom || ''} ${c.prenom || ''}`.trim(),
+        categorie: c.categorie,
+      })) : 'No digital clients'
+    });
 
-    const totalClients = clients.length;
+    // const totalClients = clients.length;
 
     // Avoid divide by 0
     const getPercentage = (count) =>
@@ -1903,13 +1929,7 @@ const Home = () => {
             
        
           </div>
-          
-          {/* Show sample of digital clients for debugging */}
-          {userRole === "Manager" && clientDigitalStats.totalClients > 0 && (
-            <div className="mt-4 text-xs text-gray-500">
-              Données filtrées par le backend pour l'agence LILLE
-            </div>
-          )}
+      
         </div>
       )}
 
@@ -1948,7 +1968,7 @@ const Home = () => {
                 <div>
                   <div className="text-xs text-gray-600">Total clients</div>
                   <div className="text-lg font-bold text-gray-800">
-                    {stats?.clientStats?.total}
+                    {(stats?.clientStats?.total)}
                   </div>
                   {(userRole === "Admin" || userRole === "admin" || userRole === "Manager") && clientDigitalStats?.totalClients > 0 && (
                     <div className="text-xs text-gray-500 mt-1">

@@ -108,7 +108,7 @@ const SideBar = () => {
         />
       ),
       label: "Tableau de Bord",
-      role: ["Admin", "Manager"],
+      role: ["Admin", "Manager", "Commercial"],
     },
     {
       key: "portefeuille",
