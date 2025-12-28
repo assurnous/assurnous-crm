@@ -1862,6 +1862,7 @@ const Leads = () => {
     gestionnaire: "tous",
     categorie: "tous",
     status: "tous",
+    agence: "tous",
     search: "",
   });
 
@@ -1924,6 +1925,12 @@ const Leads = () => {
         return client.statut === filterValues.status;
       });
     }
+    // Agence filter
+if (filterValues.agence && filterValues.agence !== "tous") {
+  result = result.filter((client) => {
+    return client.agence === filterValues.agence;
+  });
+}
 
     // Search filter
     if (filterValues.search) {
@@ -2044,34 +2051,64 @@ const Leads = () => {
 
     return "Statut d'affectation";
   }, [selectedLeads, chatData]);
-
   const sortedData = useMemo(() => {
+    // Check if we have any active filters or column searches
+    const hasActiveFilters = 
+      Object.keys(activeColumnSearches).length > 0 ||
+      filters.gestionnaire !== "tous" ||
+      filters.categorie !== "tous" ||
+      filters.status !== "tous" ||
+      filters.agence !== "tous" ||
+      filters.search;
+  
     // If filters are active but filteredData is empty, return empty array
-    if (
-      (filters.gestionnaire !== "tous" ||
-        filters.categorie !== "tous" ||
-        filters.status !== "tous" ||
-        filters.search) &&
-      filteredData.length === 0
-    ) {
+    if (hasActiveFilters && filteredData.length === 0) {
       return [];
     }
-
+  
+    // If no active filters and filteredData is empty, use original chatData
     const dataToSort = filteredData.length > 0 ? filteredData : chatData;
-
+  
     return [...dataToSort].sort((a, b) => {
       // Check if lead has commercial or manager
       const aHasAssignment = hasCommercial(a) || hasManager(a);
       const bHasAssignment = hasCommercial(b) || hasManager(b);
-
+  
       // Unassigned leads come first
       if (!aHasAssignment && bHasAssignment) return -1;
       if (aHasAssignment && !bHasAssignment) return 1;
-
+  
       // If same assignment status, sort by creation date (newest first)
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [chatData, filteredData, filters]);
+  }, [chatData, filteredData, filters, activeColumnSearches]);
+  // const sortedData = useMemo(() => {
+  //   // If filters are active but filteredData is empty, return empty array
+  //   if (
+  //     (filters.gestionnaire !== "tous" ||
+  //       filters.categorie !== "tous" ||
+  //       filters.status !== "tous" ||
+  //       filters.search) &&
+  //     filteredData.length === 0
+  //   ) {
+  //     return [];
+  //   }
+
+  //   const dataToSort = filteredData.length > 0 ? filteredData : chatData;
+
+  //   return [...dataToSort].sort((a, b) => {
+  //     // Check if lead has commercial or manager
+  //     const aHasAssignment = hasCommercial(a) || hasManager(a);
+  //     const bHasAssignment = hasCommercial(b) || hasManager(b);
+
+  //     // Unassigned leads come first
+  //     if (!aHasAssignment && bHasAssignment) return -1;
+  //     if (aHasAssignment && !bHasAssignment) return 1;
+
+  //     // If same assignment status, sort by creation date (newest first)
+  //     return new Date(b.createdAt) - new Date(a.createdAt);
+  //   });
+  // }, [chatData, filteredData, filters]);
 
   // Helper function to get commercial name for display and search
   const getCommercialName = (lead) => {
@@ -2112,20 +2149,6 @@ const Leads = () => {
     return "none";
   };
 
-  // useEffect(() => {
-  //   const getUserData = async () => {
-  //     try {
-  //       const response = await axios.get("/data");
-  //       setChatData(response.data.chatData);
-  //     } catch (err) {
-  //       console.error("Failed to fetch data:", err);
-  //       setError("Failed to fetch data");
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   };
-  //   getUserData();
-  // }, []);
   useEffect(() => {
     const getUserData = async () => {
       try {
@@ -2214,51 +2237,7 @@ const Leads = () => {
     setTotalPages(Math.ceil(dataToUse.length / pageSize));
   }, [filteredData, chatData, pageSize]);
 
-  // Fixed commercial column search
-  // const handleColumnSearch = async (e, columnKey) => {
-  //   const value = e.target.value.toLowerCase().trim();
-  //   setSearchQuery(value);
-
-  //   try {
-  //     // If search value is empty, clear filtered data
-  //     if (value === "") {
-  //       setFilteredData([]);
-  //       return;
-  //     }
-
-  //     // Special handling for commercial column search
-  //     if (columnKey === "commercial") {
-  //       const filteredResults = chatData.filter((item) => {
-  //         const commercialName = getCommercialName(item).toLowerCase();
-  //         return commercialName.includes(value);
-  //       });
-  //       setFilteredData(filteredResults);
-  //       return;
-  //     }
-
-  //     // Special handling for manager column search
-  //     if (columnKey === "manager") {
-  //       const filteredResults = chatData.filter((item) => {
-  //         const managerName = getManagerName(item).toLowerCase();
-  //         return managerName.includes(value);
-  //       });
-  //       setFilteredData(filteredResults);
-  //       return;
-  //     }
-
-  //     // Default search for other fields
-  //     const response = await axios.get("/search", {
-  //       params: {
-  //         query: value,
-  //         columnKey: columnKey,
-  //       },
-  //     });
-  //     setFilteredData(response.data);
-  //   } catch (error) {
-  //     console.error("Error in search:", error);
-  //     message.error("Error on recherche.");
-  //   }
-  // };
+  
   const handleColumnSearch = (e, columnKey) => {
     const value = e.target.value.trim();
     console.log(`Searching ${columnKey} for: "${value}"`);
@@ -2279,88 +2258,88 @@ const Leads = () => {
     // Apply all active column searches
     applyColumnSearches(newSearches);
   };
-
   const applyColumnSearches = (searches) => {
     console.log("Applying searches:", searches);
-
-    // If no active searches, show all data
+  
+    // If no active searches, reset to show all data
     if (Object.keys(searches).length === 0) {
-      console.log("No active searches, showing all data");
-      setFilteredData([]); // Empty array = show all original data
+      console.log("No active searches, resetting filters");
+      setFilteredData([]); // Empty array means show all original data
       return;
     }
-
+  
     // Start with all data
     let result = [...chatData];
-
+  
     // Apply each column search
     Object.entries(searches).forEach(([columnKey, searchTerm]) => {
       if (searchTerm && searchTerm.trim() !== "") {
         console.log(`Filtering by ${columnKey}: "${searchTerm}"`);
-
+  
         result = result.filter((item) => {
           // Get the value to search in this column
           const columnValue = getColumnValue(item, columnKey);
-
+          
+          // For debugging
+          if (columnKey === "agence") {
+            console.log(`Item ${item.nom || ''} ${item.prenom || ''}: agence="${columnValue}", searching for "${searchTerm}"`);
+          }
+          
           // Check if it matches the search term
-          const matches = columnValue.toLowerCase().includes(searchTerm);
-
-          console.log(
-            `Item ${item.nom}: ${columnKey}="${columnValue}", matches=${matches}`
-          );
-          return matches;
+          return columnValue.toLowerCase().includes(searchTerm);
         });
-
+  
         console.log(`After filtering by ${columnKey}: ${result.length} items`);
       }
     });
-
-    // If no results found, set empty array (will show "no data" in table)
-    if (result.length === 0) {
-      console.log("No results found for search");
-      setFilteredData([]); // Empty array
-    } else {
-      setFilteredData(result);
-    }
+  
+    // Always set filteredData to result (will be empty array if no matches)
+    setFilteredData(result);
   };
-
-  // Helper function to get column value
   const getColumnValue = (item, columnKey) => {
     switch (columnKey) {
       case "nom":
         return `${item.nom || ""} ${item.prenom || ""}`.trim();
-
+  
       case "email":
         return item.verification_email === "Non"
           ? item.email1 || item.email || ""
           : item.email || "";
-
+  
       case "address":
         return item.address || "";
-
+  
       case "codepostal":
         return item.codepostal || "";
-
+  
       case "ville":
         return item.ville || "";
-
-      case "phone":
-        return item.phone || item.portable || "";
-
+  
+      case "portable":
+        return item.portable || "";
+  
+      case "agence":
+        return item.agence || "";
+  
+      case "categorie":
+        return item.categorie || "";
+  
       case "statut":
         return item.statut || "";
-
+  
       case "comment":
         return item.comment || "";
-
+  
       case "commercial":
         const commercialName = getCommercialName(item);
+        // Return empty string if "N/A" for better searching
         return commercialName === "N/A" ? "" : commercialName;
-
+  
       case "manager":
         const managerName = getManagerName(item);
+        // Return empty string if "N/A" for better searching
         return managerName === "N/A" ? "" : managerName;
-
+  
       case "createdAt":
         if (!item.createdAt) return "";
         const date = new Date(item.createdAt);
@@ -2372,11 +2351,117 @@ const Leads = () => {
             minute: "2-digit",
           })
         );
-
+  
       default:
         return "";
     }
   };
+  // const applyColumnSearches = (searches) => {
+  //   console.log("Applying searches:", searches);
+
+  //   // If no active searches, show all data
+  //   if (Object.keys(searches).length === 0) {
+  //     console.log("No active searches, showing all data");
+  //     setFilteredData([]); // Empty array = show all original data
+  //     return;
+  //   }
+
+  //   // Start with all data
+  //   let result = [...chatData];
+
+  //   // Apply each column search
+  //   Object.entries(searches).forEach(([columnKey, searchTerm]) => {
+  //     if (searchTerm && searchTerm.trim() !== "") {
+  //       console.log(`Filtering by ${columnKey}: "${searchTerm}"`);
+
+  //       result = result.filter((item) => {
+  //         // Get the value to search in this column
+  //         const columnValue = getColumnValue(item, columnKey);
+  //         if (columnKey === "agence") {
+  //           console.log(`Item ${item.nom || ''} ${item.prenom || ''}: agence="${columnValue}", searching for "${searchTerm}"`);
+  //         }
+          
+  //         // Check if it matches the search term
+  //         const matches = columnValue.toLowerCase().includes(searchTerm);
+
+  //         console.log(
+  //           `Item ${item.nom}: ${columnKey}="${columnValue}", matches=${matches}`
+  //         );
+  //         return matches;
+  //       });
+
+  //       console.log(`After filtering by ${columnKey}: ${result.length} items`);
+  //     }
+  //   });
+
+  //   // If no results found, set empty array (will show "no data" in table)
+  //   if (result.length === 0) {
+  //     console.log("No results found for search");
+  //     setFilteredData([]); // Empty array
+  //   } else {
+  //     setFilteredData(result);
+  //   }
+  // };
+
+  // Helper function to get column value
+  // const getColumnValue = (item, columnKey) => {
+  //   switch (columnKey) {
+  //     case "nom":
+  //       return `${item.nom || ""} ${item.prenom || ""}`.trim();
+
+  //     case "email":
+  //       return item.verification_email === "Non"
+  //         ? item.email1 || item.email || ""
+  //         : item.email || "";
+
+  //     case "address":
+  //       return item.address || "";
+
+  //     case "codepostal":
+  //       return item.codepostal || "";
+
+  //     case "ville":
+  //       return item.ville || "";
+
+  //     case "portable":
+  //       return item.portable ||  "";
+  //       case "agence":
+  // return item.agence || "";
+
+  //     case "categorie":
+  //       return item.categorie || "";
+
+
+  //     case "statut":
+  //       return item.statut || "";
+
+  //     case "comment":
+  //       return item.comment || "";
+
+  //     case "commercial":
+  //       const commercialName = getCommercialName(item);
+  //       return commercialName === "N/A" ? "" : commercialName;
+
+  //     case "manager":
+  //       const managerName = getManagerName(item);
+  //       return managerName === "N/A" ? "" : managerName;
+
+  //     case "createdAt":
+  //       if (!item.createdAt) return "";
+  //       const date = new Date(item.createdAt);
+  //       return (
+  //         date.toLocaleDateString("en-GB") +
+  //         " " +
+  //         date.toLocaleTimeString("en-US", {
+  //           hour: "2-digit",
+  //           minute: "2-digit",
+  //         })
+  //       );
+
+  //     default:
+  //       return "";
+  //   }
+  // };
 
   const handleAssign = async (values) => {
     try {
@@ -2708,7 +2793,7 @@ const Leads = () => {
 
   const columns = [
     {
-      title: "Prénom/Nom",
+      title: "Client",
       key: "nom",
       dataIndex: "nom",
       render: (text, record) => (
@@ -2768,8 +2853,8 @@ const Leads = () => {
     // },
     {
       title: "TELEPHONE",
-      dataIndex: "phone",
-      key: "phone",
+      dataIndex: "portable",
+      key: "portable",
       render: (text) => text || "",
     },
     // {
@@ -2778,6 +2863,16 @@ const Leads = () => {
     //   key: "statut",
     //   render: (text, record) => text || record.statut || "",
     // },
+    {
+      title: "Agence",
+      dataIndex: "agence",
+      key: "agence",
+      render: (text, record) => (
+        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+          <div className="font-medium">{record.agence || ""}</div>
+        </div>
+      ),
+    },
     {
       title: "Statut",
       key: "statut",
@@ -3179,7 +3274,38 @@ const Leads = () => {
               <Option value="client">Client</Option>
             </Select>
           </div>
+
+          <div>
+  <label className="block text-[12px] font-medium text-gray-700 mb-1">
+    Agence
+  </label>
+  <Select
+    className="w-full"
+    placeholder="-- Choisissez --"
+    onChange={(value) => handleFilterChange("agence", value)}
+    value={filters.agence}
+  >
+    <Option value="tous">Toutes</Option>
+    <Option value="LENS">LENS</Option>
+    <Option value="VALENCIENNES">VALENCIENNES</Option>
+    <Option value="LILLE">LILLE</Option>
+  </Select>
+</div>
+<div className="mt-1">
+                  
+                  <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                    Recherche
+                  </label>
+                  <Input
+                    placeholder="Rechercher..."
+                    allowClear
+                    onChange={(e) => handleFilterChange("search", e.target.value)}
+                    value={filters.search}
+                    className="w-full"
+                  />
+   </div>
         </div>
+          
       </div>
 
       <div className="mb-4 p-4 flex items-center rounded-md gap-4 bg-white shadow-sm">

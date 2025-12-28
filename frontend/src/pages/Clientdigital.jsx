@@ -10,7 +10,7 @@ import {
   Space,
   message,
   Input,
-  Modal, Typography, Card
+  Modal, Typography, Card,Tag 
 } from "antd";
 import { useNavigate } from "react-router-dom";
 import { DeleteOutlined, SwapOutlined, InfoCircleOutlined } from "@ant-design/icons";
@@ -673,15 +673,57 @@ const handleTransfer = async () => {
       console.error("Error deleting lead:", error);
     }
   };
+    const hasCommercial = (lead) => {
+    if (!lead.commercial) return false;
+    if (typeof lead.commercial === "string") return lead.commercial !== "";
+    if (typeof lead.commercial === "object") return lead.commercial !== null;
+    return false;
+  };
+  const getCommercialName = (lead) => {
+    if (!hasCommercial(lead)) return "N/A";
+
+    if (typeof lead.commercial === "string") {
+      const commercial = commercials.find((com) => com._id === lead.commercial);
+      return commercial ? `${commercial.prenom} ${commercial.nom}` : "N/A";
+    }
+
+    if (lead.commercial.prenom && lead.commercial.nom) {
+      return `${lead.commercial.prenom} ${lead.commercial.nom}`;
+    }
+
+    return "N/A";
+  };
+  const getAssignmentType = (lead) => {
+    if (hasCommercial(lead)) return "commercial";
+    // if (hasManager(lead)) return "manager";
+    return "none";
+  };
 
   const columns = [
+    // {
+    //   title: "Client",
+    //   key: "client",
+    //   render: (text, record) => (
+    //     <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+    //       <div className="font-medium">
+    //         {record.nom} {record.prenom}
+    //       </div>
+    //     </div>
+    //   ),
+    // },
     {
       title: "Client",
-      key: "client",
+      key: "nom",
+      dataIndex: "nom",
       render: (text, record) => (
         <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
           <div className="font-medium">
             {record.nom} {record.prenom}
+          </div>
+          <div className="text-xs text-gray-500">
+            {getAssignmentType(record) === "commercial" &&
+              "✓ Affecté à un commercial"}
+            {getAssignmentType(record) === "none" && "⏳ Non affecté"}
           </div>
         </div>
       ),
@@ -936,6 +978,18 @@ const handleTransfer = async () => {
     //     </Space>
     //   ),
     // },
+      {
+              title: "Commercial",
+              key: "commercial",
+              dataIndex: "commercial",
+              render: (text, record) => {
+                const commercialName = getCommercialName(record);
+                if (commercialName === "N/A") {
+                  return <Tag color="red">NON AFFECTÉ</Tag>;
+                }
+                return <Tag color="blue">{commercialName}</Tag>;
+              },
+            },
     {
       title: <span style={{ fontSize: "12px" }}>Actions</span>,
       key: "actions",

@@ -1499,7 +1499,7 @@ const ReclamationChatSidebar = ({ reclamations, onReclamationUpdate }) => {
           <div className="flex items-center justify-between">
             <span className="flex items-center">
               <CustomerServiceOutlined className="mr-2 text-blue-600" />
-              <span className="font-semibold">Centre de Réclamations</span>
+              <span className="font-semibold">Centre de demnades internes</span>
               {unreadCount > 0 && (
                 <Badge
                   count={unreadCount}

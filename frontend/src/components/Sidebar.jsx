@@ -580,9 +580,9 @@ const SideBar = () => {
           <div className="flex items-center ml-4">
             <FontAwesomeIcon
               icon={faBell}
-              style={{ fontSize: "18px", marginRight: "12px", color: "#6B7280" }}
+              style={{ fontSize: "32px", marginRight: "12px", color: "#6B7280" }}
             />
-            <span className="text-gray-600 text-sm">Demandes internes</span>
+            <span className="text-gray-600 text-lg font-semibold">Demandes internes</span>
           </div>
           <Badge 
             count={unreadCount}

@@ -46,6 +46,7 @@ const ListManagerLeads = () => {
     gestionaire: "tous",
     categorie: "tous",
     status: "tous",
+    agence: "tous",
     search: "",
   });
     const [selectedCategorie, setSelectedCategorie] = useState('');
@@ -55,7 +56,16 @@ const ListManagerLeads = () => {
       const [isOpenModalImport, setIsOpenModalImport] = useState(false);
     const [assignForm] = Form.useForm();
     const [unassignForm] = Form.useForm();
-  
+    const [currentManagerId, setCurrentManagerId] = useState(null);
+
+
+    useEffect(() => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        const decodedToken = jwtDecode(token);
+        setCurrentManagerId(decodedToken?.userId);
+      }
+    }, []);
   const showModal = () => {
     setIsModalOpen(true);
   };
@@ -110,50 +120,137 @@ const ListManagerLeads = () => {
       message.error("Erreur lors de l'ajout du client");
     }
   };
+  // Helper function to get manager name for display and search
+const getManagerName = (lead) => {
+  if (!hasManager(lead)) return "N/A";
+
+  if (typeof lead.manager === "string") {
+    const manager = managers.find((mgr) => mgr._id === lead.manager);
+    return manager ? `${manager.prenom} ${manager.nom}` : "N/A";
+  }
+
+  if (lead.manager.prenom && lead.manager.nom) {
+    return `${lead.manager.prenom} ${lead.manager.nom}`;
+  }
+
+  return "N/A";
+};
+
+
   const applyFilters = (filterValues) => {
-    let result = [...chatData];
+    let result = [...chatData]; // Start with all client data
+
     if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-      result = result.filter((item) => 
-        item.gestionnaire?.toLowerCase() === filterValues.gestionnaire.toLowerCase()
-      );
-    }
+      result = result.filter((client) => {
+        const commercialName = getCommercialName(client);
+        const managerName = getManagerName(client);
 
-    // Apply categorie filter
-    if (filterValues.categorie !== "tous") {
-      result = result.filter(
-        (item) =>
-          item.categorie?.toLowerCase() === filterValues.categorie.toLowerCase()
-      );
-    }
-
-    // Apply status filter - updated to match your schema's "statut" field
-    if (filterValues.status !== "tous") {
-      result = result.filter(
-        (item) =>
-          item.statut?.toLowerCase() === filterValues.status.toLowerCase()
-      );
-    }
-
-    if (filterValues.search) {
-      const searchTerm = filterValues.search.toLowerCase();
-      result = result.filter((item) => {
-        // Client name (nom + prenom)
-        const clientName = `${item.nom || ''} ${item.prenom || ''}`.toLowerCase();
-        
-        // All searchable fields from your columns
+        // Return true if either name matches (case-insensitive)
         return (
-          clientName.includes(searchTerm) ||
-          (item.categorie?.toLowerCase().includes(searchTerm)) ||
-          (item.portable?.toLowerCase().includes(searchTerm)) ||
-          (item.email?.toLowerCase().includes(searchTerm)) ||
-          (item.codepostal?.toLowerCase().includes(searchTerm))
+          (commercialName.toLowerCase() !== "n/a" &&
+            commercialName
+              .toLowerCase()
+              .includes(filterValues.gestionnaire.toLowerCase())) ||
+          (managerName.toLowerCase() !== "n/a" &&
+            managerName
+              .toLowerCase()
+              .includes(filterValues.gestionnaire.toLowerCase()))
         );
       });
     }
 
+    // Catégorie filter - FIX: Add strict comparison
+    if (filterValues.categorie && filterValues.categorie !== "tous") {
+      result = result.filter((client) => {
+        return client.categorie === filterValues.categorie;
+      });
+    }
+
+    // Statut filter - FIX: Add strict comparison
+    if (filterValues.status && filterValues.status !== "tous") {
+      result = result.filter((client) => {
+        return client.statut === filterValues.status;
+      });
+    }
+    // Agence filter
+if (filterValues.agence && filterValues.agence !== "tous") {
+  result = result.filter((client) => {
+    return client.agence === filterValues.agence;
+  });
+}
+
+    // Search filter
+    if (filterValues.search) {
+      const searchTerm = filterValues.search.toLowerCase();
+      result = result.filter((client) => {
+        // Construct searchable fields
+        const fullName = `${client.nom || ""} ${client.prenom || ""}`
+          .trim()
+          .toLowerCase();
+        const email = (client.email || "").toLowerCase();
+        const phone = (
+          client.portable ||
+          client.telephone_entreprise ||
+          ""
+        ).toLowerCase();
+        const company = (client.nom || "").toLowerCase(); // For entreprises
+
+        return (
+          fullName.includes(searchTerm) ||
+          email.includes(searchTerm) ||
+          phone.includes(searchTerm) ||
+          company.includes(searchTerm)
+        );
+      });
+    }
+
+    // Set filteredData - will be empty array if no results
     setFilteredData(result);
-    setCurrentPage(1);
   };
+  // const applyFilters = (filterValues) => {
+  //   let result = [...chatData];
+  //   if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
+  //     result = result.filter((item) => 
+  //       item.gestionnaire?.toLowerCase() === filterValues.gestionnaire.toLowerCase()
+  //     );
+  //   }
+
+  //   // Apply categorie filter
+  //   if (filterValues.categorie !== "tous") {
+  //     result = result.filter(
+  //       (item) =>
+  //         item.categorie?.toLowerCase() === filterValues.categorie.toLowerCase()
+  //     );
+  //   }
+
+  //   // Apply status filter - updated to match your schema's "statut" field
+  //   if (filterValues.status !== "tous") {
+  //     result = result.filter(
+  //       (item) =>
+  //         item.statut?.toLowerCase() === filterValues.status.toLowerCase()
+  //     );
+  //   }
+
+  //   if (filterValues.search) {
+  //     const searchTerm = filterValues.search.toLowerCase();
+  //     result = result.filter((item) => {
+  //       // Client name (nom + prenom)
+  //       const clientName = `${item.nom || ''} ${item.prenom || ''}`.toLowerCase();
+        
+  //       // All searchable fields from your columns
+  //       return (
+  //         clientName.includes(searchTerm) ||
+  //         (item.categorie?.toLowerCase().includes(searchTerm)) ||
+  //         (item.portable?.toLowerCase().includes(searchTerm)) ||
+  //         (item.email?.toLowerCase().includes(searchTerm)) ||
+  //         (item.codepostal?.toLowerCase().includes(searchTerm))
+  //       );
+  //     });
+  //   }
+
+  //   setFilteredData(result);
+  //   setCurrentPage(1);
+  // };
   const handleImportSuccess = async () => {
     setIsOpenModalImport(false);
     message.success("Données importées avec succès");
@@ -327,6 +424,7 @@ const ListManagerLeads = () => {
         });
   
         setChatData(updatedLeads);
+        setFilteredData(updatedLeads);
         message.success("Clients affectés au commercial avec succès");
         setIsAssignModalVisible(false);
         setSelectedLeads([]);
@@ -368,6 +466,7 @@ const ListManagerLeads = () => {
           });
     
           setChatData(updatedLeads);
+          setFilteredData(updatedLeads);
           message.success("Clients désaffectés du commercial avec succès");
           setIsUnassignModalVisible(false);
           setSelectedLeads([]);
@@ -416,152 +515,13 @@ const ListManagerLeads = () => {
     fetchUsers();
   }, []);
 
-  // const fetchClients = async () => {
-  //   const token = localStorage.getItem("token");
-  //   const decodedToken = jwtDecode(token);
-  //   const userId = decodedToken?.userId;
-  //   const userRole = decodedToken?.role?.toLowerCase(); // or userType
-  
-  //   try {
-  //     setLoading(true);
-      
-  //     // Always fetch all clients (admin will use all, commercial will filter)
-  //     const response = await axios.get('/data', {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
-  
-  //     const allLeads = response.data?.chatData || [];
-  //     console.log("All leads:", allLeads);
-  
-  //     const filteredLeads = allLeads.filter(lead => {
-  //       const isGestionnaire = 
-  //         (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
-  //         (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
-        
-  //       // const isCommercial = 
-  //       //   lead.commercial?._id && lead.commercial._id.toString() === userId;
-  //       const commercialId = 
-  //       typeof lead.commercial === 'string' 
-  //         ? lead.commercial 
-  //         : lead.commercial?._id?.toString();
-
-  //         const isCommercial = commercialId === userId;
-        
-  //       return isGestionnaire || isCommercial;
-  //     });
-  
-  //     // Sort by createdAt in descending order (newest first)
-  //     const sortedLeads = filteredLeads.sort((a, b) => {
-  //       return new Date(b.createdAt) - new Date(a.createdAt);
-  //     });
-  
-  //     console.log("Sorted leads (newest first):", {
-  //       userId,
-  //       sortedCount: sortedLeads.length,
-  //       sampleLead: sortedLeads[0]
-  //     });
-  
-  //     setChatData(sortedLeads);
-  //     setFilteredData(sortedLeads);
-  //   } catch (error) {
-  //     console.error("Error fetching leads:", error);
-  //     message.error("Failed to fetch leads");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }; 
-  // const fetchClients = async () => {
-  //   const token = localStorage.getItem("token");
-  //   const decodedToken = jwtDecode(token);
-  //   const userId = decodedToken?.userId;
-  //   const userRole = decodedToken?.role?.toLowerCase(); // or userType
-  
-  //   try {
-  //     setLoading(true);
-      
-  //     // Always fetch all clients (admin will use all, commercial will filter)
-  //     const response = await axios.get('/data', {
-  //       headers: { Authorization: `Bearer ${token}` }
-  //     });
-  
-  //     const allLeads = response.data?.chatData || [];
-  //     console.log("All leads:", allLeads);
-  
-  //     const filteredLeads = allLeads.filter(lead => {
-  //       // Check if user is the gestionnaire (creator)
-  //       const isGestionnaire = 
-  //         (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
-  //         (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
-        
-  //       // Check if user is the assigned commercial
-  //       const commercialId = 
-  //         typeof lead.commercial === 'string' 
-  //           ? lead.commercial 
-  //           : lead.commercial?._id?.toString();
-  //       const isCommercial = commercialId === userId;
-  
-  //       // Check if user is the assigned manager
-  //       const managerId = 
-  //         typeof lead.manager === 'string' 
-  //           ? lead.manager 
-  //           : lead.manager?._id?.toString();
-  //       const isManager = managerId === userId;
-  
-        
-  //       return isGestionnaire || isCommercial || isManager; // || isAdmin;
-  //     });
-  
-  //     // Sort by createdAt in descending order (newest first)
-  //     const sortedLeads = filteredLeads.sort((a, b) => {
-  //       return new Date(b.createdAt) - new Date(a.createdAt);
-  //     });
-  
-  //     console.log("Filtered and sorted leads:", {
-  //       userId,
-  //       userRole,
-  //       totalLeads: allLeads.length,
-  //       filteredCount: sortedLeads.length,
-  //       sampleLead: sortedLeads[0],
-  //       breakdown: {
-  //         createdByUser: sortedLeads.filter(lead => {
-  //           const isGestionnaire = 
-  //             (lead.gestionnaire?._id && lead.gestionnaire._id.toString() === userId) ||
-  //             (typeof lead.gestionnaire === 'string' && lead.gestionnaire.includes(decodedToken.name));
-  //           return isGestionnaire;
-  //         }).length,
-  //         assignedToCommercial: sortedLeads.filter(lead => {
-  //           const commercialId = 
-  //             typeof lead.commercial === 'string' 
-  //               ? lead.commercial 
-  //               : lead.commercial?._id?.toString();
-  //           return commercialId === userId;
-  //         }).length,
-  //         assignedToManager: sortedLeads.filter(lead => {
-  //           const managerId = 
-  //             typeof lead.manager === 'string' 
-  //               ? lead.manager 
-  //               : lead.manager?._id?.toString();
-  //           return managerId === userId;
-  //         }).length
-  //       }
-  //     });
-  
-  //     setChatData(sortedLeads);
-  //     setFilteredData(sortedLeads);
-  //   } catch (error) {
-  //     console.error("Error fetching leads:", error);
-  //     message.error("Failed to fetch leads");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
+ 
   const fetchClients = async () => {
     const token = localStorage.getItem("token");
     const decodedToken = jwtDecode(token);
     const userId = decodedToken?.userId;
     const userName = decodedToken?.name;
     
-    console.log("Fetching clients for:", { userId, userName });
   
     try {
       setLoading(true);
@@ -574,15 +534,7 @@ const ListManagerLeads = () => {
       console.log("Total leads from API:", allLeads.length);
   
       const filteredLeads = allLeads.filter(lead => {
-        // DEBUG: Log lead's gestionnaire info
-        console.log("Checking lead:", {
-          id: lead._id,
-          name: `${lead.nom} ${lead.prenom}`,
-          gestionnaire: lead.gestionnaire,
-          gestionnaireType: typeof lead.gestionnaire,
-          gestionnaireModel: lead.gestionnaireModel,
-          cree_par: lead.cree_par
-        });
+    
   
         // **FIXED: Check if user is gestionnaire**
         let isGestionnaire = false;
@@ -597,7 +549,7 @@ const ListManagerLeads = () => {
           }
         }
         
-        console.log(`isGestionnaire check: ${isGestionnaire} (gestionnaire: ${lead.gestionnaire}, userId: ${userId})`);
+       
   
         // Check if user is the assigned commercial
         let isCommercial = false;
@@ -645,12 +597,42 @@ const ListManagerLeads = () => {
       setLoading(false);
     }
   };
- 
- 
+  const fetchManagerCommercials = async () => {
+    try {
+      if (!currentManagerId) {
+        console.log("No manager ID found");
+        return;
+      }
+      
+      console.log("Fetching commercials for manager ID:", currentManagerId);
+      const response = await axios.get(`/commercials/manager/${currentManagerId}`);
+      
+      console.log("API Response:", response.data);
+      console.log("Number of commercials:", response.data.length);
+      console.log("Commercial IDs:", response.data.map(c => c._id));
+      
+      // Assuming the API returns an array of commercial objects
+      setCommercials(response.data);
+    } catch (error) {
+      console.error("Error fetching manager's commercials:", error.response?.data || error.message);
+      // Fallback to fetching all commercials if specific endpoint fails
+      fetchCommercials();
+    }
+  };
+
   useEffect(() => {
-    fetchCommercials();
+    if (currentManagerId) {
+      fetchManagerCommercials(); // Fetch only manager's commercials
+    }
     fetchClients();
-  }, []);
+    fetchClients();
+  }, [currentManagerId]); 
+ 
+ 
+  // useEffect(() => {
+  //   fetchCommercials();
+  //   fetchClients();
+  // }, []);
 
   const fetchCommercials = async () => {
     try {
@@ -702,7 +684,7 @@ const ListManagerLeads = () => {
     // If no active searches, show all data
     if (Object.keys(searches).length === 0) {
       console.log("No active searches, showing all data");
-      setFilteredData([]); // Empty array = show all original data
+      setFilteredData([...chatData]); 
       return;
     }
 
@@ -855,6 +837,7 @@ const ListManagerLeads = () => {
   const handleCancelImport = () => {
     setIsOpenModalImport(false);
   };
+
   const rowSelection = {
     onChange: (selectedRowKeys) => {
       setSelectedLeads(selectedRowKeys);
@@ -897,6 +880,24 @@ const ListManagerLeads = () => {
         unassigned,
       };
     }, [chatData]);
+
+    // Add this sorting logic before your table render
+const sortedData = useMemo(() => {
+  // Apply sorting: unassigned clients first, then by creation date
+  return [...filteredData].sort((a, b) => {
+    // Check if client has commercial assignment
+    const aHasCommercial = hasCommercial(a);
+    const bHasCommercial = hasCommercial(b);
+    
+    // Unassigned clients come first
+    if (!aHasCommercial && bHasCommercial) return -1;
+    if (aHasCommercial && !bHasCommercial) return 1;
+    
+    // If same assignment status, sort by creation date (newest first)
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+}, [filteredData, chatData]);
+
       const canAssignToCommercial = useMemo(() => {
         if (selectedLeads.length === 0) return false;
     
@@ -935,7 +936,7 @@ const ListManagerLeads = () => {
           return lead && hasManager(lead);
         });
       }, [selectedLeads, chatData]);
-    
+ 
 
       const getAssignmentStatus = useMemo(() => {
         if (selectedLeads.length === 0) return "Aucun client sélectionné";
@@ -955,16 +956,22 @@ const ListManagerLeads = () => {
           (lead) => !hasCommercial(lead) && !hasManager(lead)
         );
     
-        if (allFree) return "Tous les clients sélectionnés sont libres";
-        if (hasCommercialAssigned && !hasManagerAssigned)
-          return "Certains clients sont déjà affectés à un commercial";
-        if (hasManagerAssigned && !hasCommercialAssigned)
-          return "Certains clients sont déjà affectés à un manager";
-        if (hasMixedAssignment)
-          return "Les clients sélectionnés ont des affectations mixtes";
+        // if (allFree) return "Tous les clients sélectionnés sont libres";
+        // if (hasCommercialAssigned && !hasManagerAssigned)
+        //   return "Certains clients sont déjà affectés à un commercial";
+        // if (hasManagerAssigned && !hasCommercialAssigned)
+        //   return "Certains clients sont déjà affectés à un manager";
+        // if (hasMixedAssignment)
+        //   return "Les clients sélectionnés ont des affectations mixtes";
     
-        return "Statut d'affectation";
+        // return "Statut d'affectation";
       }, [selectedLeads, chatData]);
+
+      const getAssignmentType = (lead) => {
+        if (hasCommercial(lead)) return "commercial";
+        // if (hasManager(lead)) return "manager";
+        return "none";
+      };
 
   if (loading && showSpinner) return <Spin tip="Loading..." />;
 
@@ -972,13 +979,30 @@ const ListManagerLeads = () => {
     return <Alert message="Error" description={error} type="error" showIcon />;
 
   const columns = [
+    // {
+    //   title: "Client",
+    //   key: "client",
+    //   render: (text, record) => (
+    //     <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+    //       <div className="font-medium">
+    //         {record.nom} {record.prenom}
+    //       </div>
+    //     </div>
+    //   ),
+    // },
     {
       title: "Client",
-      key: "client",
+      key: "nom",
+      dataIndex: "nom",
       render: (text, record) => (
         <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
           <div className="font-medium">
             {record.nom} {record.prenom}
+          </div>
+          <div className="text-xs text-gray-500">
+            {getAssignmentType(record) === "commercial" &&
+              "✓ Affecté à un commercial"}
+            {getAssignmentType(record) === "none" && "⏳ Non affecté"}
           </div>
         </div>
       ),
@@ -1023,50 +1047,26 @@ const ListManagerLeads = () => {
         </div>
       ),
     },
-    {
-      title: "Assurances",
-      key: "assurances_interessees",
-      render: (text, record) => (
-        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
-          <div className="font-medium">
-            {record.assurances_interessees ? record.assurances_interessees.join(', ') : ""}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Rappel",
-      dataIndex: "rappel_at",
-      key: "rappel_at",
-      render: (text, record) => (
-        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
-          <div className="font-medium">
-            {record.rappel_at ? new Date(record.rappel_at).toLocaleDateString() : ""}
-          </div>
-        </div>
-      ),
-    },
-      {
-          title: "Commercial",
-          key: "commercial",
-          dataIndex: "commercial",
-          render: (text, record) => {
-            const commercialName = getCommercialName(record);
-            if (commercialName === "N/A") {
-              return <Tag color="red">NON AFFECTÉ</Tag>;
-            }
-            return <Tag color="blue">{commercialName}</Tag>;
-          },
-        },
     // {
-    //   title: "Commentaires",
-    //   dataIndex: "commentaire",
-    //   key: "commentaire",
+    //   title: "Assurances",
+    //   key: "assurances_interessees",
     //   render: (text, record) => (
-    //     <div className="text-gray-500 text-xs">
-    //       {record.commentaire && <div>{record.commentaire}</div>}
-    //       {record.comment && <div>{record.comment}</div>}
-    //       {!record.commentaire && !record.comment && "-"}
+    //     <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+    //       <div className="font-medium">
+    //         {record.assurances_interessees ? record.assurances_interessees.join(', ') : ""}
+    //       </div>
+    //     </div>
+    //   ),
+    // },
+    // {
+    //   title: "Rappel",
+    //   dataIndex: "rappel_at",
+    //   key: "rappel_at",
+    //   render: (text, record) => (
+    //     <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+    //       <div className="font-medium">
+    //         {record.rappel_at ? new Date(record.rappel_at).toLocaleDateString() : ""}
+    //       </div>
     //     </div>
     //   ),
     // },
@@ -1109,6 +1109,31 @@ const ListManagerLeads = () => {
         </Select>
       ),
     },
+      {
+          title: "Commercial",
+          key: "commercial",
+          dataIndex: "commercial",
+          render: (text, record) => {
+            const commercialName = getCommercialName(record);
+            if (commercialName === "N/A") {
+              return <Tag color="red">NON AFFECTÉ</Tag>;
+            }
+            return <Tag color="blue">{commercialName}</Tag>;
+          },
+        },
+    // {
+    //   title: "Commentaires",
+    //   dataIndex: "commentaire",
+    //   key: "commentaire",
+    //   render: (text, record) => (
+    //     <div className="text-gray-500 text-xs">
+    //       {record.commentaire && <div>{record.commentaire}</div>}
+    //       {record.comment && <div>{record.comment}</div>}
+    //       {!record.commentaire && !record.comment && "-"}
+    //     </div>
+    //   ),
+    // },
+  
     // {
     //   title: "Gestionnaire",
     //   dataIndex: "gestionnaire",
@@ -1218,7 +1243,7 @@ const ListManagerLeads = () => {
             </Row>
       
             {/* Assignment Status Info */}
-            <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            {/* <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center">
                 <InfoCircleOutlined className="text-blue-500 mr-2" />
                 <span className="text-sm text-blue-700 font-medium">
@@ -1228,7 +1253,7 @@ const ListManagerLeads = () => {
               <div className="text-xs text-blue-600 mt-1">
                 • Vous pouvez affecter des clients aux commerciaux de votre équipe
               </div>
-            </div>
+            </div> */}
       
             {/* Action Buttons */}
             <Card className="mb-4">
@@ -1246,7 +1271,7 @@ const ListManagerLeads = () => {
                       icon={<UserAddOutlined />}
                       className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold"
                       onClick={() => setIsAssignModalVisible(true)}
-                      disabled={!canAssignToCommercial}
+                      // disabled={!canAssignToCommercial}
                     >
                       Affecter au Commercial ({selectedLeads.length})
                     </Button>
@@ -1264,7 +1289,7 @@ const ListManagerLeads = () => {
                       icon={<UserDeleteOutlined />}
                       className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold"
                       onClick={() => setIsUnassignModalVisible(true)}
-                      disabled={!canUnassignFromCommercial}
+                      // disabled={!canUnassignFromCommercial}
                     >
                       Désaffecter du Commercial ({selectedLeads.length})
                     </Button>
@@ -1273,9 +1298,9 @@ const ListManagerLeads = () => {
               </Row>
             </Card>
 
-      <div className="p-4 bg-white mt-6 border-t rounded-md border-gray-200 shadow-sm">
+      {/* <div className="p-4 bg-white mt-6 border-t rounded-md border-gray-200 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* <div>
+          <div>
             <label className="block text-[12px] font-medium text-gray-700 mb-1">
               Gestionaire
             </label>
@@ -1307,7 +1332,7 @@ const ListManagerLeads = () => {
     );
   })}
 </Select>
-          </div> */}
+          </div>
 
           <div>
                    <label className="block text-[12px] font-medium text-gray-700 mb-1">
@@ -1343,6 +1368,7 @@ const ListManagerLeads = () => {
           </div>
 
          <div>
+          
                    <label className="block text-[12px] font-medium text-gray-700 mb-1">
                      Recherche
                    </label>
@@ -1355,20 +1381,126 @@ const ListManagerLeads = () => {
                    />
                  </div>
         </div>
+      </div> */}
+
+
+   <div className="p-4 bg-white mt-4 border-t rounded-md border-gray-200 shadow-sm mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+  <label className="block text-[12px] font-medium text-gray-700 mb-1">
+    Gestionnaire
+  </label>
+  <Select
+    className="w-full text-xs h-7"
+    placeholder="-- Choisissez le gestionnaire --"
+    showSearch
+    optionFilterProp="children"
+    filterOption={(input, option) =>
+      option.children.toLowerCase().includes(input.toLowerCase())
+    }
+    onChange={(value) => handleFilterChange("gestionnaire", value)}
+    value={filters.gestionnaire}
+  >
+    <Option value="tous">Tous</Option>
+    
+    {/* Show current manager first */}
+    {users
+      .filter(user => user.userType === "manager" && user._id === currentManagerId)
+      .map((manager) => {
+        console.log("Current manager in dropdown:", manager);
+        return (
+          <Option key={manager._id} value={`${manager.prenom} ${manager.nom}`}>
+            {`${manager.prenom} ${manager.nom}`} (Manager)
+          </Option>
+        );
+      })}
+
+{commercials
+  .filter(commercial => {
+    // The commercials array should already contain only manager's commercials
+    // But let's double-check by verifying they have the correct manager ID
+    return commercial.createdBy === currentManagerId;
+  })
+  .map((commercial) => {
+    console.log("Manager's commercial in dropdown:", commercial);
+    return (
+      <Option key={commercial._id} value={`${commercial.prenom} ${commercial.nom}`}>
+        {`${commercial.prenom} ${commercial.nom}`} (Commercial)
+      </Option>
+    );
+  })}
+  </Select>
+</div>
+
+          <div>
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Catégorie
+            </label>
+            <Select
+              className="w-full"
+              placeholder="-- Choisissez --"
+              onChange={(value) => handleFilterChange("categorie", value)}
+              value={filters.categorie}
+            >
+              <Option value="tous">Tous</Option>
+              <Option value="particulier">Particulier</Option>
+              <Option value="professionnel">Professionnel</Option>
+              <Option value="entreprise">Entreprise</Option>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Statut
+            </label>
+            <Select
+              className="w-full"
+              placeholder="-- Choisissez --"
+              onChange={(value) => handleFilterChange("status", value)}
+              value={filters.status}
+            >
+              <Option value="tous">Tous</Option>
+              <Option value="prospect">Prospect</Option>
+              <Option value="client">Client</Option>
+            </Select>
+          </div>
+
+          <div>
+  <label className="block text-[12px] font-medium text-gray-700 mb-1">
+    Agence
+  </label>
+  <Select
+    className="w-full"
+    placeholder="-- Choisissez --"
+    onChange={(value) => handleFilterChange("agence", value)}
+    value={filters.agence}
+  >
+    <Option value="tous">Toutes</Option>
+    <Option value="LENS">LENS</Option>
+    <Option value="VALENCIENNES">VALENCIENNES</Option>
+    <Option value="LILLE">LILLE</Option>
+  </Select>
+</div>
+<div className="mt-1">
+                  
+                  <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                    Recherche
+                  </label>
+                  <Input
+                    placeholder="Rechercher..."
+                    allowClear
+                    onChange={(e) => handleFilterChange("search", e.target.value)}
+                    value={filters.search}
+                    className="w-full"
+                  />
+   </div>
+        </div>
+          
       </div>
+
+
       <div className="bg-white rounded-lg shadow-md w-full md:p-6 overflow-x-auto">
       <Table
-          // columns={[
-          //   ...columns.map((col) => ({
-          //     ...col,
-          //     title: (
-          //       <div className="flex flex-col items-center">
-          //         <div className="text-xs">{col.title}</div>
-             
-          //       </div>
-          //     ),
-          //   })),
-          // ]}
             columns={columns.map((col) => ({
                       ...col,
                       title: (
@@ -1390,14 +1522,19 @@ const ListManagerLeads = () => {
                         </div>
                       ),
                     }))}
-          dataSource={filteredData.slice(
+          // dataSource={filteredData.slice(
+          //   (currentPage - 1) * pageSize,
+          //   currentPage * pageSize
+          // )}
+          dataSource={sortedData.slice(
             (currentPage - 1) * pageSize,
             currentPage * pageSize
           )}
           pagination={{
             current: currentPage,
             pageSize,
-            total: filteredData.length,
+            // total: filteredData.length,
+            total: sortedData.length,
             // onChange: (page) => setCurrentPage(page),
             onChange: (page, pageSize) => {
               setCurrentPage(page);
@@ -2549,11 +2686,22 @@ const ListManagerLeads = () => {
                   ]}
                 >
                   <Select placeholder="Sélectionnez un commercial">
-                    {commercials.map((commercial) => (
+                    {/* {commercials.map((commercial) => (
                       <Option key={commercial._id} value={commercial._id}>
                         {commercial.prenom} {commercial.nom}
                       </Option>
-                    ))}
+                    ))} */}
+                 {commercials
+  .filter(commercial => {
+    return commercial.createdBy === currentManagerId;
+  })
+  .map((commercial) => {
+    return (
+      <Option key={commercial._id} value={commercial._id}>
+        {commercial.prenom} {commercial.nom}
+      </Option>
+    );
+  })}
                   </Select>
                 </Form.Item>
                 <Form.Item>
