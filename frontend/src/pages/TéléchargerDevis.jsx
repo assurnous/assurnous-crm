@@ -569,70 +569,231 @@ const handleFormSubmit = async (values) => {
 
 //   fetchDevis();
 // }, [refreshTrigger]);
+// useEffect(() => {
+//   const fetchDevis = async () => {
+//     const token = localStorage.getItem("token");
+//     if (!token) return;
+    
+//     setLoading(true);
+//     try {
+//       const decodedToken = jwtDecode(token);
+//       const currentUserId = decodedToken?.userId;
+//       const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+
+//       // Fetch all devis
+//       const response = await axios.get("/devis");
+//       console.log("Fetched devis:", response.data);
+  
+//       const allDevis = response.data || [];
+
+//       // Filter based on role
+//       let filteredData;
+//       if (isAdmin) {
+//         // Admins see all devis
+//         filteredData = allDevis;
+//       } else {
+//         // Commercials only see their own devis
+//         filteredData = allDevis.filter(
+//           devis => devis.session?._id?.toString() === currentUserId
+//         );
+//       }
+
+//       // Sort by createdAt in descending order (newest first)
+//       const sortedData = filteredData.sort((a, b) => {
+//         return new Date(b.createdAt) - new Date(a.createdAt);
+//       });
+
+//       // Format the data
+//       const formattedData = sortedData?.map(devis => ({
+//         key: devis._id,
+//         numero_devis: devis.numero_devis || "N/A",
+//         gestionnaire: devis.lead?.gestionnaireName || "N/A",
+//         risque: devis.risque || "N/A",
+//         assureur: devis.assureur || "N/A",
+//         statut: devis.statut || "N/A",
+//         source: devis.type_origine || "N/A",
+//         date_effet: devis.date_effet,
+//         originalData: devis,
+//         documents: devis.documents || [],
+//         intermediaire: devis.intermediaire || "N/A",
+//         clientId: devis.clientId || "N/A",
+//         categorie: devis?.lead?.categorie || "N/A",
+//         // Add createdAt for reference if needed
+//         createdAt: devis.createdAt
+//       }));
+
+//       setDevisData(formattedData);
+//       setFilteredDevis(formattedData);
+
+//     } catch (error) {
+//       console.error("Error fetching devis:", error.response?.data || error.message);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   fetchDevis();
+// }, [refreshTrigger]);
 useEffect(() => {
-  const fetchDevis = async () => {
+  const fetchAllDevis = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    
-    setLoading(true);
+
     try {
+      setLoading(true);
       const decodedToken = jwtDecode(token);
       const currentUserId = decodedToken?.userId;
-      const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
-
+      const userRole = decodedToken?.role?.toLowerCase();
+      
       // Fetch all devis
-      const response = await axios.get("/devis");
-      console.log("Fetched devis:", response.data);
-  
-      const allDevis = response.data || [];
-
-      // Filter based on role
-      let filteredData;
-      if (isAdmin) {
-        // Admins see all devis
-        filteredData = allDevis;
-      } else {
-        // Commercials only see their own devis
-        filteredData = allDevis.filter(
-          devis => devis.session?._id?.toString() === currentUserId
-        );
-      }
-
-      // Sort by createdAt in descending order (newest first)
-      const sortedData = filteredData.sort((a, b) => {
-        return new Date(b.createdAt) - new Date(a.createdAt);
+      const response = await axios.get("/devis", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log("Fetched all devis:", {
+        count: response.data?.length,
+        firstDevis: response.data?.[0]
       });
 
+      const allDevis = response.data || [];
+      
+      // Filter based on user role
+      let filteredData;
+      
+      if (userRole === 'admin') {
+        // Admin sees all
+        filteredData = allDevis;
+      } else if (userRole === 'manager') {
+        // Manager sees:
+        // 1. Devis where they are the lead's manager
+        // 2. Devis created by commercials who report to them
+        // 3. Devis they created themselves
+        
+        // First, get all commercials managed by this manager
+        const commercialsResponse = await axios.get('/commercials', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        const allCommercials = commercialsResponse.data || [];
+        const managedCommercials = allCommercials.filter(commercial => 
+          commercial.manager === currentUserId || 
+          commercial.manager?.toString() === currentUserId ||
+          commercial.createdBy === currentUserId
+        );
+        
+        const managedCommercialIds = managedCommercials.map(c => c._id);
+        
+        console.log("Manager's team:", {
+          managerId: currentUserId,
+          managedCommercialIds,
+          allCommercialsCount: allCommercials.length,
+          managedCount: managedCommercials.length
+        });
+        
+        filteredData = allDevis.filter(devis => {
+          const leadManager = devis.lead?.manager;
+          const sessionId = devis.session?._id?.toString();
+          const devisCreatorId = sessionId || devis.session;
+          
+          // Check if manager is the lead's manager
+          const isLeadManager = leadManager === currentUserId || 
+                               leadManager?.toString() === currentUserId;
+          
+          // Check if devis was created by a managed commercial
+          const isCreatedByTeam = managedCommercialIds.includes(devisCreatorId);
+          
+          // Check if manager created the devis themselves
+          const isCreatedByManager = devisCreatorId === currentUserId;
+          
+          return isLeadManager || isCreatedByTeam || isCreatedByManager;
+        });
+        
+        console.log("Filtered devis for manager:", {
+          totalDevis: allDevis.length,
+          filteredCount: filteredData.length,
+          sampleFiltered: filteredData[0]
+        });
+      } else {
+        // Commercial sees only devis they created
+        filteredData = allDevis.filter(devis => {
+          const sessionId = devis.session?._id?.toString();
+          const devisCreatorId = sessionId || devis.session;
+          return devisCreatorId === currentUserId;
+        });
+      }
+
       // Format the data
-      const formattedData = sortedData?.map(devis => ({
+      const formattedData = filteredData.map(devis => ({
         key: devis._id,
         numero_devis: devis.numero_devis || "N/A",
+        categorie: devis?.lead?.categorie || "N/A",
+        
+        // Client info
+        clientName: devis.lead 
+          ? `${devis.lead.prenom || ''} ${devis.lead.nom || ''}`.trim()
+          : devis.clientId || "N/A",
+        
+        // Gestionnaire info (from lead)
         gestionnaire: devis.lead?.gestionnaireName || "N/A",
-        risque: devis.risque || "N/A",
-        assureur: devis.assureur || "N/A",
-        statut: devis.statut || "N/A",
-        source: devis.type_origine || "N/A",
-        date_effet: devis.date_effet,
+        
+        // Who created the devis
+        createdByName: devis.session 
+          ? `${devis.session.prenom || ''} ${devis.session.nom || ''}`.trim()
+          : devis.cree_par || "N/A",
+        
+        // Devis details
+        risque: devis.risque,
+        assureur: devis.assureur,
+        statut: devis.statut,
+        source: devis.type_origine,
+        prime_proposee: devis.prime_proposee,
+        prime_actuelle: devis.prime_actuelle,
+        variation: devis.variation,
+        courtier: devis.courtier,
+        
+        // Dates
+        date_effet: devis.date_effet
+          ? new Date(devis.date_effet).toLocaleDateString('fr-FR')
+          : "N/A",
+        createdAt: devis.createdAt
+          ? new Date(devis.createdAt).toLocaleDateString('fr-FR')
+          : "N/A",
+        
+        // Original data for editing
         originalData: devis,
         documents: devis.documents || [],
+        
+        // Additional info
         intermediaire: devis.intermediaire || "N/A",
-        clientId: devis.clientId || "N/A",
-        categorie: devis?.lead?.categorie || "N/A",
-        // Add createdAt for reference if needed
-        createdAt: devis.createdAt
+        cree_par: devis.cree_par,
+        
+        // For reference
+        leadManager: devis.lead?.manager,
+        sessionId: devis.session?._id,
+        sessionModel: devis.sessionModel,
       }));
 
-      setDevisData(formattedData);
-      setFilteredDevis(formattedData);
+      // Sort by creation date (newest first)
+      const sortedData = formattedData.sort((a, b) => {
+        return new Date(b.originalData.createdAt) - new Date(a.originalData.createdAt);
+      });
 
+      console.log("Final formatted data for display:", {
+        count: sortedData.length,
+        firstItem: sortedData[0]
+      });
+
+      setDevisData(sortedData);
+      setFilteredDevis(sortedData);
+      
     } catch (error) {
-      console.error("Error fetching devis:", error.response?.data || error.message);
+      console.error("Error fetching devis:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  fetchDevis();
+  fetchAllDevis();
 }, [refreshTrigger]);
 
 useEffect(() => {
@@ -716,27 +877,50 @@ const columns = [
       );
     },
   },
-  {
-    title: "Gestionnaire",
-    dataIndex: "gestionnaire",
-    key: "gestionnaire",
-    render: (gestionnaireId, record) => {
-      // Get the name from the most reliable source in your data structure
-      const gestionnaireName = 
-      record.originalData?.session?.name ||          // From populated session
-      record.originalData?.lead?.gestionnaireName || // From lead
-      record.originalData?.intermediaire ||          // From intermediaire
-      "N/A";// Final fallback
+  // {
+  //   title: "Gestionnaire",
+  //   dataIndex: "gestionnaire",
+  //   key: "gestionnaire",
+  //   render: (gestionnaireId, record) => {
+  //     // Get the name from the most reliable source in your data structure
+  //     const gestionnaireName = 
+  //     record.originalData?.session?.name ||          // From populated session
+  //     record.originalData?.lead?.gestionnaireName || // From lead
+  //     record.originalData?.intermediaire ||          // From intermediaire
+  //     "N/A";// Final fallback
   
-      return (
-        <h1 
-          style={{ padding: 0 }}
-        >
-          {gestionnaireName}
-        </h1>
-      );
-    },
-  },
+  //     return (
+  //       <h1 
+  //         style={{ padding: 0 }}
+  //       >
+  //         {gestionnaireName}
+  //       </h1>
+  //     );
+  //   },
+  // },
+    {
+        title: "Gestionnaire",
+        dataIndex: "gestionnaire",
+        key: "gestionnaire",
+        render: (gestionnaireId, record) => {
+          // Use the record directly, not originalData
+          const gestionnaireName = 
+            record.session?.nom && record.session?.prenom 
+              ? `${record.session.nom} ${record.session.prenom}`
+              : record.session?.nom 
+              ? record.session.nom
+              : record.intermediaire 
+              ? record.intermediaire
+              : "N/A";
+      
+          return (
+            <h1 style={{ padding: 0 }}>
+              {gestionnaireName}
+            </h1>
+          );
+        },
+      },
+   
   {
     title: "Risque",
     dataIndex: "risque",
