@@ -485,6 +485,88 @@ if (filterValues.search) {
 
   //   fetchClientsData();
   // }, []);
+  // useEffect(() => {
+  //   const fetchAllContrats = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+  
+  //     try {
+  //       setLoading(true);
+  //       const decodedToken = jwtDecode(token);
+  //       const currentUserId = decodedToken?.userId;
+  //       const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+        
+  //       const response = await axios.get("/contrat");
+  //       console.log("Fetched contrats:", response.data);
+  
+  //       const allContrat = response.data || [];
+  
+  //       let filteredData;
+  //       if (isAdmin) {
+  //         // Admins see all devis
+  //         filteredData = allContrat;
+  //       } else {
+  //         // Commercials only see their own devis
+  //         filteredData = allContrat.filter(
+  //           contrat => contrat.session?._id?.toString() === currentUserId
+  //         );
+  //       }
+  
+  //       // Sort by createdAt in descending order (newest first)
+  //       const sortedData = filteredData.sort((a, b) => {
+  //         return new Date(b.createdAt) - new Date(a.createdAt);
+  //       });
+  
+  //       const formattedData = sortedData.map(contrat => ({
+  //         key: contrat._id,
+  //         contractNumber: contrat.contractNumber,
+  //         categorie: contrat?.lead?.categorie || "N/A",
+  //         clientName: contrat.lead 
+  //           ? `${contrat.lead.prenom} ${contrat.lead.nom}` 
+  //           : contrat.clientId || "N/A",
+  //         gestionnaire: contrat.lead?.gestionnaireName || "N/A", 
+  //         riskType: contrat.riskType,
+  //         insurer: contrat.insurer,
+  //         status: contrat.status,
+  //         source: contrat.type_origine,
+  //         commissionRate: contrat.commissionRate,
+  //         recurrentCommission: contrat.recurrentCommission,
+  //         prime: contrat.prime,
+  //         clientId: contrat.clientId || "N/A",
+  //         courtier: contrat.courtier || "Assurnous EAB assurances",
+  //         paymentMethod: contrat.paymentMethod,
+  //         anniversary: contrat.anniversary,
+  //         brokerageFees: contrat.brokerageFees,
+  //         paymentType: contrat.paymentType,
+  //         cree_par: contrat.cree_par,
+  //         type_origine: contrat.type_origine,
+  //         competitionContract: contrat.competitionContract,
+  //         effectiveDate: contrat.effectiveDate,
+  //         date_effet: contrat.effectiveDate
+  //           ? new Date(contrat.effectiveDate).toLocaleDateString()
+  //           : "N/A",
+  //         originalData: contrat,
+  //         documents: contrat.documents || [],
+  //         intermediaire: contrat.intermediaire || "N/A",
+  //         isForecast: Boolean(contrat.isForecast),
+  //         // Add createdAt for reference if needed
+  //         createdAt: contrat.createdAt
+  //       }));
+        
+  //       setContratData(formattedData);
+  //       setFilteredContrat(formattedData);
+  //     } catch (error) {
+  //       console.error(
+  //         "Error fetching contrats:",
+  //         error.response?.data || error.message
+  //       );
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  
+  //   fetchAllContrats();
+  // }, [refreshTrigger]);
   useEffect(() => {
     const fetchAllContrats = async () => {
       const token = localStorage.getItem("token");
@@ -494,72 +576,155 @@ if (filterValues.search) {
         setLoading(true);
         const decodedToken = jwtDecode(token);
         const currentUserId = decodedToken?.userId;
-        const isAdmin = decodedToken?.role?.toLowerCase() === 'admin';
+        const userRole = decodedToken?.role?.toLowerCase();
         
-        const response = await axios.get("/contrat");
-        console.log("Fetched contrats:", response.data);
-  
-        const allContrat = response.data || [];
-  
-        let filteredData;
-        if (isAdmin) {
-          // Admins see all devis
-          filteredData = allContrat;
-        } else {
-          // Commercials only see their own devis
-          filteredData = allContrat.filter(
-            contrat => contrat.session?._id?.toString() === currentUserId
-          );
-        }
-  
-        // Sort by createdAt in descending order (newest first)
-        const sortedData = filteredData.sort((a, b) => {
-          return new Date(b.createdAt) - new Date(a.createdAt);
+        // Fetch all contracts
+        const response = await axios.get("/contrat", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        console.log("Fetched all contracts:", {
+          count: response.data?.length,
+          firstContract: response.data?.[0]
         });
   
-        const formattedData = sortedData.map(contrat => ({
+        const allContrat = response.data || [];
+        
+        // Filter based on user role
+        let filteredData;
+        
+        if (userRole === 'admin') {
+          // Admin sees all
+          filteredData = allContrat;
+        } else if (userRole === 'manager') {
+          // Manager sees:
+          // 1. Contracts where they are the lead's manager
+          // 2. Contracts created by commercials who report to them
+          // 3. Contracts they created themselves
+          
+          // First, get all commercials managed by this manager
+          const commercialsResponse = await axios.get('/commercials', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const allCommercials = commercialsResponse.data || [];
+          const managedCommercials = allCommercials.filter(commercial => 
+            commercial.manager === currentUserId || 
+            commercial.manager?.toString() === currentUserId ||
+            commercial.createdBy === currentUserId
+          );
+          
+          const managedCommercialIds = managedCommercials.map(c => c._id);
+          
+          console.log("Manager's team:", {
+            managerId: currentUserId,
+            managedCommercialIds,
+            allCommercialsCount: allCommercials.length,
+            managedCount: managedCommercials.length
+          });
+          
+          filteredData = allContrat.filter(contrat => {
+            const leadManager = contrat.lead?.manager;
+            const sessionId = contrat.session?._id?.toString();
+            const contractCreatorId = sessionId || contrat.session;
+            
+            // Check if manager is the lead's manager
+            const isLeadManager = leadManager === currentUserId || 
+                                 leadManager?.toString() === currentUserId;
+            
+            // Check if contract was created by a managed commercial
+            const isCreatedByTeam = managedCommercialIds.includes(contractCreatorId);
+            
+            // Check if manager created the contract themselves
+            const isCreatedByManager = contractCreatorId === currentUserId;
+            
+            return isLeadManager || isCreatedByTeam || isCreatedByManager;
+          });
+          
+          console.log("Filtered contracts for manager:", {
+            totalContracts: allContrat.length,
+            filteredCount: filteredData.length,
+            sampleFiltered: filteredData[0]
+          });
+        } else {
+          // Commercial sees only contracts they created
+          filteredData = allContrat.filter(contrat => {
+            const sessionId = contrat.session?._id?.toString();
+            const contractCreatorId = sessionId || contrat.session;
+            return contractCreatorId === currentUserId;
+          });
+        }
+  
+        // Format the data
+        const formattedData = filteredData.map(contrat => ({
           key: contrat._id,
           contractNumber: contrat.contractNumber,
           categorie: contrat?.lead?.categorie || "N/A",
+          
+          // Client info
           clientName: contrat.lead 
-            ? `${contrat.lead.prenom} ${contrat.lead.nom}` 
+            ? `${contrat.lead.prenom || ''} ${contrat.lead.nom || ''}`.trim()
             : contrat.clientId || "N/A",
-          gestionnaire: contrat.lead?.gestionnaireName || "N/A", 
+          
+          // Gestionnaire info (from lead)
+          gestionnaire: contrat.lead?.gestionnaireName || "N/A",
+          
+          // Who created the contract
+          createdByName: contrat.session 
+            ? `${contrat.session.prenom || ''} ${contrat.session.nom || ''}`.trim()
+            : contrat.cree_par || "N/A",
+          
+          // Contract details
           riskType: contrat.riskType,
           insurer: contrat.insurer,
           status: contrat.status,
           source: contrat.type_origine,
-          commissionRate: contrat.commissionRate,
-          recurrentCommission: contrat.recurrentCommission,
           prime: contrat.prime,
-          clientId: contrat.clientId || "N/A",
-          courtier: contrat.courtier || "Assurnous EAB assurances",
           paymentMethod: contrat.paymentMethod,
           anniversary: contrat.anniversary,
-          brokerageFees: contrat.brokerageFees,
           paymentType: contrat.paymentType,
           cree_par: contrat.cree_par,
-          type_origine: contrat.type_origine,
-          competitionContract: contrat.competitionContract,
+          
+          // Dates
           effectiveDate: contrat.effectiveDate,
           date_effet: contrat.effectiveDate
-            ? new Date(contrat.effectiveDate).toLocaleDateString()
+            ? new Date(contrat.effectiveDate).toLocaleDateString('fr-FR')
             : "N/A",
+          
+          // Original data for editing
           originalData: contrat,
           documents: contrat.documents || [],
+          
+          // Additional info
           intermediaire: contrat.intermediaire || "N/A",
+          courtier: contrat.courtier || "Assurnous EAB assurances",
+          commissionRate: contrat.commissionRate,
+          brokerageFees: contrat.brokerageFees,
+          recurrentCommission: contrat.recurrentCommission,
+          competitionContract: contrat.competitionContract,
           isForecast: Boolean(contrat.isForecast),
-          // Add createdAt for reference if needed
-          createdAt: contrat.createdAt
+          
+          // For reference
+          leadManager: contrat.lead?.manager,
+          sessionId: contrat.session?._id,
+          sessionModel: contrat.sessionModel,
         }));
+  
+        // Sort by creation date (newest first)
+        const sortedData = formattedData.sort((a, b) => {
+          return new Date(b.originalData.createdAt) - new Date(a.originalData.createdAt);
+        });
+  
+        console.log("Final formatted data for display:", {
+          count: sortedData.length,
+          firstItem: sortedData[0]
+        });
+  
+        setContratData(sortedData);
+        setFilteredContrat(sortedData);
         
-        setContratData(formattedData);
-        setFilteredContrat(formattedData);
       } catch (error) {
-        console.error(
-          "Error fetching contrats:",
-          error.response?.data || error.message
-        );
+        console.error("Error fetching contracts:", error);
       } finally {
         setLoading(false);
       }
