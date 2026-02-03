@@ -1561,7 +1561,7 @@ const sortedData = useMemo(() => {
             </div> */}
       
             {/* Action Buttons */}
-            <Card className="mb-4">
+            {/* <Card className="mb-4">
               <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={6}>
                   <Tooltip
@@ -1601,7 +1601,7 @@ const sortedData = useMemo(() => {
                   </Tooltip>
                 </Col>
               </Row>
-            </Card>
+            </Card> */}
 
       {/* <div className="p-4 bg-white mt-6 border-t rounded-md border-gray-200 shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
