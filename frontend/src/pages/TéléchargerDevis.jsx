@@ -183,36 +183,36 @@ if (filterValues.search) {
                 const allLeads = response.data?.chatData || [];
                 console.log("All leads:", allLeads);
             
-                const filteredLeads = allLeads.filter(lead => {
-                  // ADMIN: See all clients
-                  if (userRole === 'admin') {
-                    return true;
-                  }
+                // const filteredLeads = allLeads.filter(lead => {
+                //   // ADMIN: See all clients
+                //   if (userRole === 'admin') {
+                //     return true;
+                //   }
             
-                  // COMMERCIAL: Only see clients assigned to them via commercial field
-                  if (userRole === 'commercial') {
-                    const commercialId = 
-                      typeof lead.commercial === 'string' 
-                        ? lead.commercial 
-                        : lead.commercial?._id?.toString();
-                    return commercialId === userId;
-                  }
+                //   // COMMERCIAL: Only see clients assigned to them via commercial field
+                //   if (userRole === 'commercial') {
+                //     const commercialId = 
+                //       typeof lead.commercial === 'string' 
+                //         ? lead.commercial 
+                //         : lead.commercial?._id?.toString();
+                //     return commercialId === userId;
+                //   }
             
-                  // MANAGER: Only see clients assigned to them via manager field
-                  if (userRole === 'manager') {
-                    const managerId = 
-                      typeof lead.manager === 'string' 
-                        ? lead.manager 
-                        : lead.manager?._id?.toString();
-                    return managerId === userId;
-                  }
+                //   // MANAGER: Only see clients assigned to them via manager field
+                //   if (userRole === 'manager') {
+                //     const managerId = 
+                //       typeof lead.manager === 'string' 
+                //         ? lead.manager 
+                //         : lead.manager?._id?.toString();
+                //     return managerId === userId;
+                //   }
             
-                  // Default: no access if role not recognized
-                  return false;
-                });
+                //   // Default: no access if role not recognized
+                //   return false;
+                // });
             
                 // Sort by createdAt in descending order (newest first)
-                const sortedLeads = filteredLeads.sort((a, b) => {
+                const sortedLeads = allLeads.sort((a, b) => {
                   return new Date(b.createdAt) - new Date(a.createdAt);
                 });
             
