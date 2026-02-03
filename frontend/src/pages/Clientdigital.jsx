@@ -34,7 +34,11 @@ const Clientdigital = () => {
   const [users, setUsers] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
+  const [userInfo, setUserInfo] = useState({
+    role: '',
+    email: '',
+    villes: []
+  });
 
 const [transferModalVisible, setTransferModalVisible] = useState(false);
 const [selectedClient, setSelectedClient] = useState(null);
@@ -493,6 +497,100 @@ const handleTransfer = async () => {
 
   //   getUserData();
   // }, [activeFilter, refreshTrigger, navigate]);
+  // useEffect(() => {
+  //   const getUserData = async () => {
+  //     try {
+  //       setLoading(true);
+  //       setError(null);
+        
+  //       const user = getCurrentUser();
+        
+  //       if (!user) {
+  //         navigate("/login");
+  //         return;
+  //       }
+        
+  //       const token = localStorage.getItem("token");
+        
+  //       if (!token) {
+  //         navigate("/login");
+  //         return;
+  //       }
+        
+  //       // Make the request
+  //       const response = await axios.get('/datas', {
+  //         headers: {
+  //           'Authorization': `Bearer ${token}`,
+  //           'Content-Type': 'application/json'
+  //         }
+  //       });
+        
+  //       console.log('Data received:', response.data);
+  //       console.log('User can see villes:', response.data.userVilles);
+  //       console.log('Total clients received:', response.data.chatData?.length);
+        
+  //       const allData = response.data.chatData;
+  //       const userAllowedAgences = response.data.userVilles || [];
+        
+  //       if (!allData || !Array.isArray(allData)) {
+  //         console.error('Invalid chatData in response:', response.data);
+  //         setError("No valid data received from server");
+  //         return;
+  //       }
+        
+  //       // First, filter by user's allowed agences
+  //       let filteredByAgence = allData;
+        
+  //       if (userAllowedAgences.length > 0) {
+  //         filteredByAgence = allData.filter(item => {
+  //           const itemAgence = item.agence?.toUpperCase() || '';
+  //           return userAllowedAgences.some(allowedAgence => 
+  //             itemAgence === allowedAgence?.toUpperCase()
+  //           );
+  //         });
+          
+  //         console.log(`After agence filtering: ${filteredByAgence.length} clients (from ${allData.length})`);
+  //       }
+        
+  //       // Then filter for digital clients
+  //       const digitalClients = filteredByAgence.filter(item => 
+  //         item.agence && 
+  //         item.assurances_interessees && 
+  //         item.rappel_at && 
+  //         item.comment
+  //       );
+        
+  //       console.log(`After digital filtering: ${digitalClients.length} digital clients`);
+        
+  //       // Sort by creation date
+  //       const sortedData = digitalClients.sort((a, b) => {
+  //         const dateA = new Date(a.createdAt || a.date_creation || 0);
+  //         const dateB = new Date(b.createdAt || b.date_creation || 0);
+  //         return dateB - dateA;
+  //       });
+        
+  //       console.log('Final data to display:', sortedData.length, 'items');
+  //       console.log('Sample items:', sortedData.slice(0, 2));
+        
+  //       setChatData(sortedData);
+  //       setFilteredData(sortedData);
+        
+  //     } catch (err) {
+  //       console.error('Error in getUserData:', err);
+        
+  //       if (err.response?.status === 401) {
+  //         localStorage.removeItem("token");
+  //         navigate("/login");
+  //       } else {
+  //         setError("Failed to fetch data: " + (err.message || "Unknown error"));
+  //       }
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+    
+  //   getUserData();
+  // }, [activeFilter, refreshTrigger, navigate]);
   useEffect(() => {
     const getUserData = async () => {
       try {
@@ -513,7 +611,7 @@ const handleTransfer = async () => {
           return;
         }
         
-        // Make the request
+        // Get all digital clients data
         const response = await axios.get('/datas', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -521,64 +619,62 @@ const handleTransfer = async () => {
           }
         });
         
-        console.log('Data received:', response.data);
-        console.log('User can see villes:', response.data.userVilles);
-        console.log('Total clients received:', response.data.chatData?.length);
+        const allData = response.data.chatData || [];
+        const userRole = response.data.userRole;
         
-        const allData = response.data.chatData;
-        const userAllowedAgences = response.data.userVilles || [];
+        let filteredData = [];
         
-        if (!allData || !Array.isArray(allData)) {
-          console.error('Invalid chatData in response:', response.data);
-          setError("No valid data received from server");
-          return;
-        }
-        
-        // First, filter by user's allowed agences
-        let filteredByAgence = allData;
-        
-        if (userAllowedAgences.length > 0) {
-          filteredByAgence = allData.filter(item => {
-            const itemAgence = item.agence?.toUpperCase() || '';
-            return userAllowedAgences.some(allowedAgence => 
-              itemAgence === allowedAgence?.toUpperCase()
-            );
-          });
+        if (userRole === 'Commercial') {
+          // SIMPLE: Commercial sees all LILLE clients (assigned or not)
+          filteredData = allData.filter(client => 
+            client.agence?.toUpperCase() === 'LILLE'
+          );
           
-          console.log(`After agence filtering: ${filteredByAgence.length} clients (from ${allData.length})`);
+          console.log(`Commercial sees ${filteredData.length} LILLE clients`);
+          
+          // Separate assigned vs unassigned
+          const commercialUserId = user.userId || user.id || user._id;
+          const assignedToMe = filteredData.filter(c => 
+            c.commercial === commercialUserId || c.commercial?._id === commercialUserId
+          );
+          const unassigned = filteredData.filter(c => 
+            !c.commercial || c.commercial === ''
+          );
+          
+   
+          
+   
+          
+        } else if (userRole === 'Manager') {
+          const userVilles = response.data.userVilles || [];
+          if (userVilles.length > 0) {
+            filteredData = allData.filter(client => {
+              const clientAgence = client.agence?.toUpperCase() || '';
+              return userVilles.some(ville => 
+                clientAgence === ville?.toUpperCase()
+              );
+            });
+  
+          } else {
+            filteredData = allData;
+          }
+        } else {
+          filteredData = allData;
         }
         
-        // Then filter for digital clients
-        const digitalClients = filteredByAgence.filter(item => 
-          item.agence && 
-          item.assurances_interessees && 
-          item.rappel_at && 
-          item.comment
-        );
-        
-        console.log(`After digital filtering: ${digitalClients.length} digital clients`);
-        
-        // Sort by creation date
-        const sortedData = digitalClients.sort((a, b) => {
+        const sortedData = filteredData.sort((a, b) => {
           const dateA = new Date(a.createdAt || a.date_creation || 0);
           const dateB = new Date(b.createdAt || b.date_creation || 0);
           return dateB - dateA;
         });
         
-        console.log('Final data to display:', sortedData.length, 'items');
-        console.log('Sample items:', sortedData.slice(0, 2));
-        
         setChatData(sortedData);
         setFilteredData(sortedData);
         
       } catch (err) {
-        console.error('Error in getUserData:', err);
-        
+        console.error('Error:', err);
         if (err.response?.status === 401) {
-          localStorage.removeItem("token");
           navigate("/login");
-        } else {
-          setError("Failed to fetch data: " + (err.message || "Unknown error"));
         }
       } finally {
         setLoading(false);
@@ -587,49 +683,7 @@ const handleTransfer = async () => {
     
     getUserData();
   }, [activeFilter, refreshTrigger, navigate]);
-  const handleGestionnaireChange = async (selectedId, record) => {
-    try {
-      const selectedUser = users.find(user => user._id === selectedId);
-      const displayName = selectedUser 
-        ? selectedUser.userType === "admin" 
-          ? selectedUser.name 
-          : `${selectedUser.nom} ${selectedUser.prenom}`
-        : null;
-
-      const response = await axios.put(
-        `/updateGestionnaireLead/${record._id}`,
-        {
-          gestionnaireId: selectedId || null,
-          gestionnaireName: displayName || null,
-          userType: selectedUser?.userType || null
-        }
-      );
-
-      setChatData(prev => prev.map(item => 
-        item._id === record._id 
-          ? { 
-              ...item, 
-              gestionnaire: selectedId ? { _id: selectedId } : null,
-              gestionnaireName: displayName 
-            } 
-          : item
-      ));
-      
-      setFilteredData(prev => prev.map(item => 
-        item._id === record._id 
-          ? { 
-              ...item, 
-              gestionnaire: selectedId ? { _id: selectedId } : null,
-              gestionnaireName: displayName 
-            } 
-          : item
-      ));
-
-      console.log("Updated gestionnaire:", response.data);
-    } catch (error) {
-      console.error("Error updating gestionnaire:", error);
-    }
-  };
+ 
 
   const handleStatusLeadChange = async (newStatus, record) => {
     try {
@@ -978,18 +1032,18 @@ const handleTransfer = async () => {
     //     </Space>
     //   ),
     // },
-      {
-              title: "Commercial",
-              key: "commercial",
-              dataIndex: "commercial",
-              render: (text, record) => {
-                const commercialName = getCommercialName(record);
-                if (commercialName === "N/A") {
-                  return <Tag color="red">NON AFFECTÉ</Tag>;
-                }
-                return <Tag color="blue">{commercialName}</Tag>;
-              },
-            },
+      // {
+      //         title: "Commercial",
+      //         key: "commercial",
+      //         dataIndex: "commercial",
+      //         render: (text, record) => {
+      //           const commercialName = getCommercialName(record);
+      //           if (commercialName === "N/A") {
+      //             return <Tag color="red">NON AFFECTÉ</Tag>;
+      //           }
+      //           return <Tag color="blue">{commercialName}</Tag>;
+      //         },
+      //       },
     {
       title: <span style={{ fontSize: "12px" }}>Actions</span>,
       key: "actions",
@@ -999,7 +1053,7 @@ const handleTransfer = async () => {
         
         return (
           <Space size="small">
-            {canTransfer && (
+            {/* {canTransfer && (
               <Button
                 type="primary"
                 icon={<SwapOutlined />}
@@ -1009,7 +1063,7 @@ const handleTransfer = async () => {
               >
                 Transférer
               </Button>
-            )}
+            )} */}
             
             <Popconfirm
               title="Êtes-vous sûr de vouloir supprimer ce lead ?"

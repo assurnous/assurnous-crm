@@ -225,6 +225,145 @@ const Reclamations = () => {
   //   fetchReclamations();
   // }, [refreshTrigger]);
 
+  // const fetchReclamations = async () => {
+  //   const token = localStorage.getItem("token");
+  //   if (!token) return;
+    
+  //   setLoading(true);
+  //   try {
+  //     const decodedToken = jwtDecode(token);
+  //     const currentUserId = decodedToken?.userId;
+  //     const userRole = decodedToken?.role?.toLowerCase();
+      
+  //     console.log("Fetching reclamations for user:", {
+  //       userId: currentUserId,
+  //       role: userRole
+  //     });
+  
+  //     // Fetch all reclamations
+  //     const response = await axios.get("/reclamations");
+  //     const allReclamations = response.data.data || [];
+      
+  //     console.log("Total reclamations from API:", allReclamations.length);
+  
+  //     // Filter based on role
+  //     let filteredData;
+      
+  //     if (userRole === 'admin') {
+  //       // Admins see all reclamations
+  //       filteredData = allReclamations;
+  //       console.log("Admin - showing all reclamations:", filteredData.length);
+        
+  //     } else if (userRole === 'manager') {
+  //       // Manager sees:
+  //       // 1. Reclamations created by their team members
+  //       // 2. Reclamations they created themselves
+  //       // 3. Reclamations where they are assigned
+  //       // 4. Reclamations where team members are assigned
+        
+  //       // First, get all commercials managed by this manager
+  //       const commercialsResponse = await axios.get('/commercials', {
+  //         headers: { Authorization: `Bearer ${token}` }
+  //       });
+        
+  //       const allCommercials = commercialsResponse.data || [];
+  //       const managedCommercials = allCommercials.filter(commercial => 
+  //         commercial.manager === currentUserId || 
+  //         commercial.manager?.toString() === currentUserId ||
+  //         commercial.createdBy === currentUserId
+  //       );
+        
+  //       const managedCommercialIds = managedCommercials.map(c => c._id);
+        
+  //       console.log("Manager's team:", {
+  //         managerId: currentUserId,
+  //         managedCommercialIds,
+  //         allCommercialsCount: allCommercials.length,
+  //         managedCount: managedCommercials.length
+  //       });
+        
+  //       filteredData = allReclamations.filter(reclamation => {
+  //         const sessionId = reclamation.session?._id?.toString();
+  //         const reclamationCreatorId = sessionId || reclamation.session;
+          
+  //         // Check if reclamation was created by a managed commercial
+  //         const isCreatedByTeam = managedCommercialIds.includes(reclamationCreatorId);
+          
+  //         // Check if manager created the reclamation themselves
+  //         const isCreatedByManager = reclamationCreatorId === currentUserId;
+          
+  //         // Check assignment status
+  //         let isAssignedToUser = false;
+  //         let isAssignedToTeamMember = false;
+          
+  //         if (reclamation.assignedTo) {
+  //           // Handle both object and string formats
+  //           if (typeof reclamation.assignedTo === 'object') {
+  //             const assignedToId = reclamation.assignedTo._id?.toString();
+  //             isAssignedToUser = assignedToId === currentUserId;
+  //             isAssignedToTeamMember = managedCommercialIds.includes(assignedToId);
+  //           } else if (typeof reclamation.assignedTo === 'string') {
+  //             isAssignedToUser = reclamation.assignedTo === currentUserId;
+  //             isAssignedToTeamMember = managedCommercialIds.includes(reclamation.assignedTo);
+  //           }
+  //         }
+          
+  //         return isCreatedByTeam || isCreatedByManager || isAssignedToUser || isAssignedToTeamMember;
+  //       });
+        
+  //       console.log("Manager - filtered count:", filteredData.length);
+        
+  //     } else {
+  //       // Commercial sees their own reclamations AND assigned reclamations
+  //       filteredData = allReclamations.filter(reclamation => {
+  //         // Check if created by this user
+  //         const sessionId = reclamation.session?._id?.toString();
+  //         const isCreatedByUser = sessionId === currentUserId;
+          
+  //         // Check if assigned to this user
+  //         let isAssignedToUser = false;
+  //         if (reclamation.assignedTo) {
+  //           // Handle both object and string formats
+  //           if (typeof reclamation.assignedTo === 'object') {
+  //             isAssignedToUser = reclamation.assignedTo._id?.toString() === currentUserId;
+  //           } else if (typeof reclamation.assignedTo === 'string') {
+  //             isAssignedToUser = reclamation.assignedTo === currentUserId;
+  //           }
+  //         }
+          
+  //         const shouldShow = isCreatedByUser || isAssignedToUser;
+          
+  //         if (shouldShow) {
+  //           console.log("Commercial can see reclamation:", {
+  //             id: reclamation._id,
+  //             numero: reclamation.numero_reclamation,
+  //             createdBy: reclamation.session?._id,
+  //             assignedTo: reclamation.assignedTo?._id || reclamation.assignedTo
+  //           });
+  //         }
+          
+  //         return shouldShow;
+  //       });
+  //       console.log("Commercial - filtered count:", filteredData.length);
+  //     }
+  
+  //     // Sort by createdAt in descending order (newest first)
+  //     const sortedData = filteredData.sort((a, b) => {
+  //       return new Date(b.createdAt) - new Date(a.createdAt);
+  //     });
+  
+  //     setAllReclamations(sortedData);
+      
+  //   } catch (error) {
+  //     console.error("Error fetching reclamations:", error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+  
+  // useEffect(() => {
+  //   fetchReclamations();
+  // }, [refreshTrigger]);
   const fetchReclamations = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -246,7 +385,99 @@ const Reclamations = () => {
       
       console.log("Total reclamations from API:", allReclamations.length);
   
-      // Filter based on role
+      // Get user information and team structure
+      let userManagerId = null;
+      let managerId = currentUserId; // For managers, they are their own manager
+      let teamUserIds = [currentUserId]; // Start with self
+      
+      if (userRole === 'commercial') {
+        try {
+          // Fetch current commercial's details
+          const commercialsResponse = await axios.get('/commercials', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const allCommercials = commercialsResponse.data || [];
+          
+          // Find current user in commercials
+          const currentUserCommercial = allCommercials.find(c => 
+            c._id === currentUserId || c._id?.toString() === currentUserId
+          );
+          
+          // Get manager ID (manager or createdBy)
+          userManagerId = currentUserCommercial?.manager || currentUserCommercial?.createdBy;
+          managerId = userManagerId; // Commercial's manager ID
+          
+          console.log("Commercial's manager info (reclamations):", {
+            currentUserId,
+            managerId,
+            commercialData: currentUserCommercial
+          });
+          
+          // Get ALL users under this manager (including manager and all commercials)
+          if (managerId) {
+            // Add manager to team
+            teamUserIds.push(managerId);
+            
+            // Add all commercials under this manager
+            const teamCommercials = allCommercials.filter(commercial => {
+              const commercialManager = commercial.manager || commercial.createdBy;
+              return commercialManager === managerId || 
+                     commercialManager?.toString() === managerId;
+            });
+            
+            // Add all commercial IDs from the team
+            teamCommercials.forEach(commercial => {
+              if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+                teamUserIds.push(commercial._id.toString());
+              }
+            });
+          }
+          
+          console.log("Commercial team structure (reclamations):", {
+            managerId,
+            teamUserIds,
+            teamSize: teamUserIds.length
+          });
+          
+        } catch (error) {
+          console.log("Error fetching commercials for reclamations:", error);
+        }
+      } else if (userRole === 'manager') {
+        // Manager sees their own reclamations and all reclamations from their team
+        try {
+          const commercialsResponse = await axios.get('/commercials', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const allCommercials = commercialsResponse.data || [];
+          
+          // Get all commercials under this manager
+          const teamCommercials = allCommercials.filter(commercial => {
+            const commercialManager = commercial.manager || commercial.createdBy;
+            return commercialManager === currentUserId || 
+                   commercialManager?.toString() === currentUserId;
+          });
+          
+          // Add all commercial IDs from the team
+          teamCommercials.forEach(commercial => {
+            if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+              teamUserIds.push(commercial._id.toString());
+            }
+          });
+          
+          console.log("Manager team structure (reclamations):", {
+            managerId: currentUserId,
+            teamUserIds,
+            teamCommercialsCount: teamCommercials.length
+          });
+          
+        } catch (error) {
+          console.log("Error fetching manager team for reclamations:", error);
+        }
+      }
+  
+      // Filter reclamations based on user role and team
       let filteredData;
       
       if (userRole === 'admin') {
@@ -254,67 +485,59 @@ const Reclamations = () => {
         filteredData = allReclamations;
         console.log("Admin - showing all reclamations:", filteredData.length);
         
-      } else if (userRole === 'manager') {
-        // Manager sees:
-        // 1. Reclamations created by their team members
-        // 2. Reclamations they created themselves
-        // 3. Reclamations where they are assigned
-        // 4. Reclamations where team members are assigned
-        
-        // First, get all commercials managed by this manager
-        const commercialsResponse = await axios.get('/commercials', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        const allCommercials = commercialsResponse.data || [];
-        const managedCommercials = allCommercials.filter(commercial => 
-          commercial.manager === currentUserId || 
-          commercial.manager?.toString() === currentUserId ||
-          commercial.createdBy === currentUserId
-        );
-        
-        const managedCommercialIds = managedCommercials.map(c => c._id);
-        
-        console.log("Manager's team:", {
-          managerId: currentUserId,
-          managedCommercialIds,
-          allCommercialsCount: allCommercials.length,
-          managedCount: managedCommercials.length
-        });
-        
+      } else if (userRole === 'manager' || userRole === 'commercial') {
+        // Both manager and commercial see reclamations from their entire team
         filteredData = allReclamations.filter(reclamation => {
+          // Get the creator ID from various possible fields
           const sessionId = reclamation.session?._id?.toString();
-          const reclamationCreatorId = sessionId || reclamation.session;
+          const reclamationCreatorId = sessionId || reclamation.session || reclamation.cree_par;
           
-          // Check if reclamation was created by a managed commercial
-          const isCreatedByTeam = managedCommercialIds.includes(reclamationCreatorId);
-          
-          // Check if manager created the reclamation themselves
-          const isCreatedByManager = reclamationCreatorId === currentUserId;
-          
-          // Check assignment status
-          let isAssignedToUser = false;
-          let isAssignedToTeamMember = false;
-          
+          // Get assigned user ID
+          let assignedToId = null;
           if (reclamation.assignedTo) {
             // Handle both object and string formats
             if (typeof reclamation.assignedTo === 'object') {
-              const assignedToId = reclamation.assignedTo._id?.toString();
-              isAssignedToUser = assignedToId === currentUserId;
-              isAssignedToTeamMember = managedCommercialIds.includes(assignedToId);
+              assignedToId = reclamation.assignedTo._id?.toString() || reclamation.assignedTo;
             } else if (typeof reclamation.assignedTo === 'string') {
-              isAssignedToUser = reclamation.assignedTo === currentUserId;
-              isAssignedToTeamMember = managedCommercialIds.includes(reclamation.assignedTo);
+              assignedToId = reclamation.assignedTo;
             }
           }
           
-          return isCreatedByTeam || isCreatedByManager || isAssignedToUser || isAssignedToTeamMember;
+          // Check if reclamation creator is in the team
+          const isCreatedByTeam = teamUserIds.some(teamUserId => 
+            teamUserId?.toString() === reclamationCreatorId?.toString()
+          );
+          
+          // Check if assigned user is in the team
+          const isAssignedToTeam = teamUserIds.some(teamUserId => 
+            teamUserId?.toString() === assignedToId?.toString()
+          );
+          
+          // Check if lead manager is in the team (from reclamation lead)
+          const leadManager = reclamation.lead?.manager;
+          const isTeamLeadManager = teamUserIds.some(teamUserId => 
+            teamUserId?.toString() === leadManager?.toString()
+          );
+          
+          // Check if contrat creator is in the team (from reclamation contrat)
+          const contratCreatorId = reclamation.contrat?.session?._id?.toString() || 
+                                 reclamation.contrat?.session;
+          const isContratInTeam = teamUserIds.some(teamUserId => 
+            teamUserId?.toString() === contratCreatorId?.toString()
+          );
+          
+          return isCreatedByTeam || isAssignedToTeam || isTeamLeadManager || isContratInTeam;
         });
         
-        console.log("Manager - filtered count:", filteredData.length);
+        console.log(`${userRole} filtered reclamations:`, {
+          totalReclamations: allReclamations.length,
+          filteredCount: filteredData.length,
+          teamUserIds,
+          filterLogic: "Sees reclamations from entire team (manager + all commercials under manager)"
+        });
         
       } else {
-        // Commercial sees their own reclamations AND assigned reclamations
+        // Other roles see only their own reclamations AND assigned reclamations
         filteredData = allReclamations.filter(reclamation => {
           // Check if created by this user
           const sessionId = reclamation.session?._id?.toString();
@@ -331,25 +554,66 @@ const Reclamations = () => {
             }
           }
           
-          const shouldShow = isCreatedByUser || isAssignedToUser;
-          
-          if (shouldShow) {
-            console.log("Commercial can see reclamation:", {
-              id: reclamation._id,
-              numero: reclamation.numero_reclamation,
-              createdBy: reclamation.session?._id,
-              assignedTo: reclamation.assignedTo?._id || reclamation.assignedTo
-            });
-          }
-          
-          return shouldShow;
+          return isCreatedByUser || isAssignedToUser;
         });
-        console.log("Commercial - filtered count:", filteredData.length);
+        console.log("Other role - filtered count:", filteredData.length);
       }
   
+      // Add team information to each reclamation
+      const dataWithTeamInfo = filteredData.map(reclamation => {
+        const sessionId = reclamation.session?._id?.toString();
+        const reclamationCreatorId = sessionId || reclamation.session || reclamation.cree_par;
+        const isCreatedBySelf = reclamationCreatorId === currentUserId || 
+                               reclamationCreatorId?.toString() === currentUserId;
+        const isCreatedByManager = managerId && (
+          reclamationCreatorId === managerId || 
+          reclamationCreatorId?.toString() === managerId
+        );
+        
+        // Get assigned user info
+        let assignedToName = "Non assigné";
+        if (reclamation.assignedTo) {
+          if (typeof reclamation.assignedTo === 'object') {
+            assignedToName = `${reclamation.assignedTo.prenom || ''} ${reclamation.assignedTo.nom || ''}`.trim();
+          }
+        }
+        
+        return {
+          ...reclamation,
+          // Team visibility info
+          isTeamReclamation: !isCreatedBySelf,
+          createdByType: isCreatedBySelf ? 'self' : 
+                        isCreatedByManager ? 'manager' : 'team_member',
+          
+          // Creator info for display
+          creatorName: reclamation.session 
+            ? `${reclamation.session.prenom || ''} ${reclamation.session.nom || ''}`.trim()
+            : reclamation.cree_par || "N/A",
+          
+          // Formatted assigned to
+          assignedToName: assignedToName,
+          
+          // Client info (if available from lead or contrat)
+          clientName: reclamation.lead 
+            ? `${reclamation.lead.prenom || ''} ${reclamation.lead.nom || ''}`.trim()
+            : reclamation.contrat?.lead
+              ? `${reclamation.contrat.lead.prenom || ''} ${reclamation.contrat.lead.nom || ''}`.trim()
+              : reclamation.clientName || "N/A",
+        };
+      });
+  
       // Sort by createdAt in descending order (newest first)
-      const sortedData = filteredData.sort((a, b) => {
+      const sortedData = dataWithTeamInfo.sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+  
+      console.log("Final reclamations data:", {
+        count: sortedData.length,
+        sample: sortedData[0],
+        teamInfo: {
+          isTeamReclamation: sortedData[0]?.isTeamReclamation,
+          createdByType: sortedData[0]?.createdByType
+        }
       });
   
       setAllReclamations(sortedData);

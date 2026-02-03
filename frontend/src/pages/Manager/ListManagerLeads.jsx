@@ -516,11 +516,93 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   }, []);
 
  
+  // const fetchClients = async () => {
+  //   const token = localStorage.getItem("token");
+  //   const decodedToken = jwtDecode(token);
+  //   const userId = decodedToken?.userId;
+  //   const userName = decodedToken?.name;
+    
+  
+  //   try {
+  //     setLoading(true);
+      
+  //     const response = await axios.get('/my-leads', {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     });
+  
+  //     const allLeads = response.data?.chatData || [];
+  //     console.log("Total leads from API:", allLeads.length);
+  
+  //     const filteredLeads = allLeads.filter(lead => {
+    
+  
+  //       // **FIXED: Check if user is gestionnaire**
+  //       let isGestionnaire = false;
+        
+  //       if (lead.gestionnaire) {
+  //         if (typeof lead.gestionnaire === 'string') {
+  //           // If gestionnaire is a string ID (most common case)
+  //           isGestionnaire = lead.gestionnaire === userId;
+  //         } else if (lead.gestionnaire._id) {
+  //           // If gestionnaire is a populated object
+  //           isGestionnaire = lead.gestionnaire._id.toString() === userId;
+  //         }
+  //       }
+        
+       
+  
+  //       // Check if user is the assigned commercial
+  //       let isCommercial = false;
+  //       if (lead.commercial) {
+  //         const commercialId = typeof lead.commercial === 'string' 
+  //           ? lead.commercial 
+  //           : lead.commercial?._id?.toString();
+  //         isCommercial = commercialId === userId;
+  //       }
+  
+  //       // Check if user is the assigned manager
+  //       let isManager = false;
+  //       if (lead.manager) {
+  //         const managerId = typeof lead.manager === 'string' 
+  //           ? lead.manager 
+  //           : lead.manager?._id?.toString();
+  //         isManager = managerId === userId;
+  //       }
+        
+  //       // Check by creator name (fallback)
+  //       const isCreator = lead.cree_par && lead.cree_par.includes(userName);
+        
+  //       const shouldShow = isGestionnaire || isCommercial || isManager || isCreator;
+        
+  //       if (shouldShow) {
+  //         console.log(`✅ Showing lead: ${lead.nom} ${lead.prenom}`);
+  //       }
+        
+  //       return shouldShow;
+  //     });
+  
+  //     console.log(`Filtered results: ${filteredLeads.length} of ${allLeads.length}`);
+      
+  //     // Sort by createdAt (newest first)
+  //     const sortedLeads = filteredLeads.sort((a, b) => {
+  //       return new Date(b.createdAt) - new Date(a.createdAt);
+  //     });
+  
+  //     setChatData(sortedLeads);
+  //     setFilteredData(sortedLeads);
+  //   } catch (error) {
+  //     console.error("Error fetching leads:", error);
+  //     message.error("Failed to fetch leads");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const fetchClients = async () => {
     const token = localStorage.getItem("token");
     const decodedToken = jwtDecode(token);
     const userId = decodedToken?.userId;
     const userName = decodedToken?.name;
+    const userRole = decodedToken?.role?.toLowerCase();
     
   
     try {
@@ -533,59 +615,275 @@ if (filterValues.agence && filterValues.agence !== "tous") {
       const allLeads = response.data?.chatData || [];
       console.log("Total leads from API:", allLeads.length);
   
-      const filteredLeads = allLeads.filter(lead => {
-    
-  
-        // **FIXED: Check if user is gestionnaire**
-        let isGestionnaire = false;
-        
-        if (lead.gestionnaire) {
-          if (typeof lead.gestionnaire === 'string') {
-            // If gestionnaire is a string ID (most common case)
-            isGestionnaire = lead.gestionnaire === userId;
-          } else if (lead.gestionnaire._id) {
-            // If gestionnaire is a populated object
-            isGestionnaire = lead.gestionnaire._id.toString() === userId;
+      // Get user information and team structure
+      let userManagerId = null;
+      let managerId = userId; // For managers, they are their own manager
+      let teamUserIds = [userId]; // Start with self
+      
+      if (userRole === 'commercial') {
+        try {
+          // Fetch current commercial's details
+          const commercialsResponse = await axios.get('/commercials', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const allCommercials = commercialsResponse.data || [];
+          
+          // Find current user in commercials
+          const currentUserCommercial = allCommercials.find(c => 
+            c._id === userId || c._id?.toString() === userId
+          );
+          
+          // Get manager ID (manager or createdBy)
+          userManagerId = currentUserCommercial?.manager || currentUserCommercial?.createdBy;
+          managerId = userManagerId; // Commercial's manager ID
+          
+          console.log("Commercial's manager info (clients):", {
+            userId,
+            managerId,
+            commercialData: currentUserCommercial
+          });
+          
+          // Get ALL users under this manager (including manager and all commercials)
+          if (managerId) {
+            // Add manager to team
+            teamUserIds.push(managerId);
+            
+            // Add all commercials under this manager
+            const teamCommercials = allCommercials.filter(commercial => {
+              const commercialManager = commercial.manager || commercial.createdBy;
+              return commercialManager === managerId || 
+                     commercialManager?.toString() === managerId;
+            });
+            
+            // Add all commercial IDs from the team
+            teamCommercials.forEach(commercial => {
+              if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+                teamUserIds.push(commercial._id.toString());
+              }
+            });
           }
+          
+          console.log("Commercial team structure (clients):", {
+            managerId,
+            teamUserIds,
+            teamSize: teamUserIds.length
+          });
+          
+        } catch (error) {
+          console.log("Error fetching commercials for clients:", error);
         }
-        
-       
+      } else if (userRole === 'manager') {
+        // Manager sees their own clients and all clients from their team
+        try {
+          const commercialsResponse = await axios.get('/commercials', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const allCommercials = commercialsResponse.data || [];
+          
+          // Get all commercials under this manager
+          const teamCommercials = allCommercials.filter(commercial => {
+            const commercialManager = commercial.manager || commercial.createdBy;
+            return commercialManager === userId || 
+                   commercialManager?.toString() === userId;
+          });
+          
+          // Add all commercial IDs from the team
+          teamCommercials.forEach(commercial => {
+            if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+              teamUserIds.push(commercial._id.toString());
+            }
+          });
+          
+          console.log("Manager team structure (clients):", {
+            managerId: userId,
+            teamUserIds,
+            teamCommercialsCount: teamCommercials.length
+          });
+          
+        } catch (error) {
+          console.log("Error fetching manager team for clients:", error);
+        }
+      }
   
-        // Check if user is the assigned commercial
-        let isCommercial = false;
-        if (lead.commercial) {
-          const commercialId = typeof lead.commercial === 'string' 
-            ? lead.commercial 
-            : lead.commercial?._id?.toString();
-          isCommercial = commercialId === userId;
+      // Get all commercials for name matching (do this once, outside the filter)
+      let allCommercialsForNames = [];
+      if (userRole === 'manager' || userRole === 'commercial') {
+        try {
+          const commercialsResponse = await axios.get('/commercials', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          allCommercialsForNames = commercialsResponse.data || [];
+        } catch (error) {
+          console.log("Could not fetch commercials for name matching:", error);
         }
+      }
   
-        // Check if user is the assigned manager
-        let isManager = false;
-        if (lead.manager) {
-          const managerId = typeof lead.manager === 'string' 
-            ? lead.manager 
-            : lead.manager?._id?.toString();
-          isManager = managerId === userId;
-        }
+      // Filter leads based on user role and team
+      let filteredLeads;
+      
+      if (userRole === 'admin') {
+        // Admin sees all leads
+        filteredLeads = allLeads;
+        console.log("Admin - showing all leads:", filteredLeads.length);
         
-        // Check by creator name (fallback)
-        const isCreator = lead.cree_par && lead.cree_par.includes(userName);
+      } else if (userRole === 'manager' || userRole === 'commercial') {
+        // Both manager and commercial see leads from their entire team
+        // Get all team members' names for creator name matching
+        const teamMembers = allCommercialsForNames.filter(commercial => 
+          teamUserIds.includes(commercial._id?.toString())
+        );
         
-        const shouldShow = isGestionnaire || isCommercial || isManager || isCreator;
+        filteredLeads = allLeads.filter(lead => {
+          // Get manager from lead
+          const leadManagerId = lead.manager?._id?.toString() || lead.manager;
+          
+          // Get gestionnaire from lead
+          const gestionnaireId = lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+          
+          // Get commercial from lead
+          const commercialId = lead.commercial?._id?.toString() || lead.commercial;
+          
+          // Get creator (cree_par) from lead
+          const creatorName = lead.cree_par;
+          
+          // Check multiple conditions:
+          // 1. Check if lead manager is in the team
+          const isTeamLeadManager = teamUserIds.some(teamUserId => 
+            teamUserId?.toString() === leadManagerId?.toString()
+          );
+          
+          // 2. Check if gestionnaire is in the team
+          const isTeamGestionnaire = teamUserIds.some(teamUserId => 
+            teamUserId?.toString() === gestionnaireId?.toString()
+          );
+          
+          // 3. Check if commercial is in the team
+          const isTeamCommercial = teamUserIds.some(teamUserId => 
+            teamUserId?.toString() === commercialId?.toString()
+          );
+          
+          // 4. Check by creator name (for backward compatibility)
+          // Look for any team member's name in the cree_par field
+          let isCreatedByTeam = false;
+          if (creatorName && teamMembers.length > 0) {
+            // Check if creatorName contains any team member's name
+            isCreatedByTeam = teamMembers.some(member => {
+              const memberName = `${member.prenom || ''} ${member.nom || ''}`.trim();
+              return creatorName.includes(memberName) || 
+                     memberName.includes(creatorName);
+            });
+          }
+          
+          return isTeamLeadManager || isTeamGestionnaire || isTeamCommercial || isCreatedByTeam;
+        });
         
-        if (shouldShow) {
-          console.log(`✅ Showing lead: ${lead.nom} ${lead.prenom}`);
-        }
+        console.log(`${userRole} filtered clients:`, {
+          totalLeads: allLeads.length,
+          filteredCount: filteredLeads.length,
+          teamUserIds,
+          teamMembersCount: teamMembers.length,
+          filterLogic: "Sees clients from entire team (manager + all commercials under manager)"
+        });
         
-        return shouldShow;
+      } else {
+        // Other roles see only leads they are associated with (original logic)
+        filteredLeads = allLeads.filter(lead => {
+          // Check if user is gestionnaire
+          let isGestionnaire = false;
+          if (lead.gestionnaire) {
+            if (typeof lead.gestionnaire === 'string') {
+              // If gestionnaire is a string ID (most common case)
+              isGestionnaire = lead.gestionnaire === userId;
+            } else if (lead.gestionnaire._id) {
+              // If gestionnaire is a populated object
+              isGestionnaire = lead.gestionnaire._id.toString() === userId;
+            }
+          }
+          
+          // Check if user is the assigned commercial
+          let isCommercial = false;
+          if (lead.commercial) {
+            const commercialId = typeof lead.commercial === 'string' 
+              ? lead.commercial 
+              : lead.commercial?._id?.toString();
+            isCommercial = commercialId === userId;
+          }
+  
+          // Check if user is the assigned manager
+          let isManager = false;
+          if (lead.manager) {
+            const managerId = typeof lead.manager === 'string' 
+              ? lead.manager 
+              : lead.manager?._id?.toString();
+            isManager = managerId === userId;
+          }
+          
+          // Check by creator name (fallback)
+          const isCreator = lead.cree_par && lead.cree_par.includes(userName);
+          
+          const shouldShow = isGestionnaire || isCommercial || isManager || isCreator;
+          
+          if (shouldShow) {
+            console.log(`✅ Showing lead: ${lead.nom} ${lead.prenom}`);
+          }
+          
+          return shouldShow;
+        });
+        console.log("Other role - filtered count:", filteredLeads.length);
+      }
+  
+      // Add team information to each lead
+      const leadsWithTeamInfo = filteredLeads.map(lead => {
+        const leadManagerId = lead.manager?._id?.toString() || lead.manager;
+        const gestionnaireId = lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+        const commercialId = lead.commercial?._id?.toString() || lead.commercial;
+        
+        // Determine if lead belongs to current user
+        const isMyLead = leadManagerId === userId || 
+                        gestionnaireId === userId || 
+                        commercialId === userId;
+        
+        // Determine if lead belongs to manager
+        const isManagerLead = leadManagerId === managerId || 
+                             gestionnaireId === managerId;
+        
+        return {
+          ...lead,
+          // Team visibility info
+          isTeamClient: !isMyLead,
+          clientType: isMyLead ? 'self' : 
+                     isManagerLead ? 'manager' : 'team_member',
+          
+          // Formatted names for display
+          managerName: lead.manager 
+            ? `${lead.manager.prenom || ''} ${lead.manager.nom || ''}`.trim()
+            : "Non assigné",
+          
+          commercialName: lead.commercial 
+            ? `${lead.commercial.prenom || ''} ${lead.commercial.nom || ''}`.trim()
+            : "Non assigné",
+          
+          gestionnaireName: lead.gestionnaireName || 
+            (lead.gestionnaire && typeof lead.gestionnaire === 'object' 
+              ? `${lead.gestionnaire.prenom || ''} ${lead.gestionnaire.nom || ''}`.trim()
+              : "Non assigné"),
+        };
       });
   
-      console.log(`Filtered results: ${filteredLeads.length} of ${allLeads.length}`);
-      
       // Sort by createdAt (newest first)
-      const sortedLeads = filteredLeads.sort((a, b) => {
+      const sortedLeads = leadsWithTeamInfo.sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
+      });
+  
+      console.log("Final clients data:", {
+        count: sortedLeads.length,
+        sample: sortedLeads[0],
+        teamInfo: {
+          isTeamClient: sortedLeads[0]?.isTeamClient,
+          clientType: sortedLeads[0]?.clientType
+        }
       });
   
       setChatData(sortedLeads);
@@ -605,7 +903,14 @@ if (filterValues.agence && filterValues.agence !== "tous") {
       }
       
       console.log("Fetching commercials for manager ID:", currentManagerId);
-      const response = await axios.get(`/commercials/manager/${currentManagerId}`);
+      // const response = await axios.get(`/commercials/manager/${currentManagerId}`);
+       const token = localStorage.getItem("token"); // Get token
+    
+    const response = await axios.get(`/commercials/manager/${currentManagerId}`, {
+      headers: { 
+        Authorization: `Bearer ${token}` // Add Authorization header
+      }
+    });
       
       console.log("API Response:", response.data);
       console.log("Number of commercials:", response.data.length);
@@ -625,8 +930,8 @@ if (filterValues.agence && filterValues.agence !== "tous") {
       fetchManagerCommercials(); // Fetch only manager's commercials
     }
     fetchClients();
-    fetchClients();
-  }, [currentManagerId]); 
+    // fetchClients();
+  }, []); 
  
  
   // useEffect(() => {
@@ -1109,18 +1414,18 @@ const sortedData = useMemo(() => {
         </Select>
       ),
     },
-      {
-          title: "Commercial",
-          key: "commercial",
-          dataIndex: "commercial",
-          render: (text, record) => {
-            const commercialName = getCommercialName(record);
-            if (commercialName === "N/A") {
-              return <Tag color="red">NON AFFECTÉ</Tag>;
-            }
-            return <Tag color="blue">{commercialName}</Tag>;
-          },
-        },
+      // {
+      //     title: "Commercial",
+      //     key: "commercial",
+      //     dataIndex: "commercial",
+      //     render: (text, record) => {
+      //       const commercialName = getCommercialName(record);
+      //       if (commercialName === "N/A") {
+      //         return <Tag color="red">NON AFFECTÉ</Tag>;
+      //       }
+      //       return <Tag color="blue">{commercialName}</Tag>;
+      //     },
+      //   },
     // {
     //   title: "Commentaires",
     //   dataIndex: "commentaire",

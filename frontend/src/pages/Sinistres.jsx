@@ -157,6 +157,133 @@ const Sinistres = () => {
   //   };
   //   fetchSinistres();
   // }, [refreshTrigger]);
+  // useEffect(() => {
+  //   const fetchAllSinistres = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+  
+  //     try {
+  //       setLoading(true);
+  //       const decodedToken = jwtDecode(token);
+  //       const currentUserId = decodedToken?.userId;
+  //       const userRole = decodedToken?.role?.toLowerCase();
+  //       const userName = decodedToken.name; // Keep for backward compatibility
+        
+  //       // Fetch all sinistres
+  //       const response = await axios.get("/sinistres", {
+  //         headers: { Authorization: `Bearer ${token}` }
+  //       });
+        
+  //       console.log("Fetched all sinistres:", {
+  //         count: response.data?.data?.length || response.data?.length,
+  //         userRole,
+  //         currentUserId
+  //       });
+  
+  //       // Handle both response formats: { data: [...] } or direct array
+  //       const allSinistres = response.data?.data || response.data || [];
+        
+  //       // Filter based on user role
+  //       let filteredData;
+        
+  //       if (userRole === 'admin') {
+  //         // Admin sees all
+  //         filteredData = allSinistres;
+  //       } else if (userRole === 'manager') {
+  //         // Manager sees:
+  //         // 1. Sinistres where they are the lead's manager
+  //         // 2. Sinistres created by commercials who report to them
+  //         // 3. Sinistres they created themselves
+          
+  //         // First, get all commercials managed by this manager
+  //         const commercialsResponse = await axios.get('/commercials', {
+  //           headers: { Authorization: `Bearer ${token}` }
+  //         });
+          
+  //         const allCommercials = commercialsResponse.data || [];
+  //         const managedCommercials = allCommercials.filter(commercial => 
+  //           commercial.manager === currentUserId || 
+  //           commercial.manager?.toString() === currentUserId ||
+  //           commercial.createdBy === currentUserId
+  //         );
+          
+  //         const managedCommercialIds = managedCommercials.map(c => c._id);
+          
+  //         console.log("Manager's team:", {
+  //           managerId: currentUserId,
+  //           managedCommercialIds,
+  //           allCommercialsCount: allCommercials.length,
+  //           managedCount: managedCommercials.length
+  //         });
+          
+  //         filteredData = allSinistres.filter(sinistre => {
+  //           // Get lead manager from sinistreDetails or lead
+  //           const leadManager = sinistre.sinistreDetails?.manager || sinistre.lead?.manager;
+  //           const sessionId = sinistre.session?._id?.toString();
+  //           const sinistreCreatorId = sessionId || sinistre.session;
+            
+  //           // Check if manager is the lead's manager
+  //           const isLeadManager = leadManager === currentUserId || 
+  //                                leadManager?.toString() === currentUserId;
+            
+  //           // Check if sinistre was created by a managed commercial
+  //           const isCreatedByTeam = managedCommercialIds.includes(sinistreCreatorId);
+            
+  //           // Check if manager created the sinistre themselves
+  //           const isCreatedByManager = sinistreCreatorId === currentUserId;
+            
+  //           // Check if sinistre's gestionnaire is the manager
+  //           const gestionnaireId = sinistre.gestionnaire?._id?.toString();
+  //           const isGestionnaire = gestionnaireId === currentUserId;
+            
+  //           return isLeadManager || isCreatedByTeam || isCreatedByManager || isGestionnaire;
+  //         });
+          
+  //         console.log("Filtered sinistres for manager:", {
+  //           totalSinistres: allSinistres.length,
+  //           filteredCount: filteredData.length
+  //         });
+  //       } else {
+  //         // Commercial sees only sinistres they created (backward compatible)
+  //         filteredData = allSinistres.filter(
+  //           sinistre =>
+  //             sinistre.session?._id === currentUserId ||
+  //             sinistre.session === currentUserId ||
+  //             sinistre.gestionnaire === userName // Keep this for backward compatibility
+  //         );
+  //       }
+  
+  //       // Sort by creation date (newest first)
+  //       const sortedData = filteredData.sort((a, b) => {
+  //         const dateA = new Date(a.createdAt || a.dateSinistre || 0);
+  //         const dateB = new Date(b.createdAt || b.dateSinistre || 0);
+  //         return dateB - dateA; // Descending order (newest first)
+  //       });
+  
+  //       // Add key property to each item for Ant Design Table
+  //       const dataWithKeys = sortedData.map((item, index) => ({
+  //         ...item,
+  //         key: item._id || index // Use _id or index as key
+  //       }));
+  
+  //       console.log("Final data for table:", {
+  //         count: dataWithKeys.length,
+  //         sample: dataWithKeys[0],
+  //         sampleGestionnaire: dataWithKeys[0]?.gestionnaire
+  //       });
+  
+  //       setAllSinistres(dataWithKeys);
+  //       setFilteredSinistres(dataWithKeys);
+        
+  //     } catch (error) {
+  //       console.error("Error fetching sinistres:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  
+  //   fetchAllSinistres();
+  // }, [refreshTrigger]);
   useEffect(() => {
     const fetchAllSinistres = async () => {
       const token = localStorage.getItem("token");
@@ -183,68 +310,147 @@ const Sinistres = () => {
         // Handle both response formats: { data: [...] } or direct array
         const allSinistres = response.data?.data || response.data || [];
         
-        // Filter based on user role
+        // Get user information and team structure
+        let userManagerId = null;
+        let managerId = currentUserId; // For managers, they are their own manager
+        let teamUserIds = [currentUserId]; // Start with self
+        
+        if (userRole === 'commercial') {
+          try {
+            // Fetch current commercial's details
+            const commercialsResponse = await axios.get('/commercials', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            const allCommercials = commercialsResponse.data || [];
+            
+            // Find current user in commercials
+            const currentUserCommercial = allCommercials.find(c => 
+              c._id === currentUserId || c._id?.toString() === currentUserId
+            );
+            
+            // Get manager ID (manager or createdBy)
+            userManagerId = currentUserCommercial?.manager || currentUserCommercial?.createdBy;
+            managerId = userManagerId; // Commercial's manager ID
+            
+            console.log("Commercial's manager info (sinistres):", {
+              currentUserId,
+              managerId,
+              commercialData: currentUserCommercial
+            });
+            
+            // Get ALL users under this manager (including manager and all commercials)
+            if (managerId) {
+              // Add manager to team
+              teamUserIds.push(managerId);
+              
+              // Add all commercials under this manager
+              const teamCommercials = allCommercials.filter(commercial => {
+                const commercialManager = commercial.manager || commercial.createdBy;
+                return commercialManager === managerId || 
+                       commercialManager?.toString() === managerId;
+              });
+              
+              // Add all commercial IDs from the team
+              teamCommercials.forEach(commercial => {
+                if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+                  teamUserIds.push(commercial._id.toString());
+                }
+              });
+            }
+            
+            console.log("Commercial team structure (sinistres):", {
+              managerId,
+              teamUserIds,
+              teamSize: teamUserIds.length
+            });
+            
+          } catch (error) {
+            console.log("Error fetching commercials for sinistres:", error);
+          }
+        } else if (userRole === 'manager') {
+          // Manager sees their own sinistres and all sinistres from their team
+          try {
+            const commercialsResponse = await axios.get('/commercials', {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            const allCommercials = commercialsResponse.data || [];
+            
+            // Get all commercials under this manager
+            const teamCommercials = allCommercials.filter(commercial => {
+              const commercialManager = commercial.manager || commercial.createdBy;
+              return commercialManager === currentUserId || 
+                     commercialManager?.toString() === currentUserId;
+            });
+            
+            // Add all commercial IDs from the team
+            teamCommercials.forEach(commercial => {
+              if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+                teamUserIds.push(commercial._id.toString());
+              }
+            });
+            
+            console.log("Manager team structure (sinistres):", {
+              managerId: currentUserId,
+              teamUserIds,
+              teamCommercialsCount: teamCommercials.length
+            });
+            
+          } catch (error) {
+            console.log("Error fetching manager team for sinistres:", error);
+          }
+        }
+        
+        // Filter sinistres based on user role and team
         let filteredData;
         
         if (userRole === 'admin') {
           // Admin sees all
           filteredData = allSinistres;
-        } else if (userRole === 'manager') {
-          // Manager sees:
-          // 1. Sinistres where they are the lead's manager
-          // 2. Sinistres created by commercials who report to them
-          // 3. Sinistres they created themselves
-          
-          // First, get all commercials managed by this manager
-          const commercialsResponse = await axios.get('/commercials', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          const allCommercials = commercialsResponse.data || [];
-          const managedCommercials = allCommercials.filter(commercial => 
-            commercial.manager === currentUserId || 
-            commercial.manager?.toString() === currentUserId ||
-            commercial.createdBy === currentUserId
-          );
-          
-          const managedCommercialIds = managedCommercials.map(c => c._id);
-          
-          console.log("Manager's team:", {
-            managerId: currentUserId,
-            managedCommercialIds,
-            allCommercialsCount: allCommercials.length,
-            managedCount: managedCommercials.length
-          });
-          
+        } else if (userRole === 'manager' || userRole === 'commercial') {
+          // Both manager and commercial see sinistres from their entire team
           filteredData = allSinistres.filter(sinistre => {
+            // Get the creator ID from various possible fields
+            const sessionId = sinistre.session?._id?.toString();
+            const sinistreCreatorId = sessionId || sinistre.session || sinistre.cree_par;
+            
             // Get lead manager from sinistreDetails or lead
             const leadManager = sinistre.sinistreDetails?.manager || sinistre.lead?.manager;
-            const sessionId = sinistre.session?._id?.toString();
-            const sinistreCreatorId = sessionId || sinistre.session;
             
-            // Check if manager is the lead's manager
-            const isLeadManager = leadManager === currentUserId || 
-                                 leadManager?.toString() === currentUserId;
-            
-            // Check if sinistre was created by a managed commercial
-            const isCreatedByTeam = managedCommercialIds.includes(sinistreCreatorId);
-            
-            // Check if manager created the sinistre themselves
-            const isCreatedByManager = sinistreCreatorId === currentUserId;
-            
-            // Check if sinistre's gestionnaire is the manager
+            // Get gestionnaire ID
             const gestionnaireId = sinistre.gestionnaire?._id?.toString();
-            const isGestionnaire = gestionnaireId === currentUserId;
             
-            return isLeadManager || isCreatedByTeam || isCreatedByManager || isGestionnaire;
+            // Check multiple conditions:
+            // 1. Check if sinistre creator is in the team
+            const isCreatedByTeam = teamUserIds.some(teamUserId => 
+              teamUserId?.toString() === sinistreCreatorId?.toString()
+            );
+            
+            // 2. Check if lead manager is in the team (for sinistres assigned to team leads)
+            const isTeamLeadManager = teamUserIds.some(teamUserId => 
+              teamUserId?.toString() === leadManager?.toString()
+            );
+            
+            // 3. Check if gestionnaire is in the team
+            const isTeamGestionnaire = teamUserIds.some(teamUserId => 
+              teamUserId?.toString() === gestionnaireId?.toString()
+            );
+            
+            // 4. Check backward compatibility: if gestionnaire name matches userName
+            const isGestionnaireByName = sinistre.gestionnaire === userName;
+            
+            return isCreatedByTeam || isTeamLeadManager || isTeamGestionnaire || isGestionnaireByName;
           });
           
-          console.log("Filtered sinistres for manager:", {
+          console.log(`${userRole} filtered sinistres:`, {
             totalSinistres: allSinistres.length,
-            filteredCount: filteredData.length
+            filteredCount: filteredData.length,
+            teamUserIds,
+            filterLogic: "Sees sinistres from entire team (manager + all commercials under manager)"
           });
         } else {
-          // Commercial sees only sinistres they created (backward compatible)
+          // Other roles see only their own sinistres (backward compatible)
           filteredData = allSinistres.filter(
             sinistre =>
               sinistre.session?._id === currentUserId ||
@@ -260,16 +466,40 @@ const Sinistres = () => {
           return dateB - dateA; // Descending order (newest first)
         });
   
-        // Add key property to each item for Ant Design Table
-        const dataWithKeys = sortedData.map((item, index) => ({
-          ...item,
-          key: item._id || index // Use _id or index as key
-        }));
+        // Add team information and key property to each item
+        const dataWithKeys = sortedData.map((item, index) => {
+          const sessionId = item.session?._id?.toString();
+          const sinistreCreatorId = sessionId || item.session || item.cree_par;
+          const isCreatedBySelf = sinistreCreatorId === currentUserId || 
+                                 sinistreCreatorId?.toString() === currentUserId;
+          const isCreatedByManager = managerId && (
+            sinistreCreatorId === managerId || 
+            sinistreCreatorId?.toString() === managerId
+          );
+          
+          return {
+            ...item,
+            key: item._id || index, // Use _id or index as key
+            
+            // Team visibility info
+            isTeamSinistre: !isCreatedBySelf,
+            createdByType: isCreatedBySelf ? 'self' : 
+                          isCreatedByManager ? 'manager' : 'team_member',
+            
+            // Creator info for display
+            creatorName: item.session 
+              ? `${item.session.prenom || ''} ${item.session.nom || ''}`.trim()
+              : item.cree_par || "N/A",
+          };
+        });
   
-        console.log("Final data for table:", {
+        console.log("Final sinistres data for table:", {
           count: dataWithKeys.length,
           sample: dataWithKeys[0],
-          sampleGestionnaire: dataWithKeys[0]?.gestionnaire
+          teamInfo: {
+            isTeamSinistre: dataWithKeys[0]?.isTeamSinistre,
+            createdByType: dataWithKeys[0]?.createdByType
+          }
         });
   
         setAllSinistres(dataWithKeys);

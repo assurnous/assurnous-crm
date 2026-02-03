@@ -141,19 +141,19 @@ const SideBar = () => {
         />
       ),
       label: "Client digital",
-      role: ["Admin", "Manager"],
+      role: ["Admin", "Manager", "Commercial"],
         },
-        {
-          key: "/clients-lists",
-          icon: (
-            <FontAwesomeIcon
-              icon={faUsers}
-              style={{ fontSize: "18px", marginRight: "2px" }}
-            />
-          ),
-          label: "Mes clients",
-          role: ["Commercial"],
-        },
+        // {
+        //   key: "/clients-lists",
+        //   icon: (
+        //     <FontAwesomeIcon
+        //       icon={faUsers}
+        //       style={{ fontSize: "18px", marginRight: "2px" }}
+        //     />
+        //   ),
+        //   label: "Mes clients",
+        //   role: ["Commercial"],
+        // },
         {
           key: "/clients-list",
           icon: (
@@ -163,7 +163,7 @@ const SideBar = () => {
             />
           ),
           label: "Mes clients",
-          role: ["Manager"],
+          role: ["Manager", "Commercial"],
         },
       
         // {
