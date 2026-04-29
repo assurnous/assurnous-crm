@@ -318,14 +318,14 @@ const Interlouteurs = () => {
         </h1>
         <div className="crm-actions">
           <Space>
-            <Button
+            {/* <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => handleAddUser("commercial")}
               className="add-button"
             >
               Nouveau Commercial
-            </Button>
+            </Button> */}
             <Button
               type="primary"
               icon={<CrownOutlined />}

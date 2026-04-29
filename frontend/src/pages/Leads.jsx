@@ -2238,64 +2238,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   }, [filteredData, chatData, pageSize]);
 
   
-  const handleColumnSearch = (e, columnKey) => {
-    const value = e.target.value.trim();
-    console.log(`Searching ${columnKey} for: "${value}"`);
-
-    // Update active column searches
-    const newSearches = { ...activeColumnSearches };
-
-    if (value === "") {
-      // Remove this column from active searches
-      delete newSearches[columnKey];
-    } else {
-      // Add/update this column search
-      newSearches[columnKey] = value.toLowerCase();
-    }
-
-    setActiveColumnSearches(newSearches);
-
-    // Apply all active column searches
-    applyColumnSearches(newSearches);
-  };
-  const applyColumnSearches = (searches) => {
-    console.log("Applying searches:", searches);
-  
-    // If no active searches, reset to show all data
-    if (Object.keys(searches).length === 0) {
-      console.log("No active searches, resetting filters");
-      setFilteredData([]); // Empty array means show all original data
-      return;
-    }
-  
-    // Start with all data
-    let result = [...chatData];
-  
-    // Apply each column search
-    Object.entries(searches).forEach(([columnKey, searchTerm]) => {
-      if (searchTerm && searchTerm.trim() !== "") {
-        console.log(`Filtering by ${columnKey}: "${searchTerm}"`);
-  
-        result = result.filter((item) => {
-          // Get the value to search in this column
-          const columnValue = getColumnValue(item, columnKey);
-          
-          // For debugging
-          if (columnKey === "agence") {
-            console.log(`Item ${item.nom || ''} ${item.prenom || ''}: agence="${columnValue}", searching for "${searchTerm}"`);
-          }
-          
-          // Check if it matches the search term
-          return columnValue.toLowerCase().includes(searchTerm);
-        });
-  
-        console.log(`After filtering by ${columnKey}: ${result.length} items`);
-      }
-    });
-  
-    // Always set filteredData to result (will be empty array if no matches)
-    setFilteredData(result);
-  };
+ 
   const getColumnValue = (item, columnKey) => {
     switch (columnKey) {
       case "nom":
@@ -2339,7 +2282,19 @@ if (filterValues.agence && filterValues.agence !== "tous") {
         const managerName = getManagerName(item);
         // Return empty string if "N/A" for better searching
         return managerName === "N/A" ? "" : managerName;
-  
+        case "gestionnaire":
+          // Récupère le nom du gestionnaire
+          if (item.gestionnaireName) {
+            return item.gestionnaireName;
+          }
+          if (item.gestionnaire && typeof item.gestionnaire === 'object') {
+            return `${item.gestionnaire.prenom || ''} ${item.gestionnaire.nom || ''}`.trim();
+          }
+          if (item.gestionnaire && typeof item.gestionnaire === 'string') {
+            return item.gestionnaire;
+          }
+          return "Non assigné";
+    
       case "createdAt":
         if (!item.createdAt) return "";
         const date = new Date(item.createdAt);
@@ -2791,6 +2746,70 @@ if (filterValues.agence && filterValues.agence !== "tous") {
     navigate(`/client/${chatData._id}`);
   };
 
+  // Ajoutez cette fonction après getColumnValue
+const handleColumnSearch = (e, columnKey) => {
+  const value = e.target.value.trim();
+  console.log(`Searching ${columnKey} for: "${value}"`);
+
+  // Update active column searches
+  const newSearches = { ...activeColumnSearches };
+
+  if (value === "") {
+    // Remove this column from active searches
+    delete newSearches[columnKey];
+  } else {
+    // Add/update this column search
+    newSearches[columnKey] = value.toLowerCase();
+  }
+
+  setActiveColumnSearches(newSearches);
+
+  // Apply all active column searches
+  applyColumnSearches(newSearches);
+};
+
+// Ajoutez cette fonction après handleColumnSearch
+const applyColumnSearches = (searches) => {
+  console.log("Applying searches:", searches);
+
+  // If no active searches, show all data
+  if (Object.keys(searches).length === 0) {
+    console.log("No active searches, showing all data");
+    setFilteredData([...chatData]);
+    return;
+  }
+
+  // Start with all data
+  let result = [...chatData];
+
+  // Apply each column search
+  Object.entries(searches).forEach(([columnKey, searchTerm]) => {
+    if (searchTerm && searchTerm.trim() !== "") {
+      console.log(`Filtering by ${columnKey}: "${searchTerm}"`);
+
+      result = result.filter((item) => {
+        // Get the value to search in this column
+        const columnValue = getColumnValue(item, columnKey);
+        
+        // Check if it matches the search term
+        const matches = columnValue.toLowerCase().includes(searchTerm);
+        
+        return matches;
+      });
+
+      console.log(`After filtering by ${columnKey}: ${result.length} items`);
+    }
+  });
+
+  // If no results found, set empty array (will show "no data" in table)
+  if (result.length === 0) {
+    console.log("No results found for search");
+    setFilteredData([]);
+  } else {
+    setFilteredData(result);
+  }
+};
+
   const columns = [
     {
       title: "Client",
@@ -2801,13 +2820,13 @@ if (filterValues.agence && filterValues.agence !== "tous") {
           <div className="font-medium">
             {record.nom} {record.prenom}
           </div>
-          <div className="text-xs text-gray-500">
+          {/* <div className="text-xs text-gray-500">
             {getAssignmentType(record) === "commercial" &&
               "✓ Affecté à un commercial"}
             {getAssignmentType(record) === "manager" &&
               "✓ Affecté à un manager"}
             {getAssignmentType(record) === "none" && "⏳ Non affecté"}
-          </div>
+          </div> */}
         </div>
       ),
     },
@@ -2965,29 +2984,44 @@ if (filterValues.agence && filterValues.agence !== "tous") {
       },
     },
     {
-      title: "Commercial",
-      key: "commercial",
-      dataIndex: "commercial",
-      render: (text, record) => {
-        const commercialName = getCommercialName(record);
-        if (commercialName === "N/A") {
-          return <Tag color="gray">NON AFFECTÉ</Tag>;
-        }
-        return <Tag color="blue">{commercialName}</Tag>;
-      },
+      title: "GESTIONNAIRE",
+      key: "gestionnaire",
+      dataIndex: "gestionnaire",
+      render: (text, record) => (
+        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+          <div className="font-medium">
+            {record.gestionnaireName || 
+             (record.gestionnaire && typeof record.gestionnaire === 'object' 
+               ? `${record.gestionnaire.prenom || ''} ${record.gestionnaire.nom || ''}`.trim()
+               : record.gestionnaire || "Non assigné")}
+          </div>
+        </div>
+      ),
     },
-    {
-      title: "Manager",
-      key: "manager",
-      dataIndex: "manager",
-      render: (text, record) => {
-        const managerName = getManagerName(record);
-        if (managerName === "N/A") {
-          return <Tag color="gray">NON AFFECTÉ</Tag>;
-        }
-        return <Tag color="green">{managerName}</Tag>;
-      },
-    },
+    // {
+    //   title: "Commercial",
+    //   key: "commercial",
+    //   dataIndex: "commercial",
+    //   render: (text, record) => {
+    //     const commercialName = getCommercialName(record);
+    //     if (commercialName === "N/A") {
+    //       return <Tag color="gray">NON AFFECTÉ</Tag>;
+    //     }
+    //     return <Tag color="blue">{commercialName}</Tag>;
+    //   },
+    // },
+    // {
+    //   title: "Manager",
+    //   key: "manager",
+    //   dataIndex: "manager",
+    //   render: (text, record) => {
+    //     const managerName = getManagerName(record);
+    //     if (managerName === "N/A") {
+    //       return <Tag color="gray">NON AFFECTÉ</Tag>;
+    //     }
+    //     return <Tag color="green">{managerName}</Tag>;
+    //   },
+    // },
     // {
     //   title: <span style={{ fontSize: "12px" }}>Action</span>,
     //   key: "action",
@@ -3116,7 +3150,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
         </Col>
       </Row>
       {/* Assignment Status Info */}
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      {/* <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
         <div className="flex items-center">
           <InfoCircleOutlined className="text-blue-500 mr-2" />
           <span className="text-sm text-blue-700 font-medium">
@@ -3127,10 +3161,10 @@ if (filterValues.agence && filterValues.agence !== "tous") {
           • Un client ne peut être affecté qu'à un commercial OU un manager, pas
           aux deux
         </div>
-      </div>
+      </div> */}
 
       {/* Action Buttons */}
-      <Card className="mb-4">
+      {/* <Card className="mb-4">
         <Row gutter={[16, 16]}>
           <Col xs={24} sm={12} md={6}>
             <Tooltip
@@ -3207,7 +3241,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
             </Tooltip>
           </Col>
         </Row>
-      </Card>
+      </Card> */}
 
       <div className="p-4 bg-white mt-4 border-t rounded-md border-gray-200 shadow-sm mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
