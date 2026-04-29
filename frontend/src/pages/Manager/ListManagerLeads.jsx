@@ -1,12 +1,26 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Table, Select, message, Spin, Input, 
-Button, Popconfirm, Alert, Space,
-Modal, Form, DatePicker, Radio, InputNumber,
+import {
+  Table,
+  Select,
+  message,
+  Spin,
+  Input,
+  Button,
+  Popconfirm,
+  Alert,
+  Space,
+  Modal,
+  Form,
+  DatePicker,
+  Radio,
+  InputNumber,
   Card,
   Row,
-  Col, Tooltip,
-    Statistic, Tag
- } from "antd";
+  Col,
+  Tooltip,
+  Statistic,
+  Tag,
+} from "antd";
 import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 import "tailwindcss/tailwind.css";
@@ -18,12 +32,10 @@ import {
   TeamOutlined,
   UserDeleteOutlined,
   InfoCircleOutlined,
-  EyeOutlined
+  EyeOutlined,
 } from "@ant-design/icons";
 import PhoneInput from "react-phone-input-2";
 import ImportLeads from "../../components/ImportLeads";
-
-
 
 const { Option } = Select;
 
@@ -49,23 +61,51 @@ const ListManagerLeads = () => {
     agence: "tous",
     search: "",
   });
-    const [selectedCategorie, setSelectedCategorie] = useState('');
+  const [selectedCategorie, setSelectedCategorie] = useState("");
   const [activeColumnSearches, setActiveColumnSearches] = useState({});
-   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
-    const [isUnassignModalVisible, setIsUnassignModalVisible] = useState(false);
-      const [isOpenModalImport, setIsOpenModalImport] = useState(false);
-    const [assignForm] = Form.useForm();
-    const [unassignForm] = Form.useForm();
-    const [currentManagerId, setCurrentManagerId] = useState(null);
+  const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
+  const [isUnassignModalVisible, setIsUnassignModalVisible] = useState(false);
+  const [isOpenModalImport, setIsOpenModalImport] = useState(false);
+  const [assignForm] = Form.useForm();
+  const [unassignForm] = Form.useForm();
+  const [currentManagerId, setCurrentManagerId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUserInfo, setCurrentUserInfo] = useState(null);
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decodedToken = jwtDecode(token);
+      console.log("Decoded token data:", decodedToken);
 
-    useEffect(() => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        const decodedToken = jwtDecode(token);
-        setCurrentManagerId(decodedToken?.userId);
-      }
-    }, []);
+      setCurrentUserInfo({
+        userId: decodedToken?.userId,
+        role: decodedToken?.role?.toLowerCase(),
+        name: decodedToken?.name, // This contains "fikri fikri"
+        fullName: decodedToken?.name || "Manager", // Use name directly
+      });
+    }
+  }, []);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decodedToken = jwtDecode(token);
+      setCurrentUser({
+        userId: decodedToken?.userId,
+        role: decodedToken?.role,
+        name: decodedToken?.name,
+        managerId: decodedToken?.managerId, // Assuming this is in the token
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const decodedToken = jwtDecode(token);
+      setCurrentManagerId(decodedToken?.userId);
+    }
+  }, []);
   const showModal = () => {
     setIsModalOpen(true);
   };
@@ -73,7 +113,6 @@ const ListManagerLeads = () => {
   const handleCancel = () => {
     setIsModalOpen(false);
   };
-
 
   const handleFilterChange = (filterName, value) => {
     const newFilters = {
@@ -83,59 +122,166 @@ const ListManagerLeads = () => {
     setFilters(newFilters);
     applyFilters(newFilters);
   };
-
-
   const handleFormSubmit = async (values) => {
     console.log("Form values:", values);
-    
+    const token = localStorage.getItem("token");
+    const decodedToken = jwtDecode(token);
+    const currentUserId = decodedToken?.userId;
+    const currentUserRole = decodedToken?.role?.toLowerCase();
+    const currentUserFullName = `${decodedToken?.prenom || ""} ${
+      decodedToken?.nom || ""
+    }`.trim();
+
     try {
       const formData = { ...values };
-      
+
       // Handle gestionnaire fields
       if (values.gestionnaire) {
-        const selectedGestionnaire = users.find(user => user._id === values.gestionnaire);
+        const selectedGestionnaire = users.find(
+          (user) => user._id === values.gestionnaire
+        );
         if (selectedGestionnaire) {
-          formData.gestionnaireModel = selectedGestionnaire.userType === 'admin' ? 'Admin' : 'Commercial';
-          formData.gestionnaireName = selectedGestionnaire.userType === 'admin' 
-            ? selectedGestionnaire.name 
-            : `${selectedGestionnaire.nom} ${selectedGestionnaire.prenom}`;
+          formData.gestionnaireModel = "Commercial";
+          formData.gestionnaireName = `${selectedGestionnaire.nom} ${selectedGestionnaire.prenom}`;
+          formData.gestionnaire = selectedGestionnaire._id;
+
+          // Add manager info for the commercial
+          if (selectedGestionnaire.managerId) {
+            formData.manager = selectedGestionnaire.managerId;
+          }
         }
       }
-      
-   
-  
+
+      // Handle cree_par based on user role
+      if (currentUserRole === "manager") {
+        // For manager: set cree_par with manager's ID and name
+        formData.cree_par = currentUserId;
+        formData.cree_par_name = currentUserFullName;
+        formData.cree_par_role = "Manager";
+      } else if (currentUserRole === "commercial") {
+        // For commercial: set cree_par with commercial's ID and name
+        formData.cree_par = currentUserId;
+        formData.cree_par_name = currentUserFullName;
+        formData.cree_par_role = "Commercial";
+      } else if (!formData.cree_par) {
+        // Fallback
+        formData.cree_par = currentUserId;
+      }
+
       console.log("Submitting complete data:", formData);
-      
-      const response = await axios.post("/data", formData);
+
+      const response = await axios.post("/data", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       console.log("Lead added successfully:", response.data);
-      
+
       form.resetFields();
       setIsModalOpen(false);
-      setChatData((prev) => [...prev, response.data]);
-      setFilteredData((prev) => [...prev, response.data]);
+      setChatData((prev) => [response.data, ...prev]);
+      setFilteredData((prev) => [response.data, ...prev]);
       message.success("Le client a été créé avec succès !");
-      
     } catch (error) {
       console.error("Error adding lead:", error);
       message.error("Erreur lors de l'ajout du client");
     }
   };
+
+  // const handleFormSubmit = async (values) => {
+  //   console.log("Form values:", values);
+  //   const token = localStorage.getItem("token");
+  //   const decodedToken = jwtDecode(token);
+  //   const currentUserId = decodedToken?.userId;
+  //   const currentUserRole = decodedToken?.role?.toLowerCase();
+
+  //   try {
+  //     const formData = { ...values };
+
+  //     // Handle gestionnaire fields
+  //     if (values.gestionnaire) {
+  //       const selectedGestionnaire = users.find(user => user._id === values.gestionnaire);
+  //       if (selectedGestionnaire) {
+  //         formData.gestionnaireModel = selectedGestionnaire.userType === 'admin' ? 'Admin' : 'Commercial';
+  //         formData.gestionnaireName = `${selectedGestionnaire.nom} ${selectedGestionnaire.prenom}`;
+  //         formData.gestionnaire = selectedGestionnaire._id;
+
+  //         // Add manager info for the commercial
+  //         if (selectedGestionnaire.managerId) {
+  //           formData.manager = selectedGestionnaire.managerId;
+  //         }
+  //       }
+  //     }
+
+  //     // Add current user as creator if not specified
+  //     if (!formData.cree_par) {
+  //       formData.cree_par = currentUserId;
+  //     }
+
+  //     console.log("Submitting complete data:", formData);
+
+  //     const response = await axios.post("/data", formData, {
+  //       headers: { Authorization: `Bearer ${token}` }
+  //     });
+  //     console.log("Lead added successfully:", response.data);
+
+  //     form.resetFields();
+  //     setIsModalOpen(false);
+  //     setChatData((prev) => [response.data, ...prev]);
+  //     setFilteredData((prev) => [response.data, ...prev]);
+  //     message.success("Le client a été créé avec succès !");
+
+  //   } catch (error) {
+  //     console.error("Error adding lead:", error);
+  //     message.error("Erreur lors de l'ajout du client");
+  //   }
+  // };
+  // const handleFormSubmit = async (values) => {
+  //   console.log("Form values:", values);
+
+  //   try {
+  //     const formData = { ...values };
+
+  //     // Handle gestionnaire fields
+  //     if (values.gestionnaire) {
+  //       const selectedGestionnaire = users.find(user => user._id === values.gestionnaire);
+  //       if (selectedGestionnaire) {
+  //         formData.gestionnaireModel = selectedGestionnaire.userType === 'admin' ? 'Admin' : 'Commercial';
+  //         formData.gestionnaireName = selectedGestionnaire.userType === 'admin'
+  //           ? selectedGestionnaire.name
+  //           : `${selectedGestionnaire.nom} ${selectedGestionnaire.prenom}`;
+  //       }
+  //     }
+
+  //     console.log("Submitting complete data:", formData);
+
+  //     const response = await axios.post("/data", formData);
+  //     console.log("Lead added successfully:", response.data);
+
+  //     form.resetFields();
+  //     setIsModalOpen(false);
+  //     setChatData((prev) => [...prev, response.data]);
+  //     setFilteredData((prev) => [...prev, response.data]);
+  //     message.success("Le client a été créé avec succès !");
+
+  //   } catch (error) {
+  //     console.error("Error adding lead:", error);
+  //     message.error("Erreur lors de l'ajout du client");
+  //   }
+  // };
   // Helper function to get manager name for display and search
-const getManagerName = (lead) => {
-  if (!hasManager(lead)) return "N/A";
+  const getManagerName = (lead) => {
+    if (!hasManager(lead)) return "N/A";
 
-  if (typeof lead.manager === "string") {
-    const manager = managers.find((mgr) => mgr._id === lead.manager);
-    return manager ? `${manager.prenom} ${manager.nom}` : "N/A";
-  }
+    if (typeof lead.manager === "string") {
+      const manager = managers.find((mgr) => mgr._id === lead.manager);
+      return manager ? `${manager.prenom} ${manager.nom}` : "N/A";
+    }
 
-  if (lead.manager.prenom && lead.manager.nom) {
-    return `${lead.manager.prenom} ${lead.manager.nom}`;
-  }
+    if (lead.manager.prenom && lead.manager.nom) {
+      return `${lead.manager.prenom} ${lead.manager.nom}`;
+    }
 
-  return "N/A";
-};
-
+    return "N/A";
+  };
 
   const applyFilters = (filterValues) => {
     let result = [...chatData]; // Start with all client data
@@ -173,11 +319,11 @@ const getManagerName = (lead) => {
       });
     }
     // Agence filter
-if (filterValues.agence && filterValues.agence !== "tous") {
-  result = result.filter((client) => {
-    return client.agence === filterValues.agence;
-  });
-}
+    if (filterValues.agence && filterValues.agence !== "tous") {
+      result = result.filter((client) => {
+        return client.agence === filterValues.agence;
+      });
+    }
 
     // Search filter
     if (filterValues.search) {
@@ -210,7 +356,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   // const applyFilters = (filterValues) => {
   //   let result = [...chatData];
   //   if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-  //     result = result.filter((item) => 
+  //     result = result.filter((item) =>
   //       item.gestionnaire?.toLowerCase() === filterValues.gestionnaire.toLowerCase()
   //     );
   //   }
@@ -236,7 +382,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   //     result = result.filter((item) => {
   //       // Client name (nom + prenom)
   //       const clientName = `${item.nom || ''} ${item.prenom || ''}`.toLowerCase();
-        
+
   //       // All searchable fields from your columns
   //       return (
   //         clientName.includes(searchTerm) ||
@@ -254,49 +400,52 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   const handleImportSuccess = async () => {
     setIsOpenModalImport(false);
     message.success("Données importées avec succès");
-  
+
     // Fetch updated data WITH FILTERING
     try {
       setLoading(true);
-      
+
       const token = localStorage.getItem("token");
       const decodedToken = jwtDecode(token);
       const userId = decodedToken?.userId;
-      
+
       const response = await axios.get("/data", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
-      
+
       const allData = response.data.chatData;
-  
+
       // **APPLY THE SAME FILTERING LOGIC AS fetchClients**
-      const userLeads = allData.filter(lead => {
+      const userLeads = allData.filter((lead) => {
         // Check if user is gestionnaire
         let isGestionnaire = false;
         if (lead.gestionnaire) {
-          if (typeof lead.gestionnaire === 'string') {
+          if (typeof lead.gestionnaire === "string") {
             isGestionnaire = lead.gestionnaire === userId;
           } else if (lead.gestionnaire._id) {
             isGestionnaire = lead.gestionnaire._id.toString() === userId;
           }
         }
-        
+
         // Check other assignments
-        const commercialId = typeof lead.commercial === 'string' 
-          ? lead.commercial 
-          : lead.commercial?._id?.toString();
+        const commercialId =
+          typeof lead.commercial === "string"
+            ? lead.commercial
+            : lead.commercial?._id?.toString();
         const isCommercial = commercialId === userId;
-        
-        const managerId = typeof lead.manager === 'string' 
-          ? lead.manager 
-          : lead.manager?._id?.toString();
+
+        const managerId =
+          typeof lead.manager === "string"
+            ? lead.manager
+            : lead.manager?._id?.toString();
         const isManager = managerId === userId;
-        
-        const isCreator = lead.cree_par && lead.cree_par.includes(decodedToken.name);
-        
+
+        const isCreator =
+          lead.cree_par && lead.cree_par.includes(decodedToken.name);
+
         return isGestionnaire || isCommercial || isManager || isCreator;
       });
-  
+
       // Simple filter: exclude digital clients
       const regularClients = userLeads.filter((item) => {
         const isDigitalClient =
@@ -306,24 +455,24 @@ if (filterValues.agence && filterValues.agence !== "tous") {
           item.rappel_at &&
           item.comment &&
           item.comment.trim() !== "";
-  
+
         return !isDigitalClient;
       });
-  
+
       // Sort by creation date (newest first)
       const sortedData = regularClients.sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
-  
+
       setChatData(sortedData);
-  
+
       // Check if any filters are active
       const hasActiveFilters =
         filters.gestionnaire !== "tous" ||
         filters.categorie !== "tous" ||
         filters.status !== "tous" ||
         filters.search;
-  
+
       if (hasActiveFilters) {
         // Reapply filters to the new data
         applyFilters(filters);
@@ -389,122 +538,168 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   //     setLoading(false);
   //   }
   // };
-    const handleAssign = async (values) => {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          message.error("No token found, please login first");
-          return;
-        }
-  
-        await axios.post(
-          "/assign-leads",
-          {
-            id: selectedLeads,
-            commercialId: values.commercial,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-  
-        const updatedLeads = chatData.map((lead) => {
-          if (selectedLeads.includes(lead._id)) {
-            const assignedCommercial = commercials.find(
-              (com) => com._id === values.commercial
-            );
-            return {
-              ...lead,
-              commercial: assignedCommercial,
-            };
-          }
-          return lead;
-        });
-  
-        setChatData(updatedLeads);
-        setFilteredData(updatedLeads);
-        message.success("Clients affectés au commercial avec succès");
-        setIsAssignModalVisible(false);
-        setSelectedLeads([]);
-        assignForm.resetFields();
-      } catch (error) {
-        console.error("Error assigning leads to commercial:", error);
-        message.error("Échec de l'affectation des clients au commercial");
+  const handleAssign = async (values) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        message.error("No token found, please login first");
+        return;
       }
-    };
 
-     const handleUnassign = async () => {
-        try {
-          const token = localStorage.getItem("token");
-          if (!token) {
-            message.error("No token found, please login first");
-            return;
-          }
-    
-          await axios.post(
-            "/unassign-leads",
-            {
-              id: selectedLeads,
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-    
-          const updatedLeads = chatData.map((lead) => {
-            if (selectedLeads.includes(lead._id)) {
-              return {
-                ...lead,
-                commercial: null,
-              };
-            }
-            return lead;
-          });
-    
-          setChatData(updatedLeads);
-          setFilteredData(updatedLeads);
-          message.success("Clients désaffectés du commercial avec succès");
-          setIsUnassignModalVisible(false);
-          setSelectedLeads([]);
-        } catch (error) {
-          console.error("Error unassigning commercial:", error);
-          message.error("Échec de la désaffectation des clients du commercial");
+      await axios.post(
+        "/assign-leads",
+        {
+          id: selectedLeads,
+          commercialId: values.commercial,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-      };
-    
+      );
+
+      const updatedLeads = chatData.map((lead) => {
+        if (selectedLeads.includes(lead._id)) {
+          const assignedCommercial = commercials.find(
+            (com) => com._id === values.commercial
+          );
+          return {
+            ...lead,
+            commercial: assignedCommercial,
+          };
+        }
+        return lead;
+      });
+
+      setChatData(updatedLeads);
+      setFilteredData(updatedLeads);
+      message.success("Clients affectés au commercial avec succès");
+      setIsAssignModalVisible(false);
+      setSelectedLeads([]);
+      assignForm.resetFields();
+    } catch (error) {
+      console.error("Error assigning leads to commercial:", error);
+      message.error("Échec de l'affectation des clients au commercial");
+    }
+  };
+
+  const handleUnassign = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        message.error("No token found, please login first");
+        return;
+      }
+
+      await axios.post(
+        "/unassign-leads",
+        {
+          id: selectedLeads,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const updatedLeads = chatData.map((lead) => {
+        if (selectedLeads.includes(lead._id)) {
+          return {
+            ...lead,
+            commercial: null,
+          };
+        }
+        return lead;
+      });
+
+      setChatData(updatedLeads);
+      setFilteredData(updatedLeads);
+      message.success("Clients désaffectés du commercial avec succès");
+      setIsUnassignModalVisible(false);
+      setSelectedLeads([]);
+    } catch (error) {
+      console.error("Error unassigning commercial:", error);
+      message.error("Échec de la désaffectation des clients du commercial");
+    }
+  };
 
   useEffect(() => {
+    // const fetchUsers = async () => {
+    //   try {
+    //     // Fetch both admins and commercials
+    //     const [adminsRes, commercialsRes, managersRes] = await Promise.all([
+    //       axios.get("/admin"),
+    //       axios.get("/commercials"),
+    //        axios.get("/manager"),
+    //     ]);
+
+    //     // Combine and format the data
+    //     const combinedUsers = [
+    //       ...adminsRes.data.map((admin) => ({
+    //         ...admin,
+    //         userType: "admin",
+    //       })),
+    //       ...commercialsRes.data.map((commercial) => ({
+    //         ...commercial,
+    //         userType: "commercial",
+    //       })),
+    //       ...managersRes.data.map((manager) => ({
+    //         ...manager,
+    //         userType: "manager",
+    //       }))
+    //     ];
+
+    //     setUsers(combinedUsers);
+    //     setLoading(false);
+    //   } catch (error) {
+    //     console.error("Error fetching users:", error);
+    //     setLoading(false);
+    //   }
+    // };
     const fetchUsers = async () => {
       try {
-        // Fetch both admins and commercials
-        const [adminsRes, commercialsRes, managersRes] = await Promise.all([
-          axios.get("/admin"),
-          axios.get("/commercials"),
-           axios.get("/manager"),
-        ]);
+        const token = localStorage.getItem("token");
+        const decodedToken = jwtDecode(token);
+        const userRole = decodedToken?.role?.toLowerCase();
+        const userId = decodedToken?.userId;
 
-        // Combine and format the data
-        const combinedUsers = [
-          ...adminsRes.data.map((admin) => ({
-            ...admin,
-            userType: "admin",
-          })),
-          ...commercialsRes.data.map((commercial) => ({
-            ...commercial,
-            userType: "commercial",
-          })),
-          ...managersRes.data.map((manager) => ({
-            ...manager,
-            userType: "manager",
-          }))
-        ];
-       
+        if (userRole === "manager" || userRole === "admin") {
+          // For manager/admin, fetch commercials under them
+          const commercialsRes = await axios.get(
+            `/commercials/manager/${userId}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
 
-        setUsers(combinedUsers);
+          const formattedCommercials = commercialsRes.data.map(
+            (commercial) => ({
+              ...commercial,
+              userType: "commercial",
+            })
+          );
+
+          setUsers(formattedCommercials);
+        } else {
+          // For commercial, fetch only themselves
+          const commercialsRes = await axios.get(`/commercials/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          const formattedCommercials = commercialsRes.data
+            ? [
+                {
+                  ...commercialsRes.data,
+                  userType: "commercial",
+                },
+              ]
+            : [];
+
+          setUsers(formattedCommercials);
+        }
+
         setLoading(false);
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -515,30 +710,27 @@ if (filterValues.agence && filterValues.agence !== "tous") {
     fetchUsers();
   }, []);
 
- 
   // const fetchClients = async () => {
   //   const token = localStorage.getItem("token");
   //   const decodedToken = jwtDecode(token);
   //   const userId = decodedToken?.userId;
   //   const userName = decodedToken?.name;
-    
-  
+
   //   try {
   //     setLoading(true);
-      
+
   //     const response = await axios.get('/my-leads', {
   //       headers: { Authorization: `Bearer ${token}` }
   //     });
-  
+
   //     const allLeads = response.data?.chatData || [];
   //     console.log("Total leads from API:", allLeads.length);
-  
+
   //     const filteredLeads = allLeads.filter(lead => {
-    
-  
+
   //       // **FIXED: Check if user is gestionnaire**
   //       let isGestionnaire = false;
-        
+
   //       if (lead.gestionnaire) {
   //         if (typeof lead.gestionnaire === 'string') {
   //           // If gestionnaire is a string ID (most common case)
@@ -548,46 +740,44 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   //           isGestionnaire = lead.gestionnaire._id.toString() === userId;
   //         }
   //       }
-        
-       
-  
+
   //       // Check if user is the assigned commercial
   //       let isCommercial = false;
   //       if (lead.commercial) {
-  //         const commercialId = typeof lead.commercial === 'string' 
-  //           ? lead.commercial 
+  //         const commercialId = typeof lead.commercial === 'string'
+  //           ? lead.commercial
   //           : lead.commercial?._id?.toString();
   //         isCommercial = commercialId === userId;
   //       }
-  
+
   //       // Check if user is the assigned manager
   //       let isManager = false;
   //       if (lead.manager) {
-  //         const managerId = typeof lead.manager === 'string' 
-  //           ? lead.manager 
+  //         const managerId = typeof lead.manager === 'string'
+  //           ? lead.manager
   //           : lead.manager?._id?.toString();
   //         isManager = managerId === userId;
   //       }
-        
+
   //       // Check by creator name (fallback)
   //       const isCreator = lead.cree_par && lead.cree_par.includes(userName);
-        
+
   //       const shouldShow = isGestionnaire || isCommercial || isManager || isCreator;
-        
+
   //       if (shouldShow) {
   //         console.log(`✅ Showing lead: ${lead.nom} ${lead.prenom}`);
   //       }
-        
+
   //       return shouldShow;
   //     });
-  
+
   //     console.log(`Filtered results: ${filteredLeads.length} of ${allLeads.length}`);
-      
+
   //     // Sort by createdAt (newest first)
   //     const sortedLeads = filteredLeads.sort((a, b) => {
   //       return new Date(b.createdAt) - new Date(a.createdAt);
   //     });
-  
+
   //     setChatData(sortedLeads);
   //     setFilteredData(sortedLeads);
   //   } catch (error) {
@@ -603,197 +793,218 @@ if (filterValues.agence && filterValues.agence !== "tous") {
     const userId = decodedToken?.userId;
     const userName = decodedToken?.name;
     const userRole = decodedToken?.role?.toLowerCase();
-    
-  
+
     try {
       setLoading(true);
-      
-      const response = await axios.get('/my-leads', {
-        headers: { Authorization: `Bearer ${token}` }
+
+      const response = await axios.get("/my-leads", {
+        headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       const allLeads = response.data?.chatData || [];
       console.log("Total leads from API:", allLeads.length);
-  
+
       // Get user information and team structure
       let userManagerId = null;
       let managerId = userId; // For managers, they are their own manager
       let teamUserIds = [userId]; // Start with self
-      
-      if (userRole === 'commercial') {
+
+      if (userRole === "commercial") {
         try {
           // Fetch current commercial's details
-          const commercialsResponse = await axios.get('/commercials', {
-            headers: { Authorization: `Bearer ${token}` }
+          const commercialsResponse = await axios.get("/commercials", {
+            headers: { Authorization: `Bearer ${token}` },
           });
-          
+
           const allCommercials = commercialsResponse.data || [];
-          
+
           // Find current user in commercials
-          const currentUserCommercial = allCommercials.find(c => 
-            c._id === userId || c._id?.toString() === userId
+          const currentUserCommercial = allCommercials.find(
+            (c) => c._id === userId || c._id?.toString() === userId
           );
-          
+
           // Get manager ID (manager or createdBy)
-          userManagerId = currentUserCommercial?.manager || currentUserCommercial?.createdBy;
+          userManagerId =
+            currentUserCommercial?.manager || currentUserCommercial?.createdBy;
           managerId = userManagerId; // Commercial's manager ID
-          
+
           console.log("Commercial's manager info (clients):", {
             userId,
             managerId,
-            commercialData: currentUserCommercial
+            commercialData: currentUserCommercial,
           });
-          
+
           // Get ALL users under this manager (including manager and all commercials)
           if (managerId) {
             // Add manager to team
             teamUserIds.push(managerId);
-            
+
             // Add all commercials under this manager
-            const teamCommercials = allCommercials.filter(commercial => {
-              const commercialManager = commercial.manager || commercial.createdBy;
-              return commercialManager === managerId || 
-                     commercialManager?.toString() === managerId;
+            const teamCommercials = allCommercials.filter((commercial) => {
+              const commercialManager =
+                commercial.manager || commercial.createdBy;
+              return (
+                commercialManager === managerId ||
+                commercialManager?.toString() === managerId
+              );
             });
-            
+
             // Add all commercial IDs from the team
-            teamCommercials.forEach(commercial => {
-              if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+            teamCommercials.forEach((commercial) => {
+              if (
+                commercial._id &&
+                !teamUserIds.includes(commercial._id.toString())
+              ) {
                 teamUserIds.push(commercial._id.toString());
               }
             });
           }
-          
+
           console.log("Commercial team structure (clients):", {
             managerId,
             teamUserIds,
-            teamSize: teamUserIds.length
+            teamSize: teamUserIds.length,
           });
-          
         } catch (error) {
           console.log("Error fetching commercials for clients:", error);
         }
-      } else if (userRole === 'manager') {
+      } else if (userRole === "manager") {
         // Manager sees their own clients and all clients from their team
         try {
-          const commercialsResponse = await axios.get('/commercials', {
-            headers: { Authorization: `Bearer ${token}` }
+          const commercialsResponse = await axios.get("/commercials", {
+            headers: { Authorization: `Bearer ${token}` },
           });
-          
+
           const allCommercials = commercialsResponse.data || [];
-          
+
           // Get all commercials under this manager
-          const teamCommercials = allCommercials.filter(commercial => {
-            const commercialManager = commercial.manager || commercial.createdBy;
-            return commercialManager === userId || 
-                   commercialManager?.toString() === userId;
+          const teamCommercials = allCommercials.filter((commercial) => {
+            const commercialManager =
+              commercial.manager || commercial.createdBy;
+            return (
+              commercialManager === userId ||
+              commercialManager?.toString() === userId
+            );
           });
-          
+
           // Add all commercial IDs from the team
-          teamCommercials.forEach(commercial => {
-            if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+          teamCommercials.forEach((commercial) => {
+            if (
+              commercial._id &&
+              !teamUserIds.includes(commercial._id.toString())
+            ) {
               teamUserIds.push(commercial._id.toString());
             }
           });
-          
+
           console.log("Manager team structure (clients):", {
             managerId: userId,
             teamUserIds,
-            teamCommercialsCount: teamCommercials.length
+            teamCommercialsCount: teamCommercials.length,
           });
-          
         } catch (error) {
           console.log("Error fetching manager team for clients:", error);
         }
       }
-  
+
       // Get all commercials for name matching (do this once, outside the filter)
       let allCommercialsForNames = [];
-      if (userRole === 'manager' || userRole === 'commercial') {
+      if (userRole === "manager" || userRole === "commercial") {
         try {
-          const commercialsResponse = await axios.get('/commercials', {
-            headers: { Authorization: `Bearer ${token}` }
+          const commercialsResponse = await axios.get("/commercials", {
+            headers: { Authorization: `Bearer ${token}` },
           });
           allCommercialsForNames = commercialsResponse.data || [];
         } catch (error) {
           console.log("Could not fetch commercials for name matching:", error);
         }
       }
-  
+
       // Filter leads based on user role and team
       let filteredLeads;
-      
-      if (userRole === 'admin') {
+
+      if (userRole === "admin") {
         // Admin sees all leads
         filteredLeads = allLeads;
         console.log("Admin - showing all leads:", filteredLeads.length);
-        
-      } else if (userRole === 'manager' || userRole === 'commercial') {
+      } else if (userRole === "manager" || userRole === "commercial") {
         // Both manager and commercial see leads from their entire team
         // Get all team members' names for creator name matching
-        const teamMembers = allCommercialsForNames.filter(commercial => 
+        const teamMembers = allCommercialsForNames.filter((commercial) =>
           teamUserIds.includes(commercial._id?.toString())
         );
-        
-        filteredLeads = allLeads.filter(lead => {
+
+        filteredLeads = allLeads.filter((lead) => {
           // Get manager from lead
           const leadManagerId = lead.manager?._id?.toString() || lead.manager;
-          
+
           // Get gestionnaire from lead
-          const gestionnaireId = lead.gestionnaire?._id?.toString() || lead.gestionnaire;
-          
+          const gestionnaireId =
+            lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+
           // Get commercial from lead
-          const commercialId = lead.commercial?._id?.toString() || lead.commercial;
-          
+          const commercialId =
+            lead.commercial?._id?.toString() || lead.commercial;
+
           // Get creator (cree_par) from lead
           const creatorName = lead.cree_par;
-          
+
           // Check multiple conditions:
           // 1. Check if lead manager is in the team
-          const isTeamLeadManager = teamUserIds.some(teamUserId => 
-            teamUserId?.toString() === leadManagerId?.toString()
+          const isTeamLeadManager = teamUserIds.some(
+            (teamUserId) => teamUserId?.toString() === leadManagerId?.toString()
           );
-          
+
           // 2. Check if gestionnaire is in the team
-          const isTeamGestionnaire = teamUserIds.some(teamUserId => 
-            teamUserId?.toString() === gestionnaireId?.toString()
+          const isTeamGestionnaire = teamUserIds.some(
+            (teamUserId) =>
+              teamUserId?.toString() === gestionnaireId?.toString()
           );
-          
+
           // 3. Check if commercial is in the team
-          const isTeamCommercial = teamUserIds.some(teamUserId => 
-            teamUserId?.toString() === commercialId?.toString()
+          const isTeamCommercial = teamUserIds.some(
+            (teamUserId) => teamUserId?.toString() === commercialId?.toString()
           );
-          
+
           // 4. Check by creator name (for backward compatibility)
           // Look for any team member's name in the cree_par field
           let isCreatedByTeam = false;
           if (creatorName && teamMembers.length > 0) {
             // Check if creatorName contains any team member's name
-            isCreatedByTeam = teamMembers.some(member => {
-              const memberName = `${member.prenom || ''} ${member.nom || ''}`.trim();
-              return creatorName.includes(memberName) || 
-                     memberName.includes(creatorName);
+            isCreatedByTeam = teamMembers.some((member) => {
+              const memberName = `${member.prenom || ""} ${
+                member.nom || ""
+              }`.trim();
+              return (
+                creatorName.includes(memberName) ||
+                memberName.includes(creatorName)
+              );
             });
           }
-          
-          return isTeamLeadManager || isTeamGestionnaire || isTeamCommercial || isCreatedByTeam;
+
+          return (
+            isTeamLeadManager ||
+            isTeamGestionnaire ||
+            isTeamCommercial ||
+            isCreatedByTeam
+          );
         });
-        
+
         console.log(`${userRole} filtered clients:`, {
           totalLeads: allLeads.length,
           filteredCount: filteredLeads.length,
           teamUserIds,
           teamMembersCount: teamMembers.length,
-          filterLogic: "Sees clients from entire team (manager + all commercials under manager)"
+          filterLogic:
+            "Sees clients from entire team (manager + all commercials under manager)",
         });
-        
       } else {
         // Other roles see only leads they are associated with (original logic)
-        filteredLeads = allLeads.filter(lead => {
+        filteredLeads = allLeads.filter((lead) => {
           // Check if user is gestionnaire
           let isGestionnaire = false;
           if (lead.gestionnaire) {
-            if (typeof lead.gestionnaire === 'string') {
+            if (typeof lead.gestionnaire === "string") {
               // If gestionnaire is a string ID (most common case)
               isGestionnaire = lead.gestionnaire === userId;
             } else if (lead.gestionnaire._id) {
@@ -801,91 +1012,105 @@ if (filterValues.agence && filterValues.agence !== "tous") {
               isGestionnaire = lead.gestionnaire._id.toString() === userId;
             }
           }
-          
+
           // Check if user is the assigned commercial
           let isCommercial = false;
           if (lead.commercial) {
-            const commercialId = typeof lead.commercial === 'string' 
-              ? lead.commercial 
-              : lead.commercial?._id?.toString();
+            const commercialId =
+              typeof lead.commercial === "string"
+                ? lead.commercial
+                : lead.commercial?._id?.toString();
             isCommercial = commercialId === userId;
           }
-  
+
           // Check if user is the assigned manager
           let isManager = false;
           if (lead.manager) {
-            const managerId = typeof lead.manager === 'string' 
-              ? lead.manager 
-              : lead.manager?._id?.toString();
+            const managerId =
+              typeof lead.manager === "string"
+                ? lead.manager
+                : lead.manager?._id?.toString();
             isManager = managerId === userId;
           }
-          
+
           // Check by creator name (fallback)
           const isCreator = lead.cree_par && lead.cree_par.includes(userName);
-          
-          const shouldShow = isGestionnaire || isCommercial || isManager || isCreator;
-          
+
+          const shouldShow =
+            isGestionnaire || isCommercial || isManager || isCreator;
+
           if (shouldShow) {
             console.log(`✅ Showing lead: ${lead.nom} ${lead.prenom}`);
           }
-          
+
           return shouldShow;
         });
         console.log("Other role - filtered count:", filteredLeads.length);
       }
-  
+
       // Add team information to each lead
-      const leadsWithTeamInfo = filteredLeads.map(lead => {
+      const leadsWithTeamInfo = filteredLeads.map((lead) => {
         const leadManagerId = lead.manager?._id?.toString() || lead.manager;
-        const gestionnaireId = lead.gestionnaire?._id?.toString() || lead.gestionnaire;
-        const commercialId = lead.commercial?._id?.toString() || lead.commercial;
-        
+        const gestionnaireId =
+          lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+        const commercialId =
+          lead.commercial?._id?.toString() || lead.commercial;
+
         // Determine if lead belongs to current user
-        const isMyLead = leadManagerId === userId || 
-                        gestionnaireId === userId || 
-                        commercialId === userId;
-        
+        const isMyLead =
+          leadManagerId === userId ||
+          gestionnaireId === userId ||
+          commercialId === userId;
+
         // Determine if lead belongs to manager
-        const isManagerLead = leadManagerId === managerId || 
-                             gestionnaireId === managerId;
-        
+        const isManagerLead =
+          leadManagerId === managerId || gestionnaireId === managerId;
+
         return {
           ...lead,
           // Team visibility info
           isTeamClient: !isMyLead,
-          clientType: isMyLead ? 'self' : 
-                     isManagerLead ? 'manager' : 'team_member',
-          
+          clientType: isMyLead
+            ? "self"
+            : isManagerLead
+            ? "manager"
+            : "team_member",
+
           // Formatted names for display
-          managerName: lead.manager 
-            ? `${lead.manager.prenom || ''} ${lead.manager.nom || ''}`.trim()
+          managerName: lead.manager
+            ? `${lead.manager.prenom || ""} ${lead.manager.nom || ""}`.trim()
             : "Non assigné",
-          
-          commercialName: lead.commercial 
-            ? `${lead.commercial.prenom || ''} ${lead.commercial.nom || ''}`.trim()
+
+          commercialName: lead.commercial
+            ? `${lead.commercial.prenom || ""} ${
+                lead.commercial.nom || ""
+              }`.trim()
             : "Non assigné",
-          
-          gestionnaireName: lead.gestionnaireName || 
-            (lead.gestionnaire && typeof lead.gestionnaire === 'object' 
-              ? `${lead.gestionnaire.prenom || ''} ${lead.gestionnaire.nom || ''}`.trim()
+
+          gestionnaireName:
+            lead.gestionnaireName ||
+            (lead.gestionnaire && typeof lead.gestionnaire === "object"
+              ? `${lead.gestionnaire.prenom || ""} ${
+                  lead.gestionnaire.nom || ""
+                }`.trim()
               : "Non assigné"),
         };
       });
-  
+
       // Sort by createdAt (newest first)
       const sortedLeads = leadsWithTeamInfo.sort((a, b) => {
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
-  
+
       console.log("Final clients data:", {
         count: sortedLeads.length,
         sample: sortedLeads[0],
         teamInfo: {
           isTeamClient: sortedLeads[0]?.isTeamClient,
-          clientType: sortedLeads[0]?.clientType
-        }
+          clientType: sortedLeads[0]?.clientType,
+        },
       });
-  
+
       setChatData(sortedLeads);
       setFilteredData(sortedLeads);
     } catch (error) {
@@ -901,25 +1126,34 @@ if (filterValues.agence && filterValues.agence !== "tous") {
         console.log("No manager ID found");
         return;
       }
-      
+
       console.log("Fetching commercials for manager ID:", currentManagerId);
       // const response = await axios.get(`/commercials/manager/${currentManagerId}`);
-       const token = localStorage.getItem("token"); // Get token
-    
-    const response = await axios.get(`/commercials/manager/${currentManagerId}`, {
-      headers: { 
-        Authorization: `Bearer ${token}` // Add Authorization header
-      }
-    });
-      
+      const token = localStorage.getItem("token"); // Get token
+
+      const response = await axios.get(
+        `/commercials/manager/${currentManagerId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // Add Authorization header
+          },
+        }
+      );
+
       console.log("API Response:", response.data);
       console.log("Number of commercials:", response.data.length);
-      console.log("Commercial IDs:", response.data.map(c => c._id));
-      
+      console.log(
+        "Commercial IDs:",
+        response.data.map((c) => c._id)
+      );
+
       // Assuming the API returns an array of commercial objects
       setCommercials(response.data);
     } catch (error) {
-      console.error("Error fetching manager's commercials:", error.response?.data || error.message);
+      console.error(
+        "Error fetching manager's commercials:",
+        error.response?.data || error.message
+      );
       // Fallback to fetching all commercials if specific endpoint fails
       fetchCommercials();
     }
@@ -931,9 +1165,8 @@ if (filterValues.agence && filterValues.agence !== "tous") {
     }
     fetchClients();
     // fetchClients();
-  }, []); 
- 
- 
+  }, []);
+
   // useEffect(() => {
   //   fetchCommercials();
   //   fetchClients();
@@ -956,16 +1189,16 @@ if (filterValues.agence && filterValues.agence !== "tous") {
   const handleStatusLeadChange = async (newStatus, record) => {
     try {
       const validStatuses = ["prospect", "client"];
-      
+
       if (!validStatuses.includes(newStatus)) {
         console.error("Invalid status value");
         return;
       }
-  
+
       const response = await axios.put(`/updateStatusLead/${record._id}`, {
-        statut: newStatus  // Changed from statusLead to statut to match schema
+        statut: newStatus, // Changed from statusLead to statut to match schema
       });
-  
+
       // Update both states - changed 'type' to 'statut'
       setChatData((prev) =>
         prev.map((item) =>
@@ -977,7 +1210,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
           item._id === record._id ? { ...item, statut: newStatus } : item
         )
       );
-  
+
       console.log("Updated status:", response.data);
     } catch (error) {
       console.error("Error updating status:", error);
@@ -989,7 +1222,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
     // If no active searches, show all data
     if (Object.keys(searches).length === 0) {
       console.log("No active searches, showing all data");
-      setFilteredData([...chatData]); 
+      setFilteredData([...chatData]);
       return;
     }
 
@@ -1168,115 +1401,114 @@ if (filterValues.agence && filterValues.agence !== "tous") {
     return "N/A";
   };
 
-    const stats = useMemo(() => {
-      const totalClients = chatData.length;
-      const assignedToCommercial = chatData.filter((lead) =>
-        hasCommercial(lead)
-      ).length;
-      const assignedToManager = chatData.filter((lead) =>
-        hasManager(lead)
-      ).length;
-      const unassigned = totalClients - assignedToCommercial - assignedToManager;
-  
-      return {
-        totalClients,
-        assignedToCommercial,
-        assignedToManager,
-        unassigned,
-      };
-    }, [chatData]);
+  const stats = useMemo(() => {
+    const totalClients = chatData.length;
+    const assignedToCommercial = chatData.filter((lead) =>
+      hasCommercial(lead)
+    ).length;
+    const assignedToManager = chatData.filter((lead) =>
+      hasManager(lead)
+    ).length;
+    const unassigned = totalClients - assignedToCommercial - assignedToManager;
 
-    // Add this sorting logic before your table render
-const sortedData = useMemo(() => {
-  // Apply sorting: unassigned clients first, then by creation date
-  return [...filteredData].sort((a, b) => {
-    // Check if client has commercial assignment
-    const aHasCommercial = hasCommercial(a);
-    const bHasCommercial = hasCommercial(b);
-    
-    // Unassigned clients come first
-    if (!aHasCommercial && bHasCommercial) return -1;
-    if (aHasCommercial && !bHasCommercial) return 1;
-    
-    // If same assignment status, sort by creation date (newest first)
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
-}, [filteredData, chatData]);
+    return {
+      totalClients,
+      assignedToCommercial,
+      assignedToManager,
+      unassigned,
+    };
+  }, [chatData]);
 
-      const canAssignToCommercial = useMemo(() => {
-        if (selectedLeads.length === 0) return false;
-    
-        return selectedLeads.every((leadId) => {
-          const lead = chatData.find((item) => item._id === leadId);
-          return lead && !hasCommercial(lead) && !hasManager(lead);
-        });
-      }, [selectedLeads, chatData]);
-    
-      // Check if selected leads are eligible for manager assignment
-      const canAssignToManager = useMemo(() => {
-        if (selectedLeads.length === 0) return false;
-    
-        return selectedLeads.every((leadId) => {
-          const lead = chatData.find((item) => item._id === leadId);
-          return lead && !hasManager(lead) && !hasCommercial(lead);
-        });
-      }, [selectedLeads, chatData]);
-    
-      // Check if selected leads can be unassigned from commercial
-      const canUnassignFromCommercial = useMemo(() => {
-        if (selectedLeads.length === 0) return false;
-    
-        return selectedLeads.every((leadId) => {
-          const lead = chatData.find((item) => item._id === leadId);
-          return lead && hasCommercial(lead);
-        });
-      }, [selectedLeads, chatData]);
-    
-      // Check if selected leads can be unassigned from manager
-      const canUnassignFromManager = useMemo(() => {
-        if (selectedLeads.length === 0) return false;
-    
-        return selectedLeads.every((leadId) => {
-          const lead = chatData.find((item) => item._id === leadId);
-          return lead && hasManager(lead);
-        });
-      }, [selectedLeads, chatData]);
- 
+  // Add this sorting logic before your table render
+  const sortedData = useMemo(() => {
+    // Apply sorting: unassigned clients first, then by creation date
+    return [...filteredData].sort((a, b) => {
+      // Check if client has commercial assignment
+      const aHasCommercial = hasCommercial(a);
+      const bHasCommercial = hasCommercial(b);
 
-      const getAssignmentStatus = useMemo(() => {
-        if (selectedLeads.length === 0) return "Aucun client sélectionné";
-    
-        const selectedLeadsData = chatData.filter((item) =>
-          selectedLeads.includes(item._id)
-        );
-    
-        const hasCommercialAssigned = selectedLeadsData.some((lead) =>
-          hasCommercial(lead)
-        );
-        const hasManagerAssigned = selectedLeadsData.some((lead) =>
-          hasManager(lead)
-        );
-        const hasMixedAssignment = hasCommercialAssigned && hasManagerAssigned;
-        const allFree = selectedLeadsData.every(
-          (lead) => !hasCommercial(lead) && !hasManager(lead)
-        );
-    
-        // if (allFree) return "Tous les clients sélectionnés sont libres";
-        // if (hasCommercialAssigned && !hasManagerAssigned)
-        //   return "Certains clients sont déjà affectés à un commercial";
-        // if (hasManagerAssigned && !hasCommercialAssigned)
-        //   return "Certains clients sont déjà affectés à un manager";
-        // if (hasMixedAssignment)
-        //   return "Les clients sélectionnés ont des affectations mixtes";
-    
-        // return "Statut d'affectation";
-      }, [selectedLeads, chatData]);
+      // Unassigned clients come first
+      if (!aHasCommercial && bHasCommercial) return -1;
+      if (aHasCommercial && !bHasCommercial) return 1;
 
-      const getAssignmentType = (lead) => {
-        if (hasCommercial(lead)) return "commercial";
-        // if (hasManager(lead)) return "manager";
-        return "none";
-      };
+      // If same assignment status, sort by creation date (newest first)
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [filteredData, chatData]);
+
+  const canAssignToCommercial = useMemo(() => {
+    if (selectedLeads.length === 0) return false;
+
+    return selectedLeads.every((leadId) => {
+      const lead = chatData.find((item) => item._id === leadId);
+      return lead && !hasCommercial(lead) && !hasManager(lead);
+    });
+  }, [selectedLeads, chatData]);
+
+  // Check if selected leads are eligible for manager assignment
+  const canAssignToManager = useMemo(() => {
+    if (selectedLeads.length === 0) return false;
+
+    return selectedLeads.every((leadId) => {
+      const lead = chatData.find((item) => item._id === leadId);
+      return lead && !hasManager(lead) && !hasCommercial(lead);
+    });
+  }, [selectedLeads, chatData]);
+
+  // Check if selected leads can be unassigned from commercial
+  const canUnassignFromCommercial = useMemo(() => {
+    if (selectedLeads.length === 0) return false;
+
+    return selectedLeads.every((leadId) => {
+      const lead = chatData.find((item) => item._id === leadId);
+      return lead && hasCommercial(lead);
+    });
+  }, [selectedLeads, chatData]);
+
+  // Check if selected leads can be unassigned from manager
+  const canUnassignFromManager = useMemo(() => {
+    if (selectedLeads.length === 0) return false;
+
+    return selectedLeads.every((leadId) => {
+      const lead = chatData.find((item) => item._id === leadId);
+      return lead && hasManager(lead);
+    });
+  }, [selectedLeads, chatData]);
+
+  const getAssignmentStatus = useMemo(() => {
+    if (selectedLeads.length === 0) return "Aucun client sélectionné";
+
+    const selectedLeadsData = chatData.filter((item) =>
+      selectedLeads.includes(item._id)
+    );
+
+    const hasCommercialAssigned = selectedLeadsData.some((lead) =>
+      hasCommercial(lead)
+    );
+    const hasManagerAssigned = selectedLeadsData.some((lead) =>
+      hasManager(lead)
+    );
+    const hasMixedAssignment = hasCommercialAssigned && hasManagerAssigned;
+    const allFree = selectedLeadsData.every(
+      (lead) => !hasCommercial(lead) && !hasManager(lead)
+    );
+
+    // if (allFree) return "Tous les clients sélectionnés sont libres";
+    // if (hasCommercialAssigned && !hasManagerAssigned)
+    //   return "Certains clients sont déjà affectés à un commercial";
+    // if (hasManagerAssigned && !hasCommercialAssigned)
+    //   return "Certains clients sont déjà affectés à un manager";
+    // if (hasMixedAssignment)
+    //   return "Les clients sélectionnés ont des affectations mixtes";
+
+    // return "Statut d'affectation";
+  }, [selectedLeads, chatData]);
+
+  const getAssignmentType = (lead) => {
+    if (hasCommercial(lead)) return "commercial";
+    // if (hasManager(lead)) return "manager";
+    return "none";
+  };
 
   if (loading && showSpinner) return <Spin tip="Loading..." />;
 
@@ -1304,11 +1536,11 @@ const sortedData = useMemo(() => {
           <div className="font-medium">
             {record.nom} {record.prenom}
           </div>
-          <div className="text-xs text-gray-500">
+          {/* <div className="text-xs text-gray-500">
             {getAssignmentType(record) === "commercial" &&
               "✓ Affecté à un commercial"}
             {getAssignmentType(record) === "none" && "⏳ Non affecté"}
-          </div>
+          </div> */}
         </div>
       ),
     },
@@ -1381,12 +1613,12 @@ const sortedData = useMemo(() => {
       key: "commentaire",
       render: (text, record) => {
         const commentText = record.commentaire || record.comment || "";
-        
+
         // Truncate to 3-5 words
         const words = commentText.split(" ");
         const truncated = words.slice(0, 5).join(" ");
         const displayText = words.length > 5 ? `${truncated}...` : truncated;
-        
+
         return (
           <div className="text-gray-500 text-xs">
             {commentText ? displayText : "-"}
@@ -1414,18 +1646,18 @@ const sortedData = useMemo(() => {
         </Select>
       ),
     },
-      // {
-      //     title: "Commercial",
-      //     key: "commercial",
-      //     dataIndex: "commercial",
-      //     render: (text, record) => {
-      //       const commercialName = getCommercialName(record);
-      //       if (commercialName === "N/A") {
-      //         return <Tag color="red">NON AFFECTÉ</Tag>;
-      //       }
-      //       return <Tag color="blue">{commercialName}</Tag>;
-      //     },
-      //   },
+    // {
+    //     title: "Commercial",
+    //     key: "commercial",
+    //     dataIndex: "commercial",
+    //     render: (text, record) => {
+    //       const commercialName = getCommercialName(record);
+    //       if (commercialName === "N/A") {
+    //         return <Tag color="red">NON AFFECTÉ</Tag>;
+    //       }
+    //       return <Tag color="blue">{commercialName}</Tag>;
+    //     },
+    //   },
     // {
     //   title: "Commentaires",
     //   dataIndex: "commentaire",
@@ -1438,7 +1670,7 @@ const sortedData = useMemo(() => {
     //     </div>
     //   ),
     // },
-  
+
     // {
     //   title: "Gestionnaire",
     //   dataIndex: "gestionnaire",
@@ -1449,44 +1681,59 @@ const sortedData = useMemo(() => {
     //     </div>
     //   ),
     // },
-      {
-                  title: "Action",
-                  key: "action",
-                  render: (text, record) => (
-                    <Space size="middle">
-                      <Tooltip title="Voir détails">
-                        <Button
-                          icon={<EyeOutlined />}
-                          type="primary"
-                          size="small"
-                          onClick={() => handleLeadClick(record)}
-                        />
-                      </Tooltip>
-                      <Popconfirm
-                title="Êtes-vous sûr de vouloir supprimer ce client ?"
-                onConfirm={() => handleDelete(record._id)}
-                okText="Oui"
-                cancelText="Non"
-              >
-                <Tooltip title="Supprimer">
-                  <Button icon={<DeleteOutlined />} danger size="small" />
-                </Tooltip>
-              </Popconfirm>
-                    </Space>
-                  ),
-                },
+    {
+      title: "GESTIONNAIRE",
+      key: "gestionnaire",
+      dataIndex: "gestionnaire",
+      render: (text, record) => (
+        <div className="cursor-pointer" onClick={() => handleLeadClick(record)}>
+          <div className="font-medium">
+            {record.gestionnaireName || 
+             (record.gestionnaire && typeof record.gestionnaire === 'object' 
+               ? `${record.gestionnaire.prenom || ''} ${record.gestionnaire.nom || ''}`.trim()
+               : record.gestionnaire || "Non assigné")}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Action",
+      key: "action",
+      render: (text, record) => (
+        <Space size="middle">
+          <Tooltip title="Voir détails">
+            <Button
+              icon={<EyeOutlined />}
+              type="primary"
+              size="small"
+              onClick={() => handleLeadClick(record)}
+            />
+          </Tooltip>
+          <Popconfirm
+            title="Êtes-vous sûr de vouloir supprimer ce client ?"
+            onConfirm={() => handleDelete(record._id)}
+            okText="Oui"
+            cancelText="Non"
+          >
+            <Tooltip title="Supprimer">
+              <Button icon={<DeleteOutlined />} danger size="small" />
+            </Tooltip>
+          </Popconfirm>
+        </Space>
+      ),
+    },
   ];
 
   return (
     <div className="p-4">
-    <div className="flex  mb-6 flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
+      <div className="flex  mb-6 flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
         <h2 className="text-xs sm:text-sm font-semibold text-purple-900 text-center md:text-left">
           CLIENTS/PROSPECTS ({chatData.length})
         </h2>
 
         {/* Buttons container - column on mobile, row on desktop */}
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
- <Button
+          <Button
             type="primary"
             className="w-full  md:w-auto"
             onClick={showModalImport}
@@ -1514,41 +1761,41 @@ const sortedData = useMemo(() => {
         </div>
       </div>
 
-         <Row gutter={16} className="mb-6">
-              <Col xs={24} sm={8}>
-                <Card>
-                  <Statistic
-                    title="Total Clients"
-                    value={stats.totalClients}
-                    valueStyle={{ color: "#3f8600" }}
-                    prefix={<TeamOutlined />}
-                  />
-                </Card>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Card>
-                  <Statistic
-                    title="Affectés aux Commerciaux"
-                    value={stats.assignedToCommercial}
-                    valueStyle={{ color: "#1890ff" }}
-                    prefix={<UserAddOutlined />}
-                  />
-                </Card>
-              </Col>
-              <Col xs={24} sm={8}>
-                <Card>
-                  <Statistic
-                    title="Non Affectés"
-                    value={stats.unassigned}
-                    valueStyle={{ color: "#cf1322" }}
-                    prefix={<UserDeleteOutlined />}
-                  />
-                </Card>
-              </Col>
-            </Row>
-      
-            {/* Assignment Status Info */}
-            {/* <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <Row gutter={16} className="mb-6">
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="Total Clients"
+              value={stats.totalClients}
+              valueStyle={{ color: "#3f8600" }}
+              prefix={<TeamOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="Affectés aux Commerciaux"
+              value={stats.assignedToCommercial}
+              valueStyle={{ color: "#1890ff" }}
+              prefix={<UserAddOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="Non Affectés"
+              value={stats.unassigned}
+              valueStyle={{ color: "#cf1322" }}
+              prefix={<UserDeleteOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Assignment Status Info */}
+      {/* <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="flex items-center">
                 <InfoCircleOutlined className="text-blue-500 mr-2" />
                 <span className="text-sm text-blue-700 font-medium">
@@ -1559,9 +1806,9 @@ const sortedData = useMemo(() => {
                 • Vous pouvez affecter des clients aux commerciaux de votre équipe
               </div>
             </div> */}
-      
-            {/* Action Buttons */}
-            {/* <Card className="mb-4">
+
+      {/* Action Buttons */}
+      {/* <Card className="mb-4">
               <Row gutter={[16, 16]}>
                 <Col xs={24} sm={12} md={6}>
                   <Tooltip
@@ -1688,54 +1935,62 @@ const sortedData = useMemo(() => {
         </div>
       </div> */}
 
-
-   <div className="p-4 bg-white mt-4 border-t rounded-md border-gray-200 shadow-sm mb-6">
+      <div className="p-4 bg-white mt-4 border-t rounded-md border-gray-200 shadow-sm mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-  <label className="block text-[12px] font-medium text-gray-700 mb-1">
-    Gestionnaire
-  </label>
-  <Select
-    className="w-full text-xs h-7"
-    placeholder="-- Choisissez le gestionnaire --"
-    showSearch
-    optionFilterProp="children"
-    filterOption={(input, option) =>
-      option.children.toLowerCase().includes(input.toLowerCase())
-    }
-    onChange={(value) => handleFilterChange("gestionnaire", value)}
-    value={filters.gestionnaire}
-  >
-    <Option value="tous">Tous</Option>
-    
-    {/* Show current manager first */}
-    {users
-      .filter(user => user.userType === "manager" && user._id === currentManagerId)
-      .map((manager) => {
-        console.log("Current manager in dropdown:", manager);
-        return (
-          <Option key={manager._id} value={`${manager.prenom} ${manager.nom}`}>
-            {`${manager.prenom} ${manager.nom}`} (Manager)
-          </Option>
-        );
-      })}
+          <div>
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Gestionnaire
+            </label>
+            <Select
+              className="w-full text-xs h-7"
+              placeholder="-- Choisissez le gestionnaire --"
+              showSearch
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }
+              onChange={(value) => handleFilterChange("gestionnaire", value)}
+              value={filters.gestionnaire}
+            >
+              <Option value="tous">Tous</Option>
 
-{commercials
-  .filter(commercial => {
-    // The commercials array should already contain only manager's commercials
-    // But let's double-check by verifying they have the correct manager ID
-    return commercial.createdBy === currentManagerId;
-  })
-  .map((commercial) => {
-    console.log("Manager's commercial in dropdown:", commercial);
-    return (
-      <Option key={commercial._id} value={`${commercial.prenom} ${commercial.nom}`}>
-        {`${commercial.prenom} ${commercial.nom}`} (Commercial)
-      </Option>
-    );
-  })}
-  </Select>
-</div>
+              {/* Show current manager first */}
+              {users
+                .filter(
+                  (user) =>
+                    user.userType === "manager" && user._id === currentManagerId
+                )
+                .map((manager) => {
+                  console.log("Current manager in dropdown:", manager);
+                  return (
+                    <Option
+                      key={manager._id}
+                      value={`${manager.prenom} ${manager.nom}`}
+                    >
+                      {`${manager.prenom} ${manager.nom}`} (Manager)
+                    </Option>
+                  );
+                })}
+
+              {commercials
+                .filter((commercial) => {
+                  // The commercials array should already contain only manager's commercials
+                  // But let's double-check by verifying they have the correct manager ID
+                  return commercial.createdBy === currentManagerId;
+                })
+                .map((commercial) => {
+                  console.log("Manager's commercial in dropdown:", commercial);
+                  return (
+                    <Option
+                      key={commercial._id}
+                      value={`${commercial.prenom} ${commercial.nom}`}
+                    >
+                      {`${commercial.prenom} ${commercial.nom}`} (Commercial)
+                    </Option>
+                  );
+                })}
+            </Select>
+          </div>
 
           <div>
             <label className="block text-[12px] font-medium text-gray-700 mb-1">
@@ -1771,62 +2026,59 @@ const sortedData = useMemo(() => {
           </div>
 
           <div>
-  <label className="block text-[12px] font-medium text-gray-700 mb-1">
-    Agence
-  </label>
-  <Select
-    className="w-full"
-    placeholder="-- Choisissez --"
-    onChange={(value) => handleFilterChange("agence", value)}
-    value={filters.agence}
-  >
-    <Option value="tous">Toutes</Option>
-    <Option value="LENS">LENS</Option>
-    <Option value="VALENCIENNES">VALENCIENNES</Option>
-    <Option value="LILLE">LILLE</Option>
-  </Select>
-</div>
-<div className="mt-1">
-                  
-                  <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                    Recherche
-                  </label>
-                  <Input
-                    placeholder="Rechercher..."
-                    allowClear
-                    onChange={(e) => handleFilterChange("search", e.target.value)}
-                    value={filters.search}
-                    className="w-full"
-                  />
-   </div>
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Agence
+            </label>
+            <Select
+              className="w-full"
+              placeholder="-- Choisissez --"
+              onChange={(value) => handleFilterChange("agence", value)}
+              value={filters.agence}
+            >
+              <Option value="tous">Toutes</Option>
+              <Option value="LENS">LENS</Option>
+              <Option value="VALENCIENNES">VALENCIENNES</Option>
+              <Option value="LILLE">LILLE</Option>
+            </Select>
+          </div>
+          <div className="mt-1">
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Recherche
+            </label>
+            <Input
+              placeholder="Rechercher..."
+              allowClear
+              onChange={(e) => handleFilterChange("search", e.target.value)}
+              value={filters.search}
+              className="w-full"
+            />
+          </div>
         </div>
-          
       </div>
 
-
       <div className="bg-white rounded-lg shadow-md w-full md:p-6 overflow-x-auto">
-      <Table
-            columns={columns.map((col) => ({
-                      ...col,
-                      title: (
-                        <div className="flex flex-col items-center">
-                          <div className="text-xs">{col.title}</div>
-                          {col.key !== "action" &&
-                            col.key !== "createdAt" &&
-                            col.key !== "commentaire" &&
-                            col.key !== "comment" && (
-                              <Input
-                                placeholder={`Rechercher ${col.title}`}
-                                onChange={(e) => handleColumnSearch(e, col.key)}
-                                value={activeColumnSearches[col.key] || ""}
-                                className="mt-2"
-                                size="small"
-                                style={{ width: "100%" }}
-                              />
-                            )}
-                        </div>
-                      ),
-                    }))}
+        <Table
+          columns={columns.map((col) => ({
+            ...col,
+            title: (
+              <div className="flex flex-col items-center">
+                <div className="text-xs">{col.title}</div>
+                {col.key !== "action" &&
+                  col.key !== "createdAt" &&
+                  col.key !== "commentaire" &&
+                  col.key !== "comment" && (
+                    <Input
+                      placeholder={`Rechercher ${col.title}`}
+                      onChange={(e) => handleColumnSearch(e, col.key)}
+                      value={activeColumnSearches[col.key] || ""}
+                      className="mt-2"
+                      size="small"
+                      style={{ width: "100%" }}
+                    />
+                  )}
+              </div>
+            ),
+          }))}
           // dataSource={filteredData.slice(
           //   (currentPage - 1) * pageSize,
           //   currentPage * pageSize
@@ -2023,19 +2275,19 @@ const sortedData = useMemo(() => {
             </Form.Item>
 
             {/* Pays de naissance */}
-               <Form.Item
-             label={
-               <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
-             }
-             name="pays_naissance"
-             className="mb-0"
-             rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-           >
-             <Input 
-               className="w-full text-xs h-7" 
-               placeholder="Ex: France, Belgique, Suisse..." 
-             />
-           </Form.Item>
+            <Form.Item
+              label={
+                <span className="text-xs font-medium">PAYS DE NAISSANCE</span>
+              }
+              name="pays_naissance"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Input
+                className="w-full text-xs h-7"
+                placeholder="Ex: France, Belgique, Suisse..."
+              />
+            </Form.Item>
 
             {/* Code postal de naissance */}
             <Form.Item
@@ -2072,9 +2324,7 @@ const sortedData = useMemo(() => {
             {/* Situation familiale */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">
-                  SITUATION FAMILIALE
-                </span>
+                <span className="text-xs font-medium">SITUATION FAMILIALE</span>
               }
               name="situation_famille"
               className="mb-0"
@@ -2176,9 +2426,7 @@ const sortedData = useMemo(() => {
             {/* Inscrit sur Bloctel */}
             <Form.Item
               label={
-                <span className="text-xs font-medium">
-                  INSCRIT SUR BLOCTEL
-                </span>
+                <span className="text-xs font-medium">INSCRIT SUR BLOCTEL</span>
               }
               name="bloctel"
               className="mb-0"
@@ -2243,362 +2491,356 @@ const sortedData = useMemo(() => {
                 placeholder="Email"
               />
             </Form.Item>
-  {selectedCategorie !== 'particulier' && (
-            <>
-              <h2 className="text-sm font-semibold mt-6 mb-2">
-                INFORMATIONS PROFESSIONNELLES
-              </h2>
+            {selectedCategorie !== "particulier" && (
+              <>
+                <h2 className="text-sm font-semibold mt-6 mb-2">
+                  INFORMATIONS PROFESSIONNELLES
+                </h2>
 
-    
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    ACTIVITÉ DE L'ENTREPRISE
-                  </span>
-                }
-                name="activite_entreprise"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                ]}
-              >
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="Activité principale"
-                />
-              </Form.Item>
-
-      
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    CATÉGORIE SOCIOPROFESSIONNELLE
-                  </span>
-                }
-                name="categorie_professionnelle"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                ]}
-              >
-                <Select
-                  className="w-full text-xs h-7"
-                  placeholder="-- Choisissez --"
-                >
-                  <Option value="agriculteur">Agriculteur</Option>
-                  <Option value="artisan">Artisan, commerçant</Option>
-                  <Option value="cadre">Cadre</Option>
-                  <Option value="prof_interm">Profession intermédiaire</Option>
-                  <Option value="employe">Employé</Option>
-                  <Option value="ouvrier">Ouvrier</Option>
-                  <Option value="retraite">Retraité</Option>
-                  <Option value="sans_activite">
-                    Sans activité professionnelle
-                  </Option>
-                </Select>
-              </Form.Item>
-
-
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    DOMAINE D'ACTIVITÉ
-                  </span>
-                }
-                name="domaine_activite"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                ]}
-              >
-                <Select
-                  className="w-full text-xs h-7"
-                  placeholder="-- Choisissez --"
-                  showSearch
-                >
-                  <Option value="agriculture">Agriculture</Option>
-                  <Option value="industrie">Industrie</Option>
-                  <Option value="construction">Construction</Option>
-                  <Option value="commerce">Commerce</Option>
-                  <Option value="transport">Transport</Option>
-                  <Option value="information">Information/Communication</Option>
-                  <Option value="finance">Finance/Assurance</Option>
-                  <Option value="immobilier">Immobilier</Option>
-                  <Option value="scientifique">
-                    Activités scientifiques/techniques
-                  </Option>
-                  <Option value="administratif">
-                    Activités administratives
-                  </Option>
-                  <Option value="public">Administration publique</Option>
-                  <Option value="enseignement">Enseignement</Option>
-                  <Option value="sante">Santé/Social</Option>
-                  <Option value="art">Arts/Spectacles</Option>
-                  <Option value="autre">Autre</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">STATUT JURIDIQUE</span>
-                }
-                name="statut_juridique"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                ]}
-              >
-                <Select
-                  className="w-full text-xs h-7"
-                  placeholder="-- Choisissez --"
-                >
-                  <Option value="sarl">SARL</Option>
-                  <Option value="eurl">EURL</Option>
-                  <Option value="sas">SAS</Option>
-                  <Option value="sasu">SASU</Option>
-                  <Option value="sa">SA</Option>
-                  <Option value="sci">SCI</Option>
-                  <Option value="micro">Micro-entreprise</Option>
-                  <Option value="ei">Entreprise individuelle</Option>
-                  <Option value="autre">Autre</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    DÉNOMINATION COMMERCIALE
-                  </span>
-                }
-                name="denomination_commerciale"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                ]}
-              >
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="Nom commercial"
-                />
-              </Form.Item>
-
-         
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">RAISON SOCIALE</span>
-                }
-                name="raison_sociale"
-                className="mb-0"
-              >
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="Raison sociale"
-                />
-              </Form.Item>
-
-        
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">DATE DE CRÉATION</span>
-                }
-                name="date_creation"
-                className="mb-0"
-              >
-                <DatePicker
-                  className="w-full text-xs h-7"
-                  format="DD/MM/YYYY"
-                />
-              </Form.Item>
-
-              <Form.Item
-                label={<span className="text-xs font-medium">SIRET</span>}
-                name="siret"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-              
-                ]}
-              >
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="Numéro SIRET (14 chiffres)"
-                />
-              </Form.Item>
-
-        
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">FORME JURIDIQUE</span>
-                }
-                name="forme_juridique"
-                className="mb-0"
-              >
-                <Select
-                  className="w-full text-xs h-7"
-                  placeholder="-- Choisissez --"
-                >
-                  <Option value="sarl">SARL</Option>
-                  <Option value="eurl">EURL</Option>
-                  <Option value="sas">SAS</Option>
-                  <Option value="sa">SA</Option>
-                  <Option value="sci">SCI</Option>
-                  <Option value="ei">Entreprise individuelle</Option>
-                  <Option value="autre">Autre</Option>
-                </Select>
-              </Form.Item>
-
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    TÉLÉPHONE DE L'ENTREPRISE
-                  </span>
-                }
-                name="telephone_entreprise"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                ]}
-              >
-                <PhoneInput
-                  country={"fr"}
-                  inputClass="w-full text-xs h-7"
-                  containerClass="w-full"
-                />
-              </Form.Item>
-
-         
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    EMAIL DE L'ENTREPRISE
-                  </span>
-                }
-                name="email_entreprise"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                  { type: "email", message: "Email non valide" },
-                ]}
-              >
-                <Input
-                  type="email"
-                  className="w-full text-xs h-7"
-                  placeholder="Email professionnel"
-                />
-              </Form.Item>
-
-        
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">SITE INTERNET</span>
-                }
-                name="site_internet"
-                className="mb-0"
-                rules={[{ type: "url", message: "URL non valide" }]}
-              >
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="https://www.example.com"
-                />
-              </Form.Item>
-
-    
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">CODE NAF/APE</span>
-                }
-                name="code_naf"
-                className="mb-0"
-                rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
-                ]}
-              >
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="Ex: 62.02A"
-                />
-              </Form.Item>
-
-     
-              <Form.Item
-                label={<span className="text-xs font-medium">IDCC</span>}
-                name="idcc"
-                className="mb-0"
-              >
-                <Input
-                  className="w-full text-xs h-7"
-                  placeholder="Identifiant de convention collective"
-                />
-              </Form.Item>
-
-        
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    BÉNÉFICIAIRES EFFECTIFS
-                  </span>
-                }
-                name="beneficiaires_effectifs"
-                className="mb-0"
-              >
-                <Input.TextArea
-                  rows={3}
-                  className="w-full text-xs"
-                  placeholder="Liste des bénéficiaires effectifs"
-                />
-              </Form.Item>
-
-              <Form.Item
-                label={
-                  <span className="text-xs font-medium">
-                    CHIFFRE D'AFFAIRES (€)
-                  </span>
-                }
-                name="chiffre_affaires"
-                className="mb-0"
-              >
-                <InputNumber
-                  className="w-full text-xs h-7"
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      ACTIVITÉ DE L'ENTREPRISE
+                    </span>
                   }
-                  parser={(value) => value.replace(/\s/g, "")}
-                  min={0}
-                  placeholder="Montant en euros"
-                />
-              </Form.Item>
+                  name="activite_entreprise"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Input
+                    className="w-full text-xs h-7"
+                    placeholder="Activité principale"
+                  />
+                </Form.Item>
 
-    
-              <Form.Item
-                label={<span className="text-xs font-medium">EFFECTIF</span>}
-                name="effectif"
-                className="mb-0"
-              >
-                <InputNumber
-                  className="w-full text-xs h-7"
-                  min={0}
-                  placeholder="Nombre d'employés"
-                />
-              </Form.Item>
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      CATÉGORIE SOCIOPROFESSIONNELLE
+                    </span>
+                  }
+                  name="categorie_professionnelle"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Select
+                    className="w-full text-xs h-7"
+                    placeholder="-- Choisissez --"
+                  >
+                    <Option value="agriculteur">Agriculteur</Option>
+                    <Option value="artisan">Artisan, commerçant</Option>
+                    <Option value="cadre">Cadre</Option>
+                    <Option value="prof_interm">
+                      Profession intermédiaire
+                    </Option>
+                    <Option value="employe">Employé</Option>
+                    <Option value="ouvrier">Ouvrier</Option>
+                    <Option value="retraite">Retraité</Option>
+                    <Option value="sans_activite">
+                      Sans activité professionnelle
+                    </Option>
+                  </Select>
+                </Form.Item>
 
-  
-              <Form.Item
-  label={
-    <span className="text-xs font-medium">
-      PÉRIODE DE CLÔTURE D'EXERCICE
-    </span>
-  }
-  name="periode_cloture"
-  className="mb-0"
->
-  <DatePicker
-    className="w-full text-xs h-7"
-    format="DD/MM/YYYY"
-    placeholder="Sélectionnez une date"
-    picker="date"
-  />
-</Form.Item>
-            </>
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      DOMAINE D'ACTIVITÉ
+                    </span>
+                  }
+                  name="domaine_activite"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Select
+                    className="w-full text-xs h-7"
+                    placeholder="-- Choisissez --"
+                    showSearch
+                  >
+                    <Option value="agriculture">Agriculture</Option>
+                    <Option value="industrie">Industrie</Option>
+                    <Option value="construction">Construction</Option>
+                    <Option value="commerce">Commerce</Option>
+                    <Option value="transport">Transport</Option>
+                    <Option value="information">
+                      Information/Communication
+                    </Option>
+                    <Option value="finance">Finance/Assurance</Option>
+                    <Option value="immobilier">Immobilier</Option>
+                    <Option value="scientifique">
+                      Activités scientifiques/techniques
+                    </Option>
+                    <Option value="administratif">
+                      Activités administratives
+                    </Option>
+                    <Option value="public">Administration publique</Option>
+                    <Option value="enseignement">Enseignement</Option>
+                    <Option value="sante">Santé/Social</Option>
+                    <Option value="art">Arts/Spectacles</Option>
+                    <Option value="autre">Autre</Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      STATUT JURIDIQUE
+                    </span>
+                  }
+                  name="statut_juridique"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Select
+                    className="w-full text-xs h-7"
+                    placeholder="-- Choisissez --"
+                  >
+                    <Option value="sarl">SARL</Option>
+                    <Option value="eurl">EURL</Option>
+                    <Option value="sas">SAS</Option>
+                    <Option value="sasu">SASU</Option>
+                    <Option value="sa">SA</Option>
+                    <Option value="sci">SCI</Option>
+                    <Option value="micro">Micro-entreprise</Option>
+                    <Option value="ei">Entreprise individuelle</Option>
+                    <Option value="autre">Autre</Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      DÉNOMINATION COMMERCIALE
+                    </span>
+                  }
+                  name="denomination_commerciale"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Input
+                    className="w-full text-xs h-7"
+                    placeholder="Nom commercial"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">RAISON SOCIALE</span>
+                  }
+                  name="raison_sociale"
+                  className="mb-0"
+                >
+                  <Input
+                    className="w-full text-xs h-7"
+                    placeholder="Raison sociale"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      DATE DE CRÉATION
+                    </span>
+                  }
+                  name="date_creation"
+                  className="mb-0"
+                >
+                  <DatePicker
+                    className="w-full text-xs h-7"
+                    format="DD/MM/YYYY"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={<span className="text-xs font-medium">SIRET</span>}
+                  name="siret"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Input
+                    className="w-full text-xs h-7"
+                    placeholder="Numéro SIRET (14 chiffres)"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">FORME JURIDIQUE</span>
+                  }
+                  name="forme_juridique"
+                  className="mb-0"
+                >
+                  <Select
+                    className="w-full text-xs h-7"
+                    placeholder="-- Choisissez --"
+                  >
+                    <Option value="sarl">SARL</Option>
+                    <Option value="eurl">EURL</Option>
+                    <Option value="sas">SAS</Option>
+                    <Option value="sa">SA</Option>
+                    <Option value="sci">SCI</Option>
+                    <Option value="ei">Entreprise individuelle</Option>
+                    <Option value="autre">Autre</Option>
+                  </Select>
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      TÉLÉPHONE DE L'ENTREPRISE
+                    </span>
+                  }
+                  name="telephone_entreprise"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <PhoneInput
+                    country={"fr"}
+                    inputClass="w-full text-xs h-7"
+                    containerClass="w-full"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      EMAIL DE L'ENTREPRISE
+                    </span>
+                  }
+                  name="email_entreprise"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                    { type: "email", message: "Email non valide" },
+                  ]}
+                >
+                  <Input
+                    type="email"
+                    className="w-full text-xs h-7"
+                    placeholder="Email professionnel"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">SITE INTERNET</span>
+                  }
+                  name="site_internet"
+                  className="mb-0"
+                  rules={[{ type: "url", message: "URL non valide" }]}
+                >
+                  <Input
+                    className="w-full text-xs h-7"
+                    placeholder="https://www.example.com"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">CODE NAF/APE</span>
+                  }
+                  name="code_naf"
+                  className="mb-0"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Input
+                    className="w-full text-xs h-7"
+                    placeholder="Ex: 62.02A"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={<span className="text-xs font-medium">IDCC</span>}
+                  name="idcc"
+                  className="mb-0"
+                >
+                  <Input
+                    className="w-full text-xs h-7"
+                    placeholder="Identifiant de convention collective"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      BÉNÉFICIAIRES EFFECTIFS
+                    </span>
+                  }
+                  name="beneficiaires_effectifs"
+                  className="mb-0"
+                >
+                  <Input.TextArea
+                    rows={3}
+                    className="w-full text-xs"
+                    placeholder="Liste des bénéficiaires effectifs"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      CHIFFRE D'AFFAIRES (€)
+                    </span>
+                  }
+                  name="chiffre_affaires"
+                  className="mb-0"
+                >
+                  <InputNumber
+                    className="w-full text-xs h-7"
+                    formatter={(value) =>
+                      `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+                    }
+                    parser={(value) => value.replace(/\s/g, "")}
+                    min={0}
+                    placeholder="Montant en euros"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={<span className="text-xs font-medium">EFFECTIF</span>}
+                  name="effectif"
+                  className="mb-0"
+                >
+                  <InputNumber
+                    className="w-full text-xs h-7"
+                    min={0}
+                    placeholder="Nombre d'employés"
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={
+                    <span className="text-xs font-medium">
+                      PÉRIODE DE CLÔTURE D'EXERCICE
+                    </span>
+                  }
+                  name="periode_cloture"
+                  className="mb-0"
+                >
+                  <DatePicker
+                    className="w-full text-xs h-7"
+                    format="DD/MM/YYYY"
+                    placeholder="Sélectionnez une date"
+                    picker="date"
+                  />
+                </Form.Item>
+              </>
             )}
 
             {/* === SÉCURITÉ SOCIALE === */}
@@ -2638,9 +2880,7 @@ const sortedData = useMemo(() => {
               }
               name="num_secu"
               className="mb-0"
-              rules={[
-                { required: false, message: "Ce champ est obligatoire" },
-              ]}
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
               <Input
                 className="w-full text-xs h-7"
@@ -2653,59 +2893,23 @@ const sortedData = useMemo(() => {
 
             {/* Type d'origine */}
             <Form.Item
-                         name="type_origine"
-                         label={
-                           <span className="text-xs font-medium">Type d'origin</span>
-                         }
-                         className="w-full"
-                       >
-                         <Select placeholder="Choisissez" className="w-full">
-                           <Option value="co_courtage">Co-courtage</Option>
-                           <Option value="indicateur_affaires">
-                             Indicateur d'affaires
-                           </Option>
-                           <Option value="weedo_market">Weedo market</Option>
-                           <Option value="recommandation">Recommandation</Option>
-                           <Option value="reseaux_sociaux">Réseaux sociaux</Option>
-                           <Option value="autre">Autre</Option>
-                         </Select>
-                       </Form.Item>
+              name="type_origine"
+              label={<span className="text-xs font-medium">Type d'origin</span>}
+              className="w-full"
+            >
+              <Select placeholder="Choisissez" className="w-full">
+                <Option value="co_courtage">Co-courtage</Option>
+                <Option value="indicateur_affaires">
+                  Indicateur d'affaires
+                </Option>
+                <Option value="weedo_market">Weedo market</Option>
+                <Option value="recommandation">Recommandation</Option>
+                <Option value="reseaux_sociaux">Réseaux sociaux</Option>
+                <Option value="autre">Autre</Option>
+              </Select>
+            </Form.Item>
 
             {/* <Form.Item
-              label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
-              name="gestionnaire"
-              className="mb-0"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Select
-                className="w-full text-xs h-7"
-                placeholder="-- Choisissez un gestionnaire --"
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                {users.map((user) => {
-                  // Handle different field names between admin and commercial
-                  const displayName =
-                    user.userType === "admin"
-                      ? user.name
-                      : `${user.nom} ${user.prenom}`;
-
-                  return (
-                    <Option
-                      key={`${user.userType}-${user._id}`}
-                      value={displayName}
-                    >
-                      {displayName} (
-                      {user.userType === "admin" ? "Admin" : "Commercial"})
-                    </Option>
-                  );
-                })}
-              </Select>
-            </Form.Item> */}
-            <Form.Item
   label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
   name="gestionnaire"
   className="mb-0"
@@ -2720,22 +2924,7 @@ const sortedData = useMemo(() => {
       option.children.toLowerCase().includes(input.toLowerCase())
     }
   >
-    {/* {users.map((user) => {
-      const displayName =
-        user.userType === "admin"
-          ? user.name
-          : `${user.nom} ${user.prenom}`;
-
-      return (
-        <Option
-          key={`${user.userType}-${user._id}`}
-          value={user._id} // Store the ID instead of display name
-        >
-          {displayName} (
-          {user.userType === "admin" ? "Admin" : "Commercial"})
-        </Option>
-      );
-    })} */}
+ 
       {users.map((user) => {
               // Determine display name based on user type
               let displayName;
@@ -2771,8 +2960,8 @@ const sortedData = useMemo(() => {
               );
             })}
   </Select>
-</Form.Item>
-<Form.Item name="gestionnaireModel" hidden>
+</Form.Item> */}
+            {/* <Form.Item name="gestionnaireModel" hidden>
   <Input />
 </Form.Item>
 
@@ -2791,22 +2980,7 @@ const sortedData = useMemo(() => {
                   option.children.toLowerCase().includes(input.toLowerCase())
                 }
               >
-                {/* {users.map((user) => {
-                  const displayName =
-                    user.userType === "admin"
-                      ? user.name
-                      : `${user.nom} ${user.prenom}`;
-
-                  return (
-                    <Option
-                      key={`${user.userType}-${user._id}`}
-                      value={displayName}
-                    >
-                      {displayName} (
-                      {user.userType === "admin" ? "Admin" : "Commercial"})
-                    </Option>
-                  );
-                })} */}
+              
                   {users.map((user) => {
               // Determine display name based on user type
               let displayName;
@@ -2859,22 +3033,7 @@ const sortedData = useMemo(() => {
                             option.children.toLowerCase().includes(input.toLowerCase())
                           }
                         >
-                          {/* {users.map((user) => {
-                            const displayName =
-                              user.userType === "admin"
-                                ? user.name
-                                : `${user.nom} ${user.prenom}`;
-          
-                            return (
-                              <Option
-                                key={`${user.userType}-${user._id}`}
-                                value={displayName}
-                              >
-                                {displayName} (
-                                {user.userType === "admin" ? "Admin" : "Commercial"})
-                              </Option>
-                            );
-                          })} */}
+                          
                             {users.map((user) => {
               // Determine display name based on user type
               let displayName;
@@ -2910,7 +3069,144 @@ const sortedData = useMemo(() => {
               );
             })}
                         </Select>
-                      </Form.Item>
+                      </Form.Item> */}
+            <Form.Item
+              label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+              name="gestionnaire"
+              className="mb-0"
+              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez un gestionnaire --"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {users.map((user) => (
+                  <Option key={user._id} value={user._id}>
+                    {`${user.nom} ${user.prenom}`} (Commercial)
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            {currentUserInfo?.role === "manager" ? (
+              // Pour manager: champ désactivé avec le nom + champ caché pour l'ID
+              <>
+                <Form.Item
+                  label={<span className="text-xs font-medium">CRÉÉ PAR</span>}
+                  className="mb-0"
+                >
+                  <Input
+                    className="w-full text-xs h-7 bg-gray-100"
+                    value={currentUserInfo?.name || "Manager"}
+                    disabled
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="cree_par"
+                  hidden
+                  initialValue={currentUserInfo?.userId}
+                >
+                  <Input />
+                </Form.Item>
+              </>
+            ) : currentUserInfo?.role === "commercial" ? (
+              // Pour commercial: champ désactivé avec le nom + champ caché pour l'ID
+              <>
+                <Form.Item
+                  label={<span className="text-xs font-medium">CRÉÉ PAR</span>}
+                  className="mb-0"
+                >
+                  <Input
+                    className="w-full text-xs h-7 bg-gray-100"
+                    value={currentUserInfo?.name || "Commercial"}
+                    disabled
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="cree_par"
+                  hidden
+                  initialValue={currentUserInfo?.userId}
+                >
+                  <Input />
+                </Form.Item>
+              </>
+            ) : (
+              // Pour admin: select avec tous les commerciaux
+              <Form.Item
+                label={<span className="text-xs font-medium">CRÉÉ PAR</span>}
+                name="cree_par"
+                className="mb-0"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Select
+                  className="w-full text-xs h-7"
+                  placeholder="-- Choisissez un créateur --"
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {users.map((user) => (
+                    <Option key={user._id} value={user._id}>
+                      {`${user.nom} ${user.prenom}`} (Commercial)
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            )}
+
+            {/* Champ caché pour l'ID du manager */}
+            {currentUserInfo?.role === "manager" && (
+              <Form.Item
+                name="cree_par"
+                hidden
+                initialValue={currentUserInfo?.userId}
+              >
+                <Input />
+              </Form.Item>
+            )}
+
+            {currentUserInfo?.role === "commercial" && (
+              <Form.Item
+                name="cree_par"
+                hidden
+                initialValue={currentUserInfo?.userId}
+              >
+                <Input />
+              </Form.Item>
+            )}
+
+            {/* INTERMÉDIAIRE - Only show commercials under current manager */}
+            <Form.Item
+              label={<span className="text-xs font-medium">INTERMÉDIAIRE</span>}
+              name="intermediaire"
+              className="mb-0"
+              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez un intermediaire --"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {users.map((user) => (
+                  <Option key={user._id} value={user._id}>
+                    {`${user.nom} ${user.prenom}`} (Commercial)
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
           </Form>
           <Button
             type="primary"
@@ -2922,145 +3218,145 @@ const sortedData = useMemo(() => {
           </Button>
         </div>
       </Modal>
-       <Modal
-              title={
-                <div className="bg-gray-100 p-3 -mx-6 -mt-6 flex justify-between items-start sticky top-0 z-10 border-b">
-                  <span className="font-medium text-sm">
-                    IMPORTER VOTRE BASE CLIENT/PROSPECT
-                  </span>
-                  <button
-                    onClick={handleCancelImport}
-                    className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
-                  >
-                    <CloseOutlined className="text-xs" />
-                  </button>
-                </div>
-              }
-              open={isOpenModalImport}
-              onCancel={handleCancelImport}
-              footer={null}
-              width="40%"
-              style={{
-                position: "fixed",
-                right: 0,
-                top: 0,
-                bottom: 0,
-                height: "100vh",
-                margin: 0,
-                padding: 0,
-                overflow: "hidden",
-              }}
-              bodyStyle={{
-                height: "calc(100vh - 49px)",
-                padding: 0,
-                margin: 0,
-              }}
-              maskStyle={{
-                backgroundColor: "rgba(0, 0, 0, 0.1)",
-              }}
-              closeIcon={null}
+      <Modal
+        title={
+          <div className="bg-gray-100 p-3 -mx-6 -mt-6 flex justify-between items-start sticky top-0 z-10 border-b">
+            <span className="font-medium text-sm">
+              IMPORTER VOTRE BASE CLIENT/PROSPECT
+            </span>
+            <button
+              onClick={handleCancelImport}
+              className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
             >
-              <ImportLeads onImportSuccess={handleImportSuccess} />
-            </Modal>
+              <CloseOutlined className="text-xs" />
+            </button>
+          </div>
+        }
+        open={isOpenModalImport}
+        onCancel={handleCancelImport}
+        footer={null}
+        width="40%"
+        style={{
+          position: "fixed",
+          right: 0,
+          top: 0,
+          bottom: 0,
+          height: "100vh",
+          margin: 0,
+          padding: 0,
+          overflow: "hidden",
+        }}
+        bodyStyle={{
+          height: "calc(100vh - 49px)",
+          padding: 0,
+          margin: 0,
+        }}
+        maskStyle={{
+          backgroundColor: "rgba(0, 0, 0, 0.1)",
+        }}
+        closeIcon={null}
+      >
+        <ImportLeads onImportSuccess={handleImportSuccess} />
+      </Modal>
 
-         {/* Assign Modal */}
-            <Modal
-              title="Affecter les clients au Commercial"
-              visible={isAssignModalVisible}
-              onCancel={() => {
-                setIsAssignModalVisible(false);
-                assignForm.resetFields();
-              }}
-              footer={null}
-            >
-              <div className="mb-4 p-3 bg-yellow-50 rounded border border-yellow-200">
-                <div className="text-sm text-yellow-700">
-                  <strong>Note:</strong> {selectedLeads.length} client(s) seront
-                  affectés au commercial sélectionné.
-                </div>
-              </div>
-              <Form form={assignForm} onFinish={handleAssign}>
-                <Form.Item
-                  name="commercial"
-                  label="Commercial"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Veuillez sélectionner un commercial",
-                    },
-                  ]}
-                >
-                  <Select placeholder="Sélectionnez un commercial">
-                    {/* {commercials.map((commercial) => (
+      {/* Assign Modal */}
+      <Modal
+        title="Affecter les clients au Commercial"
+        visible={isAssignModalVisible}
+        onCancel={() => {
+          setIsAssignModalVisible(false);
+          assignForm.resetFields();
+        }}
+        footer={null}
+      >
+        <div className="mb-4 p-3 bg-yellow-50 rounded border border-yellow-200">
+          <div className="text-sm text-yellow-700">
+            <strong>Note:</strong> {selectedLeads.length} client(s) seront
+            affectés au commercial sélectionné.
+          </div>
+        </div>
+        <Form form={assignForm} onFinish={handleAssign}>
+          <Form.Item
+            name="commercial"
+            label="Commercial"
+            rules={[
+              {
+                required: true,
+                message: "Veuillez sélectionner un commercial",
+              },
+            ]}
+          >
+            <Select placeholder="Sélectionnez un commercial">
+              {/* {commercials.map((commercial) => (
                       <Option key={commercial._id} value={commercial._id}>
                         {commercial.prenom} {commercial.nom}
                       </Option>
                     ))} */}
-                 {commercials
-  .filter(commercial => {
-    return commercial.createdBy === currentManagerId;
-  })
-  .map((commercial) => {
-    return (
-      <Option key={commercial._id} value={commercial._id}>
-        {commercial.prenom} {commercial.nom}
-      </Option>
-    );
-  })}
-                  </Select>
-                </Form.Item>
-                <Form.Item>
-                  <Space>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      className="bg-blue-500 hover:bg-blue-600 text-white font-semibold"
-                    >
-                      Affecter
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setIsAssignModalVisible(false);
-                        assignForm.resetFields();
-                      }}
-                    >
-                      Annuler
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
-            </Modal>
-      
-            {/* Unassign Modal */}
-            <Modal
-              title="Désaffecter les clients du Commercial"
-              visible={isUnassignModalVisible}
-              onCancel={() => setIsUnassignModalVisible(false)}
-              footer={null}
-            >
-              <Form form={unassignForm} onFinish={handleUnassign}>
-                <Form.Item>
-                  <div className="mb-4 p-3 bg-orange-50 rounded border border-orange-200">
-                    <div className="text-sm text-orange-700">
-                      <strong>Attention:</strong> Êtes-vous sûr de vouloir désaffecter{" "}
-                      {selectedLeads.length} client(s) du commercial ?
-                    </div>
-                  </div>
-                  <Space>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                    >
-                      Désaffecter
-                    </Button>
-                    <Button onClick={() => setIsUnassignModalVisible(false)}>
-                      Annuler
-                    </Button>
-                  </Space>
-                </Form.Item>
-              </Form>
-            </Modal>
+              {commercials
+                .filter((commercial) => {
+                  return commercial.createdBy === currentManagerId;
+                })
+                .map((commercial) => {
+                  return (
+                    <Option key={commercial._id} value={commercial._id}>
+                      {commercial.prenom} {commercial.nom}
+                    </Option>
+                  );
+                })}
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold"
+              >
+                Affecter
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsAssignModalVisible(false);
+                  assignForm.resetFields();
+                }}
+              >
+                Annuler
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Unassign Modal */}
+      <Modal
+        title="Désaffecter les clients du Commercial"
+        visible={isUnassignModalVisible}
+        onCancel={() => setIsUnassignModalVisible(false)}
+        footer={null}
+      >
+        <Form form={unassignForm} onFinish={handleUnassign}>
+          <Form.Item>
+            <div className="mb-4 p-3 bg-orange-50 rounded border border-orange-200">
+              <div className="text-sm text-orange-700">
+                <strong>Attention:</strong> Êtes-vous sûr de vouloir désaffecter{" "}
+                {selectedLeads.length} client(s) du commercial ?
+              </div>
+            </div>
+            <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                className="bg-orange-500 hover:bg-orange-600 text-white font-semibold"
+              >
+                Désaffecter
+              </Button>
+              <Button onClick={() => setIsUnassignModalVisible(false)}>
+                Annuler
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };
