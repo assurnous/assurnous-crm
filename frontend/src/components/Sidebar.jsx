@@ -118,7 +118,7 @@ const SideBar = () => {
           style={{ fontSize: "18px", marginRight: "2px" }}
         />
       ),
-      label: "Mon Portefeuille",
+      label: "Mon portefeuille",
       
       children: [
         {
@@ -185,7 +185,7 @@ const SideBar = () => {
               style={{ fontSize: "18px", marginRight: "2px" }}
             />
           ),
-          label: "Mes Contrats",
+          label: "Mes contrats",
           role: ["Admin", "Commercial", "Manager"],
         },
       
@@ -198,7 +198,7 @@ const SideBar = () => {
               style={{ fontSize: "18px", marginRight: "2px" }}
             />
           ),
-          label: "Mes Sinistres",
+          label: "Mes sinistres",
           role: ["Admin", "Commercial", "Manager"],
         }, 
         {
@@ -209,7 +209,7 @@ const SideBar = () => {
               style={{ fontSize: "18px", marginRight: "2px" }}
             />
           ),
-          label: "Mes Réclamations",
+          label: "Mes réclamations",
           role: ["Admin", "Commercial", "Manager"],
         },
         
@@ -237,7 +237,7 @@ const SideBar = () => {
           role: ["Admin",  "Manager"],
         },
         {
-          key: "/devis",
+          key: "/Devis",
           icon: (
             <FontAwesomeIcon
               icon={faFileInvoiceDollar} // Example icon for devis
@@ -315,7 +315,7 @@ const SideBar = () => {
           style={{ fontSize: "18px", marginRight: "2px" }}
         />
       ),
-      label: "Mon Agenda",
+      label: "Mon agenda",
       role: ["Commercial", "Admin", "Manager"],
     },
 

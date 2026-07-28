@@ -788,43 +788,94 @@ const Sinistres = () => {
       message.error("Erreur lors de la soumission du formulaire");
     }
   };
+  // useEffect(() => {
+  //   const fetchUsers = async () => {
+  //     try {
+  //       // Fetch both admins and commercials
+  //         const [adminsRes, commercialsRes, managersRes] = await Promise.all([
+  //                         axios.get("/admin"),
+  //                         axios.get("/commercials"),
+  //                         axios.get("/manager"),
+  //                       ]);
+
+  //       // Combine and format the data
+  //       const combinedUsers = [
+  //         ...adminsRes.data.map((admin) => ({
+  //           ...admin,
+  //           userType: "admin",
+  //         })),
+  //         ...commercialsRes.data.map((commercial) => ({
+  //           ...commercial,
+  //           userType: "commercial",
+  //         })),
+  //         ...managersRes.data.map((manager) => ({
+  //           ...manager,
+  //           userType: "manager",
+  //         }))
+  //       ];
+
+  //       setUsers(combinedUsers);
+  //       setLoading(false);
+  //     } catch (error) {
+  //       console.error("Error fetching users:", error);
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchUsers();
+  // }, []);
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        // Fetch both admins and commercials
+        const token = localStorage.getItem("token");
+        const decodedToken = jwtDecode(token);
+        const role = decodedToken?.role?.toLowerCase();
+        const userId = decodedToken?.userId;
+  
+        if (role === "admin") {
           const [adminsRes, commercialsRes, managersRes] = await Promise.all([
-                          axios.get("/admin"),
-                          axios.get("/commercials"),
-                          axios.get("/manager"),
-                        ]);
-
-        // Combine and format the data
-        const combinedUsers = [
-          ...adminsRes.data.map((admin) => ({
-            ...admin,
-            userType: "admin",
-          })),
-          ...commercialsRes.data.map((commercial) => ({
-            ...commercial,
+            axios.get("/admin", { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get("/commercials", { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get("/manager", { headers: { Authorization: `Bearer ${token}` } }),
+          ]);
+          setUsers([
+            ...adminsRes.data.map((a) => ({ ...a, userType: "admin", name: a.name || a.nom })),
+            ...commercialsRes.data.map((c) => ({ ...c, userType: "commercial" })),
+            ...managersRes.data.map((m) => ({ ...m, userType: "manager" })),
+          ]);
+        } else if (role === "manager") {
+          // Fetch the manager's own profile + their team of commercials in parallel
+          const [managerRes, commercialsRes] = await Promise.all([
+            axios.get(`/manager/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get(`/commercials/manager/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+          ]);
+  
+          const managerData = managerRes.data
+            ? [{ ...managerRes.data, userType: "manager" }]
+            : [];
+  
+          const teamCommercials = (commercialsRes.data || []).map((c) => ({
+            ...c,
             userType: "commercial",
-          })),
-          ...managersRes.data.map((manager) => ({
-            ...manager,
-            userType: "manager",
-          }))
-        ];
-
-        setUsers(combinedUsers);
-        setLoading(false);
+          }));
+  
+          setUsers([...managerData, ...teamCommercials]);
+        } else {
+          // Commercial: only themselves
+          const commercialRes = await axios.get(`/commercials/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setUsers(
+            commercialRes.data ? [{ ...commercialRes.data, userType: "commercial" }] : []
+          );
+        }
       } catch (error) {
         console.error("Error fetching users:", error);
-        setLoading(false);
       }
     };
-
+  
     fetchUsers();
   }, []);
-
   useEffect(() => {
     // const fetchClients = async () => {
     //   setLoading(true);

@@ -220,43 +220,95 @@ if (filterValues.search) {
     }
   };
 
+  // useEffect(() => {
+  //   const fetchUsers = async () => {
+  //     try {
+  //       const [adminsRes, commercialsRes, managersRes] = await Promise.all([
+  //         axios.get("/admin"),
+  //         axios.get("/commercials"),
+  //         axios.get("/manager"),
+  //       ]);
+  
+  //       const combinedUsers = [
+  //         ...adminsRes.data.map(admin => ({
+  //           ...admin,
+  //           userType: "admin",
+  //           id: admin._id,
+  //           // Standardize name fields
+  //           name: admin.name || admin.nom || admin.email.split('@')[0]
+  //         })),
+  //         ...commercialsRes.data.map(commercial => ({
+  //           ...commercial,
+  //           userType: "commercial",
+  //           id: commercial._id,
+  //           // Ensure all commercial have nom/prenom
+  //           nom: commercial.nom || commercial.name?.split(' ')[0] || "",
+  //           prenom: commercial.prenom || commercial.name?.split(' ')[1] || ""
+  //         })),
+  //         ...managersRes.data.map(manager => ({
+  //           ...manager,
+  //           userType: "manager",
+  //           id: manager._id,
+  //           // Standardize name fields
+  //           nom: manager.nom || manager.name?.split(' ')[0] || "",
+  //           prenom: manager.prenom || manager.name?.split(' ')[1] || ""
+  //         }))
+  //       ];
+  
+  //       console.log('Combined users data:', combinedUsers);
+  //       setUsers(combinedUsers);
+  //     } catch (error) {
+  //       console.error("Error fetching users:", error);
+  //     }
+  //   };
+  
+  //   fetchUsers();
+  // }, []);
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const [adminsRes, commercialsRes, managersRes] = await Promise.all([
-          axios.get("/admin"),
-          axios.get("/commercials"),
-          axios.get("/manager"),
-        ]);
+        const token = localStorage.getItem("token");
+        const decodedToken = jwtDecode(token);
+        const role = decodedToken?.role?.toLowerCase();
+        const userId = decodedToken?.userId;
   
-        const combinedUsers = [
-          ...adminsRes.data.map(admin => ({
-            ...admin,
-            userType: "admin",
-            id: admin._id,
-            // Standardize name fields
-            name: admin.name || admin.nom || admin.email.split('@')[0]
-          })),
-          ...commercialsRes.data.map(commercial => ({
-            ...commercial,
+        if (role === "admin") {
+          const [adminsRes, commercialsRes, managersRes] = await Promise.all([
+            axios.get("/admin", { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get("/commercials", { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get("/manager", { headers: { Authorization: `Bearer ${token}` } }),
+          ]);
+          setUsers([
+            ...adminsRes.data.map((a) => ({ ...a, userType: "admin", name: a.name || a.nom })),
+            ...commercialsRes.data.map((c) => ({ ...c, userType: "commercial" })),
+            ...managersRes.data.map((m) => ({ ...m, userType: "manager" })),
+          ]);
+        } else if (role === "manager") {
+          // Fetch the manager's own profile + their team of commercials in parallel
+          const [managerRes, commercialsRes] = await Promise.all([
+            axios.get(`/manager/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get(`/commercials/manager/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+          ]);
+  
+          const managerData = managerRes.data
+            ? [{ ...managerRes.data, userType: "manager" }]
+            : [];
+  
+          const teamCommercials = (commercialsRes.data || []).map((c) => ({
+            ...c,
             userType: "commercial",
-            id: commercial._id,
-            // Ensure all commercial have nom/prenom
-            nom: commercial.nom || commercial.name?.split(' ')[0] || "",
-            prenom: commercial.prenom || commercial.name?.split(' ')[1] || ""
-          })),
-          ...managersRes.data.map(manager => ({
-            ...manager,
-            userType: "manager",
-            id: manager._id,
-            // Standardize name fields
-            nom: manager.nom || manager.name?.split(' ')[0] || "",
-            prenom: manager.prenom || manager.name?.split(' ')[1] || ""
-          }))
-        ];
+          }));
   
-        console.log('Combined users data:', combinedUsers);
-        setUsers(combinedUsers);
+          setUsers([...managerData, ...teamCommercials]);
+        } else {
+          // Commercial: only themselves
+          const commercialRes = await axios.get(`/commercials/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          setUsers(
+            commercialRes.data ? [{ ...commercialRes.data, userType: "commercial" }] : []
+          );
+        }
       } catch (error) {
         console.error("Error fetching users:", error);
       }
@@ -264,38 +316,7 @@ if (filterValues.search) {
   
     fetchUsers();
   }, []);
-
-  // useEffect(() => {
-  //   const fetchUsers = async () => {
-  //     try {
-  //       // Fetch both admins and commercials
-  //       const [adminsRes, commercialsRes] = await Promise.all([
-  //         axios.get("/admin"),
-  //         axios.get("/commercials"),
-  //       ]);
-
-  //       // Combine and format the data
-  //       const combinedUsers = [
-  //         ...adminsRes.data.map((admin) => ({
-  //           ...admin,
-  //           userType: "admin",
-  //         })),
-  //         ...commercialsRes.data.map((commercial) => ({
-  //           ...commercial,
-  //           userType: "commercial",
-  //         })),
-  //       ];
-
-  //       setUsers(combinedUsers);
-  //       setLoading(false);
-  //     } catch (error) {
-  //       console.error("Error fetching users:", error);
-  //       setLoading(false);
-  //     }
-  //   };
-
-  //   fetchUsers();
-  // }, []);
+ 
 
   const formatContratItem = (contrat) => ({
     key: contrat._id,
@@ -1615,53 +1636,8 @@ const handleLeadClick = (lead) => {
                   <Option value="autre">Autre</Option>
                 </Select>
               </Form.Item>
-              {/* <Form.Item
-                label={
-                  <span className="text-xs font-medium">GESTIONNAIRE*</span>
-                }
-                name="gestionnaire"
-                className="mb-0"
-                rules={[
-                  {
-                    required: true,
-                    message: "Veuillez sélectionner un gestionnaire",
-                  },
-                ]}
-              >
-                <Select
-                  className="w-full text-xs h-7"
-                  placeholder={
-                    loading
-                      ? "Chargement..."
-                      : "-- Choisissez un gestionnaire --"
-                  }
-                  loading={loading}
-                  showSearch
-                  optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
-                  }
-                  disabled={loading}
-                >
-                  {users.map((user) => {
-                    const displayName =
-                      user.userType === "admin"
-                        ? user.name
-                        : `${user.nom} ${user.prenom}`;
-
-                    return (
-                      <Option
-                        key={`${user.userType}-${user._id}`}
-                        value={displayName}
-                      >
-                        {displayName} (
-                        {user.userType === "admin" ? "Admin" : "Commercial"})
-                      </Option>
-                    );
-                  })}
-                </Select>
-              </Form.Item> */}
-            <Form.Item
+        
+            {/* <Form.Item
   label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
   name="gestionnaire"  // This should be the display name
   className="mb-0"
@@ -1683,19 +1659,7 @@ const handleLeadClick = (lead) => {
     }
     disabled={loading}
   >
-    {/* {users.map((user) => {
-      const displayName =
-        user.userType === "admin"
-          ? user.name
-          : `${user.nom} ${user.prenom}`;
-
-      return (
-        <Option key={user._id} value={user._id}>
-          {displayName} (
-            {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
-        </Option>
-      );
-    })} */}
+    
       {users.map((user) => {
       const displayName =
         user.userType === "admin"
@@ -1710,7 +1674,29 @@ const handleLeadClick = (lead) => {
       );
     })}
   </Select>
-</Form.Item>
+</Form.Item> */}
+ <Form.Item
+              label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
+              name="gestionnaire"
+              className="mb-0"
+              rules={[{ required: true, message: "Ce champ est obligatoire" }]}
+            >
+              <Select
+                className="w-full text-xs h-7"
+                placeholder="-- Choisissez un gestionnaire --"
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option.children.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                {users.map((user) => (
+                  <Option key={user._id} value={user._id}>
+                    {`${user.nom} ${user.prenom}`} 
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
 
 <Form.Item name="gestionnaireId" hidden>
   <Input />

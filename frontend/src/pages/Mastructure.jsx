@@ -490,7 +490,7 @@ const toggleEdit = () => {
         {/* Left Section - Information */}
         <div className="flex-1">
           <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
-            <h2 className="m-0 text-xl text-gray-800">{cabinet?.name || "Assurnous EAB assurance"}</h2>
+            <h2 className="m-0 text-xl text-gray-800">{cabinet?.raisonSociale || "Assurnous EAB assurance"}</h2>
             {editing ? (
               <Space>
                 <Button onClick={() => setEditing(false)}>
