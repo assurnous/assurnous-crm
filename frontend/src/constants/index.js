@@ -34,6 +34,7 @@ export const ASSUREURS = [
     { value: 'altima_assurances', label: 'ALTIMA ASSURANCES' },
     { value: 'amaguiz', label: 'AMAGUIZ' },
     { value: 'amellis_mutuelles', label: 'AMELLIS MUTUELLES' },
+    { value: 'luxior', label: 'LUXIOR' },
     { value: 'anips', label: 'ANIPS' },
     { value: 'antarius', label: 'ANTARIUS' },
     { value: 'aon_france', label: 'AON FRANCE' },
