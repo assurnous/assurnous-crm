@@ -757,7 +757,21 @@ export const ASSUREURS = [
     { value: 'leader', label: 'Leader' },
     { value: 'assurmax', label: 'Assurmax' },
     { value: 'xenassur', label: 'Xenassur' },
-    { value: 'mila', label: 'Mila' }
+    { value: 'mila', label: 'Mila' },
+    { value: 'leocare', label: 'Léocare' },
+{ value: 'maxence', label: 'Maxence' },
+{ value: 'wazari', label: 'Wazari' },
+{ value: 'hiscox', label: 'Hiscox' },
+{ value: 'novelia', label: 'Novelia' },
+{ value: 'mascotte', label: 'Mascotte' },
+{ value: 'i-assure', label: 'I Assure' },
+{ value: 'wakam', label: 'Wakam' },
+{ value: 'cmam', label: 'CMAM' },
+{ value: 'carmine', label: 'Carmine' },
+{value : 'axeria', label: 'Axeria'},
+{value : 'hoken/spring', label: 'Hoken/Spring'},
+{value : 'progeas', label: 'Progeas'},
+
   ];
 
   export const RISQUES = [
