@@ -25,6 +25,8 @@ import FileUpload from "../components/TabsContent/FileUpload";
 import { ASSUREURS, RISQUES } from "../constants";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
+import { ConfigProvider } from "antd";
+import fr_FR from 'antd/locale/fr_FR';
 
 const { RangePicker } = DatePicker;
 
@@ -1187,7 +1189,10 @@ const handleLeadClick = (lead) => {
     },
   ];
 
+  // return (
+  //   <section className="container mx-auto">
   return (
+    <ConfigProvider locale={fr_FR}>
     <section className="container mx-auto">
       <div className="mb-12 md:p-1 p-1">
         <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
@@ -1878,8 +1883,9 @@ const handleLeadClick = (lead) => {
           </button>
         </div>
       </Modal>
-    </section>
-  );
+      </section>
+  </ConfigProvider>
+);
 };
 
 export default AllCommands;

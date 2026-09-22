@@ -20,6 +20,8 @@ import dayjs from "dayjs";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import FileUpload from "../components/TabsContent/FileUpload";
+import { ConfigProvider } from "antd";
+import fr_FR from 'antd/locale/fr_FR';
 
 const { RangePicker } = DatePicker;
 
@@ -1416,7 +1418,10 @@ const deleteDevis = async (id) => {
  
 
 
+  // return (
+  //   <section className="container mx-auto">
   return (
+    <ConfigProvider locale={fr_FR}>
     <section className="container mx-auto">
       <div className="mb-12 md:p-1 p-1">
         <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
@@ -2023,8 +2028,9 @@ const deleteDevis = async (id) => {
                   </button>
               </div>
             </Modal>
-    </section>
-  );
+            </section>
+  </ConfigProvider>
+);
 };
 
 export default MesDevis;

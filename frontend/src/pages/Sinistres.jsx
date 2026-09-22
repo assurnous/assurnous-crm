@@ -20,6 +20,8 @@ import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../constants";
 import { useNavigate } from "react-router-dom";
+import { ConfigProvider } from "antd";
+import fr_FR from 'antd/locale/fr_FR';
 
 const { Option } = Select;
 const Sinistres = () => {
@@ -1428,8 +1430,11 @@ const Sinistres = () => {
       .padStart(2, "0")}/${d.getFullYear()}`;
   };
 
-  return (
-    <section className=" mx-auto">
+  // return (
+    // <section className=" mx-auto">
+    return (
+      <ConfigProvider locale={fr_FR}>
+      <section className=" mx-auto">
       <div className="mb-12 md:p-1 p-1">
         <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
           <h2 className="text-xs sm:text-sm font-semibold text-blue-800 text-center md:text-left">
@@ -2065,8 +2070,9 @@ const Sinistres = () => {
           </Button>
         </div>
       </Modal>
-    </section>
-  );
+      </section>
+  </ConfigProvider>
+);
 };
 
 export default Sinistres;
