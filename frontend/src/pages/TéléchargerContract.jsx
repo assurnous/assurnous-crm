@@ -1526,7 +1526,13 @@ const handleLeadClick = (lead) => {
                   { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
-                <Select placeholder="-- Choisissez --">
+                <Select  
+                  showSearch
+                  placeholder="-- Choisissez --"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }>
                   {RISQUES.map((risque) => (
                     <Option key={risque.value} value={risque.value}>
                       {risque.label}

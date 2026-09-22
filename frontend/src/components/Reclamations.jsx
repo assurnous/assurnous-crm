@@ -1709,7 +1709,12 @@ const Reclamations = () => {
               name="assureur"
               rules={[{ required: true, message: "Ce champ est obligatoire" }]}
             >
-              <Select placeholder="-- Choisissez --" className="w-full">
+              <Select showSearch
+                  placeholder="-- Choisissez --"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  } className="w-full">
                 {ASSUREURS.map((assureur) => (
                   <Option key={assureur.value} value={assureur.value}>
                     {assureur.label}

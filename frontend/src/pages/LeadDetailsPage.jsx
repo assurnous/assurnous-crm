@@ -46,7 +46,16 @@ const ClientDetailPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [gestionnaire, setGestionnaire] = useState(null);
     const [form] = Form.useForm();
-    const [hasDevoirConseil, setHasDevoirConseil] = useState(false); // ADD THIS STATE
+    const [hasDevoirConseil, setHasDevoirConseil] = useState(false); 
+    const [tabCounts, setTabCounts] = useState({
+      devis: 0,
+      contrats: 0,
+      documents: 0,
+      devoirConseil: 0,
+      sinistres: 0,
+      reclamations: 0,
+      notes: 0,
+    });
 
     // Function to check if client has Devoir de Conseil documents
     const checkDevoirConseilDocuments = async () => {
@@ -166,6 +175,109 @@ const ClientDetailPage = () => {
   
     fetchClient();
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+  
+    const fetchTabCounts = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const headers = { Authorization: `Bearer ${token}` };
+  
+        const [
+          devisRes,
+          contratsRes,
+          documentsRes,
+          sinistresRes,
+          reclamationsRes,
+        ] = await Promise.all([
+          axios.get(`/devis`, { headers }).catch(() => ({ data: [] })),
+          axios.get(`/contrat`, { headers }).catch(() => ({ data: [] })),
+          axios.get(`/documents/${id}`, { headers }).catch(() => ({ data: [] })),
+          axios.get(`/sinistres`, { headers }).catch(() => ({ data: [] })),
+          axios.get(`/reclamations`, { headers }).catch(() => ({ data: [] })),
+        ]);
+  
+        const devisList = devisRes.data?.data || devisRes.data || [];
+        const contratsList = contratsRes.data?.data || contratsRes.data || [];
+        const documentsList = documentsRes.data?.data || documentsRes.data || [];
+        const sinistresList = sinistresRes.data?.data || sinistresRes.data || [];
+        const reclamationsList = reclamationsRes.data?.data || reclamationsRes.data || [];
+  
+        // Extract lead id from either populated object or raw string
+        const getLeadId = (record) => {
+          if (!record) return null;
+          const raw = record.lead ?? record.leadId ?? record.chat ?? record.chatId;
+          if (!raw) return null;
+          return typeof raw === "object" ? raw._id?.toString() : raw.toString();
+        };
+  
+        const targetId = id?.toString();
+  
+        const devisForClient = devisList.filter(d => getLeadId(d) === targetId);
+        const contratsForClient = contratsList.filter(c => getLeadId(c) === targetId);
+        const sinistresForClient = sinistresList.filter(s =>
+          getLeadId(s) === targetId ||
+          s.sinistreDetails?.lead?._id?.toString() === targetId ||
+          s.sinistreDetails?.lead?.toString() === targetId
+        );
+        const reclamationsForClient = reclamationsList.filter(r => getLeadId(r) === targetId);
+  
+        const devoirDocs = documentsList.filter(d => d.family === "Devoir de Conseil");
+  
+        setTabCounts({
+          devis: devisForClient.length,
+          contrats: contratsForClient.length,
+          documents: documentsList.length,
+          devoirConseil: devoirDocs.length,
+          sinistres: sinistresForClient.length,
+          reclamations: reclamationsForClient.length,
+          notes: comments?.length || 0,
+        });
+  
+        console.log("Tab counts computed:", {
+          devis: devisForClient.length,
+          contrats: contratsForClient.length,
+          documents: documentsList.length,
+          devoirConseil: devoirDocs.length,
+          sinistres: sinistresForClient.length,
+          reclamations: reclamationsForClient.length,
+          notes: comments?.length || 0,
+          samples: {
+            devisLead: getLeadId(devisList[0]),
+            contratLead: getLeadId(contratsList[0]),
+            targetId,
+          },
+        });
+      } catch (error) {
+        console.error("Error fetching tab counts:", error);
+      }
+    };
+  
+    fetchTabCounts();
+  }, [id, comments]);
+
+
+  const tabLabel = (title, count) => (
+    <span>
+      {title}
+      {count > 0 && (
+        <span
+          style={{
+            marginLeft: 8,
+            background: "#1890ff",
+            color: "#fff",
+            borderRadius: 10,
+            padding: "1px 8px",
+            fontSize: 12,
+            fontWeight: 600,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </span>
+  );
 
   // useEffect(() => {
   //   const fetchClient = async () => {
@@ -1342,7 +1454,8 @@ const ClientDetailPage = () => {
       {/* Main content with tabs */}
       <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" className="client-details-tabs">
         {/* General Information Tab */}
-        <TabPane tab="Informations Générales" key="general">
+        {/* <TabPane tab="Informations Générales" key="general"> */}
+        <TabPane tab={tabLabel("Informations Générales", 0)} key="general">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {hasDigitalData && (
               <Card title={<><BankOutlined /> Informations Digitales</>}>
@@ -1483,25 +1596,32 @@ const ClientDetailPage = () => {
         </TabPane>
 
         {/* Other Tabs */}
-        <TabPane tab="Devis" key="devis">
+        {/* <TabPane tab="Devis" key="devis"> */}
+        <TabPane tab={tabLabel("Devis", tabCounts.devis)} key="devis">
           <DevisTabContent />
         </TabPane>
-        <TabPane tab="Contrats" key="contrats">
+        {/* <TabPane tab="Contrats" key="contrats"> */}
+        <TabPane tab={tabLabel("Contrats", tabCounts.contrats)} key="contrats">
           <ContratTabContent />
         </TabPane>
-        <TabPane tab="Documents" key="documents">
+        {/* <TabPane tab="Documents" key="documents"> */}
+        <TabPane tab={tabLabel("Documents", tabCounts.documents)} key="documents">
           <DocumentTabContent />
         </TabPane>
-        <TabPane tab=" Devoir de conseil" key="devoirConseil">
+        {/* <TabPane tab=" Devoir de conseil" key="devoirConseil"> */}
+        <TabPane tab={tabLabel("Devoir de conseil", tabCounts.devoirConseil)} key="devoirConseil">
           < DevoirConseil />
         </TabPane>
-        <TabPane tab="Sinistres" key="sinistres">
+        {/* <TabPane tab="Sinistres" key="sinistres"> */}
+        <TabPane tab={tabLabel("Sinistres", tabCounts.sinistres)} key="sinistres">
           <SinistreTabContent />
         </TabPane>
-        <TabPane tab="Réclamations" key="reclamations">
+        {/* <TabPane tab="Réclamations" key="reclamations"> */}
+        <TabPane tab={tabLabel("Réclamations", tabCounts.reclamations)} key="reclamations">
           <ReclamtionTabContent />
         </TabPane>
-        <TabPane tab="Notes" key="notes">
+        {/* <TabPane tab="Notes" key="notes"> */}
+        <TabPane tab={tabLabel("Notes", tabCounts.notes)} key="notes">
                      <div className="p-4">
                <div className="flex items-center gap-4 mb-4">
                  <Input

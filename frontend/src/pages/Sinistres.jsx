@@ -1862,7 +1862,12 @@ const Sinistres = () => {
             </h2>
 
             <Form.Item name="risque" label="Risque" className="w-full">
-              <Select placeholder="-- Choisissez --" className="w-full">
+              <Select showSearch
+                  placeholder="-- Choisissez --"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  } className="w-full">
                 {RISQUES.map((risque) => (
                   <Option key={risque.value} value={risque.value}>
                     {risque.label}
@@ -1872,7 +1877,12 @@ const Sinistres = () => {
             </Form.Item>
 
             <Form.Item name="assureur" label="Assureur" className="w-full">
-              <Select placeholder="-- Choisissez --" className="w-full">
+              <Select showSearch
+                  placeholder="-- Choisissez --"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  } className="w-full">
                 {ASSUREURS.map((assureur) => (
                   <Option key={assureur.value} value={assureur.value}>
                     {assureur.label}
