@@ -16,7 +16,9 @@ import {
   CalendarOutlined,
   BankOutlined,
   MessageOutlined,
-  FileTextOutlined 
+  FileTextOutlined,
+  WarningOutlined,     
+  CheckCircleOutlined,
 
 } from "@ant-design/icons";
 import { jwtDecode } from "jwt-decode";
@@ -30,6 +32,7 @@ import SinistreTabContent from "../components/TabsContent/SinistreTabContent";
 import ReclamtionTabContent from "../components/TabsContent/ReclamtionTabContent";
 import dayjs from "dayjs";
 import DevoirConseil from "../components/TabsContent/DevoirConseil";
+import ComplianceCheck from "../components/ComplianceCheck";  
 
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
@@ -41,6 +44,7 @@ const ClientDetailPage = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
+  const [hasContract, setHasContract] = useState(false);
   const [users, setUsers] = useState([]);
   const [comments, setComments] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -149,6 +153,7 @@ const ClientDetailPage = () => {
         const response = await axios.get(`/lead/${id}`);
         const clientData = response.data.chat;
         setClient(clientData);
+        setHasContract(response.data.hasContract || false);
         setLoading(false);
         await checkDevoirConseilDocuments();
         if (isModalOpen) {
@@ -428,6 +433,16 @@ const ClientDetailPage = () => {
                   Devoir de Conseil
                 </Tag>
               )}
+                {client.efficialeScreening?.summary === "MATCH" && (
+          <Tag color="red" icon={<WarningOutlined />}>
+            Signalement
+          </Tag>
+        )}
+        {client.efficialeScreening?.summary === "CLEAR" && (
+          <Tag color="green" icon={<CheckCircleOutlined />}>
+            Conforme
+          </Tag>
+        )}
       </span>
     </Title>
   </div>
@@ -1457,6 +1472,8 @@ const ClientDetailPage = () => {
         {/* <TabPane tab="Informations Générales" key="general"> */}
         <TabPane tab={tabLabel("Informations Générales", 0)} key="general">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* <ComplianceCheck lead={client} onUpdate={setClient} />   */}
+          <ComplianceCheck lead={client} hasContract={hasContract} onUpdate={setClient} />
           {hasDigitalData && (
               <Card title={<><BankOutlined /> Informations Digitales</>}>
                 <Descriptions column={1} bordered size="small">

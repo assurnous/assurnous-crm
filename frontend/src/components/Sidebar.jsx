@@ -15,6 +15,7 @@ import {
   faBoxes,
   faFileInvoiceDollar,
   faExclamationCircle,
+  faExclamationTriangle, 
   faCalculator,
   faShieldAlt, 
   faClipboardCheck, 
@@ -280,6 +281,17 @@ const SideBar = () => {
             />
           ),
           label: "Liste de conformité",
+          role: ["Admin", "Manager"],
+        },
+        {
+          key: "/compliance-review",
+          icon: (
+            <FontAwesomeIcon
+              icon={faExclamationTriangle}
+              style={{ fontSize: "18px", marginRight: "2px" }}
+            />
+          ),
+          label: "Revue conformité",
           role: ["Admin", "Manager"],
         },
         // {

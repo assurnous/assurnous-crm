@@ -47,6 +47,7 @@ import Clientdigital from "./pages/Clientdigital";
 import ManagerAffectation from "./pages/ManagerAffectation";
 import InterlouteursManger from "./pages/Manager/InterlouteursManger";
 import ListManagerLeads from "./pages/Manager/ListManagerLeads";
+import ComplianceReview from "./pages/ComplianceReview";
 
 
 
@@ -72,7 +73,7 @@ function App() {
             {/* Route for Leads at `/leads` */}
             <Route path="clients" element={<Leads />} />
             <Route path="clientdigital" element={<Clientdigital />} />
-
+            <Route path="/compliance-review" element={<ComplianceReview />} />
             <Route path="leads/:id/ajouter-produit" element={<AjouterProduit />} />
             <Route path="leads/:id/ajouter-produit/:produitId" element={<AjouterProduit />} />
             <Route path="/produits" element={<Programmes />} />
