@@ -1267,50 +1267,72 @@ const ListManagerLeads = () => {
       console.error("Error updating status:", error);
     }
   };
-  const applyColumnSearches = (searches) => {
-    console.log("Applying searches:", searches);
+  // const applyColumnSearches = (searches) => {
+  //   console.log("Applying searches:", searches);
 
-    // If no active searches, show all data
+  //   // If no active searches, show all data
+  //   if (Object.keys(searches).length === 0) {
+  //     console.log("No active searches, showing all data");
+  //     setFilteredData([...chatData]);
+  //     return;
+  //   }
+
+  //   // Start with all data
+  //   let result = [...chatData];
+
+  //   // Apply each column search
+  //   Object.entries(searches).forEach(([columnKey, searchTerm]) => {
+  //     if (searchTerm && searchTerm.trim() !== "") {
+  //       console.log(`Filtering by ${columnKey}: "${searchTerm}"`);
+
+  //       result = result.filter((item) => {
+  //         // Get the value to search in this column
+  //         const columnValue = getColumnValue(item, columnKey);
+
+  //         // Check if it matches the search term
+  //         const matches = columnValue.toLowerCase().includes(searchTerm);
+
+  //         console.log(
+  //           `Item ${item.nom}: ${columnKey}="${columnValue}", matches=${matches}`
+  //         );
+  //         return matches;
+  //       });
+
+  //       console.log(`After filtering by ${columnKey}: ${result.length} items`);
+  //     }
+  //   });
+
+  //   // If no results found, set empty array (will show "no data" in table)
+  //   if (result.length === 0) {
+  //     console.log("No results found for search");
+  //     setFilteredData([]); // Empty array
+  //   } else {
+  //     setFilteredData(result);
+  //   }
+  // };
+  const applyColumnSearches = (searches) => {
     if (Object.keys(searches).length === 0) {
-      console.log("No active searches, showing all data");
       setFilteredData([...chatData]);
       return;
     }
-
-    // Start with all data
+  
     let result = [...chatData];
-
-    // Apply each column search
+  
     Object.entries(searches).forEach(([columnKey, searchTerm]) => {
       if (searchTerm && searchTerm.trim() !== "") {
-        console.log(`Filtering by ${columnKey}: "${searchTerm}"`);
-
+        // Normalize: collapse multiple spaces into one
+        const normalizedTerm = searchTerm.replace(/\s+/g, ' ').trim();
+  
         result = result.filter((item) => {
-          // Get the value to search in this column
           const columnValue = getColumnValue(item, columnKey);
-
-          // Check if it matches the search term
-          const matches = columnValue.toLowerCase().includes(searchTerm);
-
-          console.log(
-            `Item ${item.nom}: ${columnKey}="${columnValue}", matches=${matches}`
-          );
-          return matches;
+          const normalizedValue = (columnValue || '').toLowerCase().replace(/\s+/g, ' ').trim();
+          return normalizedValue.includes(normalizedTerm);
         });
-
-        console.log(`After filtering by ${columnKey}: ${result.length} items`);
       }
     });
-
-    // If no results found, set empty array (will show "no data" in table)
-    if (result.length === 0) {
-      console.log("No results found for search");
-      setFilteredData([]); // Empty array
-    } else {
-      setFilteredData(result);
-    }
+  
+    setFilteredData(result.length === 0 ? [] : result);
   };
-
   const handleDelete = async (id) => {
     try {
       const response = await axios.delete(`/lead/${id}`);
@@ -1389,7 +1411,8 @@ const ListManagerLeads = () => {
     }
   };
   const handleColumnSearch = (e, columnKey) => {
-    const value = e.target.value.trim();
+    // const value = e.target.value.trim();
+    const value = e.target.value;
     console.log(`Searching ${columnKey} for: "${value}"`);
 
     // Update active column searches
