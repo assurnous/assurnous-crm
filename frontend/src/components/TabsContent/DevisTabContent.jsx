@@ -22,6 +22,8 @@ import { jwtDecode } from "jwt-decode";
 // import moment from "moment";
 import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../../constants";
+import { ConfigProvider } from "antd";
+import fr_FR from 'antd/locale/fr_FR';
 
 const { Option } = Select;
 
@@ -527,6 +529,7 @@ const handleEdit = (record) => {
   };
 
   return (
+       <ConfigProvider locale={fr_FR}>
     <div className="p-2">
       <div className="flex justify-between mb-4">
         <div>
@@ -743,7 +746,7 @@ const handleEdit = (record) => {
               label="Date d'effet"
               className="w-full"
             >
-              <DatePicker className="w-full"  />
+              <DatePicker className="w-full" format="DD/MM/YYYY" />
             </Form.Item>
 
            
@@ -752,7 +755,7 @@ const handleEdit = (record) => {
               label="Date de création"
               className="w-full"
             >
-              <DatePicker className="w-full"  />
+              <DatePicker className="w-full" format="DD/MM/YYYY" />
               </Form.Item>
               <Form.Item
               label={<span className="text-xs font-medium">GESTIONNAIRE*</span>}
@@ -979,6 +982,7 @@ const handleEdit = (record) => {
         </div>
       </Modal>
     </div>
+   </ConfigProvider>
   );
 };
 

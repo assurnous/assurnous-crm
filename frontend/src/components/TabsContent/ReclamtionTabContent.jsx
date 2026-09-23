@@ -26,6 +26,8 @@ import { jwtDecode } from "jwt-decode";
 // import moment from "moment";
 import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../../constants";
+import { ConfigProvider } from "antd";
+import fr_FR from 'antd/locale/fr_FR';
 
 const { Option } = Select;
 
@@ -640,6 +642,7 @@ const handleEdit = (record) => {
   };
 
   return (
+    <ConfigProvider locale={fr_FR}>
     <div className="p-2">
       <div className="flex justify-between mb-4">
         <div>
@@ -765,7 +768,7 @@ const handleEdit = (record) => {
               name="date_reclamation"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
-              <DatePicker className="w-full text-xs h-7" />
+              <DatePicker className="w-full text-xs h-7" format="DD/MM/YYYY"/>
             </Form.Item>
 
             <Form.Item
@@ -789,7 +792,7 @@ const handleEdit = (record) => {
               name="date_accuse"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
-              <DatePicker className="w-full text-xs h-7" />
+              <DatePicker className="w-full text-xs h-7" format="DD/MM/YYYY"/>
             </Form.Item>
 
             <Form.Item
@@ -923,7 +926,11 @@ const handleEdit = (record) => {
               name="assureur"
               rules={[{ required: false, message: "Ce champ est obligatoire" }]}
             >
-              <Select placeholder="-- Choisissez --" className="w-full">
+              <Select placeholder="-- Choisissez --" showSearch
+              className="w-full" 
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              } >
                 {ASSUREURS.map((assureur) => (
                   <Option key={assureur.value} value={assureur.value}>
                     {assureur.label}
@@ -1199,6 +1206,7 @@ const handleEdit = (record) => {
         </div>
       </Modal>
     </div>
+    </ConfigProvider>
   );
 };
 

@@ -35,6 +35,8 @@ import { useParams } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../../constants";
+import { ConfigProvider } from "antd";
+import fr_FR from 'antd/locale/fr_FR';
 
 const { Option } = Select;
 const { TabPane } = Tabs;
@@ -255,12 +257,18 @@ const handleSinistreFilter = (value) => {
     assureur: sinistre.assureur || "N/A",
     statutSinistre: sinistre.statutSinistre || "N/A",
     typeSinistre: sinistre.typeSinistre || "N/A",
+    // dateSinistre: sinistre.dateSinistre
+    //   ? new Date(sinistre.dateSinistre).toLocaleDateString("fr-FR")
+    //   : "N/A",
+    // dateDeclaration: sinistre.dateDeclaration
+    //   ? new Date(sinistre.dateDeclaration).toLocaleDateString("fr-FR")
+    //   : "N/A",
     dateSinistre: sinistre.dateSinistre
-      ? new Date(sinistre.dateSinistre).toLocaleDateString("fr-FR")
-      : "N/A",
-    dateDeclaration: sinistre.dateDeclaration
-      ? new Date(sinistre.dateDeclaration).toLocaleDateString("fr-FR")
-      : "N/A",
+  ? dayjs(sinistre.dateSinistre).format("DD/MM/YYYY")
+  : "N/A",
+dateDeclaration: sinistre.dateDeclaration
+  ? dayjs(sinistre.dateDeclaration).format("DD/MM/YYYY")
+  : "N/A",
     responsabilite: sinistre.responsabilite || "N/A",
     montantSinistre: sinistre.montantSinistre || 0,
     delegation: sinistre.delegation || "non",
@@ -1011,6 +1019,7 @@ useEffect(() => {
   }, [activeTabKey, refreshTrigger]);
 
   return (
+    <ConfigProvider locale={fr_FR}>
     <div className="p-2">
       <Tabs 
         activeKey={activeTabKey} 
@@ -1494,7 +1503,10 @@ useEffect(() => {
             )}
 
             <Form.Item name="risque" label="Risque" className="w-full">
-              <Select placeholder="-- Choisissez --" className="w-full">
+              <Select placeholder="-- Choisissez --" showSearch className="w-full" 
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }>
                 {RISQUES.map((risque) => (
                   <Option key={risque.value} value={risque.value}>
                     {risque.label}
@@ -1504,7 +1516,11 @@ useEffect(() => {
             </Form.Item>
 
             <Form.Item name="assureur" label="Assureur" className="w-full">
-              <Select placeholder="-- Choisissez --" className="w-full">
+              <Select placeholder="-- Choisissez --" showSearch
+              className="w-full" 
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }>
                 {ASSUREURS.map((assureur) => (
                   <Option key={assureur.value} value={assureur.value}>
                     {assureur.label}
@@ -1518,21 +1534,36 @@ useEffect(() => {
               DÉTAIL DU SINISTRE
             </h2>
 
-            <Form.Item
+            {/* <Form.Item
               name="dateSinistre"
               label="Date du sinistre"
               className="w-full"
             >
               <DatePicker className="w-full" />
-            </Form.Item>
-
+            </Form.Item> */}
             <Form.Item
+  name="dateSinistre"
+  label="Date du sinistre"
+  className="w-full"
+>
+  <DatePicker className="w-full" format="DD/MM/YYYY" />
+</Form.Item>
+
+<Form.Item
+  name="dateDeclaration"
+  label="Date de déclaration *"
+  className="w-full"
+>
+  <DatePicker className="w-full" format="DD/MM/YYYY" />
+</Form.Item>
+
+            {/* <Form.Item
               name="dateDeclaration"
               label="Date de déclaration *"
               className="w-full"
             >
               <DatePicker className="w-full" />
-            </Form.Item>
+            </Form.Item> */}
 
             <Form.Item
               name="statutSinistre"
@@ -1642,6 +1673,7 @@ useEffect(() => {
         </div>
       </Modal>
     </div>
+    </ConfigProvider>
   );
 };
 

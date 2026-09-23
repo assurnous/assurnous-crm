@@ -22,6 +22,8 @@ import axios from "axios";
 import { useParams } from "react-router-dom";
 import FileUpload from "./FileUpload";
 import { jwtDecode } from "jwt-decode";
+import { ConfigProvider } from "antd";
+import fr_FR from 'antd/locale/fr_FR';
 // import moment from "moment";
 import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../../constants";
@@ -528,6 +530,7 @@ const handleEdit = (record) => {
   };
 
   return (
+    <ConfigProvider locale={fr_FR}>
     <div className="p-2">
       <div className="flex justify-between mb-4">
         <div>
@@ -670,7 +673,11 @@ const handleEdit = (record) => {
               label="Risque"
               rules={[{ required: false, message: 'Ce champ est obligatoire' }]}
             >
-              <Select placeholder="-- Choisissez --">
+              <Select placeholder="-- Choisissez --" showSearch
+              className="w-full" 
+              filterOption={(input, option) =>
+                option.children.toLowerCase().includes(input.toLowerCase())
+              }>
                 {RISQUES.map(risque => (
                   <Option key={risque.value} value={risque.value}>
                     {risque.label}
@@ -954,6 +961,7 @@ const handleEdit = (record) => {
         </div>
       </Modal>
     </div>
+     </ConfigProvider>
   );
 };
 
