@@ -771,6 +771,7 @@ export const ASSUREURS = [
 {value : 'axeria', label: 'Axeria'},
 {value : 'hoken/spring', label: 'Hoken/Spring'},
 {value : 'progeas', label: 'Progeas'},
+{value: 'iassure', label: 'Iassure'},
 
   ];
 
