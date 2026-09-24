@@ -75,24 +75,68 @@ const ComplianceReview = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const { data } = await axios.get("/contrats/pending-review", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      setContracts(data.data || []);
+  
+      // 1. Fetch the full unfiltered list (same shape as /sinistres in Sinistres.jsx)
+      const { data } = await axios.get("/contrats/pending-review");
+      const allContracts = data.data || [];
+  
+      // 2. Decode the JWT to know the caller
+      const decoded = token ? jwtDecode(token) : null;
+      const userRole = String(decoded?.role || "").toLowerCase();
+      const currentUserId = decoded?.userId?.toString();
+  
+      // 3. Admin sees everything — no filtering
+      if (userRole === "admin") {
+        setContracts(allContracts);
+        return;
+      }
+  
+      // 4. Manager: only contracts whose lead is assigned to them or to one of their commercials
+      if (userRole === "manager") {
+        try {
+          // Fetch the manager's team of commercials (same endpoint used elsewhere in the CRM)
+          const commercialsRes = await axios.get("/commercials", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const commercials = commercialsRes.data || [];
+  
+          // Build the team's user IDs — self + all commercials reporting to this manager
+          const teamIds = new Set([currentUserId]);
+          commercials.forEach((c) => {
+            const managerRef =
+              c.manager?.toString() || c.createdBy?.toString();
+            if (managerRef === currentUserId) {
+              teamIds.add(c._id?.toString());
+            }
+          });
+  
+          // Keep only contracts whose lead is assigned to this team
+          const filtered = allContracts.filter((c) => {
+            const lead = c.lead || {};
+            const g = lead.gestionnaire?.toString();
+            const cm = lead.commercial?.toString();
+            const m = lead.manager?.toString();
+            return teamIds.has(g) || teamIds.has(cm) || teamIds.has(m);
+          });
+  
+          setContracts(filtered);
+        } catch (e) {
+          console.error("[ComplianceReview] team filter error:", e);
+          // Fallback: if the commercials fetch fails, don't hide everything
+          setContracts(allContracts);
+        }
+        return;
+      }
+  
+      // 5. Commercial: not supposed to reach this page — defend with empty
+      setContracts([]);
     } catch (err) {
       console.error("[ComplianceReview] fetch error:", err);
-      if (err?.response?.status === 403) {
-        message.error("Vous n'avez pas accès à cette page.");
-      } else if (err?.response?.status === 401) {
-        message.error("Session expirée — veuillez vous reconnecter.");
-      } else {
-        message.error("Impossible de charger les contrats en attente");
-      }
+      message.error("Impossible de charger les contrats en attente");
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => { fetchPending(); }, []);
 
   const handleApprove = async () => {
