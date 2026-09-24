@@ -461,20 +461,39 @@ const ComplianceCheck = ({ lead, hasContract, onUpdate }) => {
       width: 110,
       render: (v) => <Tag color={accuracyColor(v)}>{v}%</Tag>,
     },
+    // {
+    //   title: "Nom détecté",
+    //   dataIndex: "matched_name",
+    //   key: "matched_name",
+    //   render: (v, row) => (
+    //     <div>
+    //       <div style={{ fontWeight: 500 }}>{v || "—"}</div>
+    //       {row.birth_date && (
+    //         <Text type="secondary" style={{ fontSize: 12 }}>
+    //           Né(e) le {row.birth_date}
+    //         </Text>
+    //       )}
+    //     </div>
+    //   ),
+    // },
     {
       title: "Nom détecté",
       dataIndex: "matched_name",
       key: "matched_name",
-      render: (v, row) => (
-        <div>
-          <div style={{ fontWeight: 500 }}>{v || "—"}</div>
-          {row.birth_date && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              Né(e) le {row.birth_date}
-            </Text>
-          )}
-        </div>
-      ),
+    },
+    {
+      title: "Date de naissance",
+      dataIndex: "birth_date",
+      key: "birth_date",
+      width: 150,
+      render: (v) =>
+        v ? (
+          <Tag color="orange" style={{ fontWeight: 600 }}>
+            {v}
+          </Tag>
+        ) : (
+          <Text type="secondary">—</Text>
+        ),
     },
   ];
 

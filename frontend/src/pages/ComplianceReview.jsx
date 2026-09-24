@@ -225,6 +225,20 @@ const ComplianceReview = () => {
                 key: "matched_name",
               },
               {
+                title: "Date de naissance (détectée)",
+                dataIndex: "birth_date",
+                key: "birth_date",
+                width: 180,
+                render: (v) =>
+                  v ? (
+                    <Tag color="orange" style={{ fontWeight: 600 }}>
+                      {v}
+                    </Tag>
+                  ) : (
+                    <Text type="secondary">—</Text>
+                  ),
+              },
+              {
                 title: "Détecté le",
                 dataIndex: "detected_at",
                 key: "detected_at",
