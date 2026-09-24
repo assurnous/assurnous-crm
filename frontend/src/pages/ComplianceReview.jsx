@@ -39,6 +39,12 @@ const ComplianceReview = () => {
   const [contracts, setContracts] = useState([]);
   const [approveModal, setApproveModal] = useState(null); // { contract, notes }
   const [submitting, setSubmitting] = useState(false);
+  const confirmedContracts = contracts.filter(
+    (c) => c.screeningSnapshot?.summary === "MATCH"
+  );
+  const uncertainContracts = contracts.filter(
+    (c) => c.screeningSnapshot?.summary === "MATCH_UNCERTAIN"
+  );
 
   const token = localStorage.getItem("token");
   const decoded = token ? jwtDecode(token) : null;
@@ -186,14 +192,37 @@ const ComplianceReview = () => {
         </Space>
       ),
     },
+    // {
+    //   title: "Client",
+    //   key: "client",
+    //   render: (_, row) => {
+    //     const lead = row.lead || {};
+    //     const name = lead.civilite === "societe"
+    //       ? lead.denomination_commerciale
+    //       : `${lead.prenom || ""} ${lead.nom || ""}`.trim();
+    //     return (
+    //       <div>
+    //         <div>{name || "—"}</div>
+    //         {lead._id && (
+    //           <Text type="secondary" style={{ fontSize: 12 }}>
+    //             {lead.categorie || ""} · {lead.agence || ""}
+    //           </Text>
+    //         )}
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       title: "Client",
       key: "client",
       render: (_, row) => {
         const lead = row.lead || {};
-        const name = lead.civilite === "societe"
-          ? lead.denomination_commerciale
-          : `${lead.prenom || ""} ${lead.nom || ""}`.trim();
+        const name =
+          lead.civilite === "societe"
+            ? lead.denomination_commerciale
+            : `${lead.prenom || ""} ${lead.nom || ""}`.trim();
+        const hasDob = !!lead.date_naissance;
+
         return (
           <div>
             <div>{name || "—"}</div>
@@ -202,8 +231,44 @@ const ComplianceReview = () => {
                 {lead.categorie || ""} · {lead.agence || ""}
               </Text>
             )}
+            {!hasDob && (
+              <div style={{ marginTop: 4 }}>
+                <Tag color="orange" style={{ fontSize: 11 }}>
+                  ⚠ DOB non renseignée
+                </Tag>
+              </div>
+            )}
           </div>
         );
+      },
+    },
+    {
+      title: "Correspondance DOB",
+      key: "dob_summary",
+      width: 160,
+      render: (_, row) => {
+        const lead = row.lead || {};
+        const clientDob = lead.date_naissance
+          ? new Date(lead.date_naissance).toISOString().slice(0, 10)
+          : null;
+
+        const alerts = lead.efficialeScreening?.alerts || [];
+        const alertDobs = alerts.map((a) => a.birth_date).filter(Boolean);
+
+        if (!clientDob) {
+          return <Tag color="orange">Client sans DOB</Tag>;
+        }
+        if (alertDobs.length === 0) {
+          return <Tag color="default">Alerte sans DOB</Tag>;
+        }
+        if (alertDobs.some((d) => d === clientDob)) {
+          return (
+            <Tag color="red" icon={<WarningOutlined />}>
+              DOB identique
+            </Tag>
+          );
+        }
+        return <Tag color="blue">DOB différent</Tag>;
       },
     },
     {
@@ -263,135 +328,357 @@ const ComplianceReview = () => {
   ];
 
   // Expanded row shows the alerts from the lead's screening
+  // const expandedRowRender = (row) => {
+  //   const alerts = row.lead?.efficialeScreening?.alerts || [];
+  //   if (!alerts.length) {
+  //     return <Text type="secondary">Aucun détail d'alerte disponible.</Text>;
+  //   }
+  //   return (
+  //       <div style={{ padding: "12px 16px", backgroundColor: "#fafafa" }}>
+  //         <Table
+  //           size="small"
+  //           pagination={false}
+  //           showHeader={true}
+  //           dataSource={alerts.map((a, i) => ({ ...a, key: a.id || i }))}
+  //           columns={[
+  //             {
+  //               title: "Correspondance DOB",
+  //               key: "dob_match_summary",
+  //               width: 160,
+  //               render: (_, row) => {
+  //                 const lead = row.lead || {};
+  //                 const clientDob = lead.date_naissance
+  //                   ? new Date(lead.date_naissance).toISOString().slice(0, 10)
+  //                   : null;
+              
+  //                 // Best matching DOB among all alerts
+  //                 const alerts = lead.efficialeScreening?.alerts || [];
+  //                 const alertDobs = alerts.map(a => a.birth_date).filter(Boolean);
+              
+  //                 if (!clientDob) {
+  //                   return <Tag color="orange">Client sans DOB</Tag>;
+  //                 }
+  //                 if (alertDobs.length === 0) {
+  //                   return <Tag color="default">Alertes sans DOB</Tag>;
+  //                 }
+  //                 if (alertDobs.some(d => d === clientDob)) {
+  //                   return <Tag color="red" icon={<WarningOutlined />}>DOB identique</Tag>;
+  //                 }
+  //                 return <Tag color="blue">DOB différent</Tag>;
+  //               },
+  //             },
+  //             {
+  //               title: "Liste",
+  //               dataIndex: "control_list",
+  //               key: "control_list",
+  //               width: 180,
+  //               render: (v) => <Tag color="blue">{controlListLabel(v)}</Tag>,
+  //             },
+  //             {
+  //               title: "Source",
+  //               dataIndex: "source",
+  //               key: "source",
+  //             },
+  //             {
+  //               title: "Précision",
+  //               dataIndex: "accuracy",
+  //               key: "accuracy",
+  //               width: 100,
+  //               render: (v) => <Tag color={v >= 99 ? "red" : "volcano"}>{v}%</Tag>,
+  //             },
+  //             {
+  //               title: "Nom détecté",
+  //               dataIndex: "matched_name",
+  //               key: "matched_name",
+  //             },
+  //             {
+  //               title: "Date de naissance (détectée)",
+  //               dataIndex: "birth_date",
+  //               key: "birth_date",
+  //               width: 180,
+  //               render: (v) =>
+  //                 v ? (
+  //                   <Tag color="orange" style={{ fontWeight: 600 }}>
+  //                     {v}
+  //                   </Tag>
+  //                 ) : (
+  //                   <Text type="secondary">—</Text>
+  //                 ),
+  //             },
+  //             {
+  //               title: "Détecté le",
+  //               dataIndex: "detected_at",
+  //               key: "detected_at",
+  //               width: 160,
+  //             },
+  //           ]}
+  //         />
+  //       </div>
+  //     );
+  // };
   const expandedRowRender = (row) => {
     const alerts = row.lead?.efficialeScreening?.alerts || [];
     if (!alerts.length) {
       return <Text type="secondary">Aucun détail d'alerte disponible.</Text>;
     }
+  
+    const clientDob = row.lead?.date_naissance
+      ? new Date(row.lead.date_naissance).toISOString().slice(0, 10)
+      : null;
+  
+    const enriched = alerts.map((a, i) => ({
+      ...a,
+      key: a.id || i,
+      _clientDob: clientDob,
+      _dobMatch:
+        clientDob && a.birth_date
+          ? clientDob === a.birth_date
+          : null,
+    }));
+  
     return (
-        <div style={{ padding: "12px 16px", backgroundColor: "#fafafa" }}>
-          <Table
-            size="small"
-            pagination={false}
-            showHeader={true}
-            dataSource={alerts.map((a, i) => ({ ...a, key: a.id || i }))}
-            columns={[
-              {
-                title: "Liste",
-                dataIndex: "control_list",
-                key: "control_list",
-                width: 180,
-                render: (v) => <Tag color="blue">{controlListLabel(v)}</Tag>,
-              },
-              {
-                title: "Source",
-                dataIndex: "source",
-                key: "source",
-              },
-              {
-                title: "Précision",
-                dataIndex: "accuracy",
-                key: "accuracy",
-                width: 100,
-                render: (v) => <Tag color={v >= 99 ? "red" : "volcano"}>{v}%</Tag>,
-              },
-              {
-                title: "Nom détecté",
-                dataIndex: "matched_name",
-                key: "matched_name",
-              },
-              {
-                title: "Date de naissance (détectée)",
-                dataIndex: "birth_date",
-                key: "birth_date",
-                width: 180,
-                render: (v) =>
-                  v ? (
-                    <Tag color="orange" style={{ fontWeight: 600 }}>
-                      {v}
-                    </Tag>
-                  ) : (
-                    <Text type="secondary">—</Text>
-                  ),
-              },
-              {
-                title: "Détecté le",
-                dataIndex: "detected_at",
-                key: "detected_at",
-                width: 160,
-              },
-            ]}
-          />
+      <div style={{ padding: "12px 16px", backgroundColor: "#fafafa" }}>
+        {/* Client DOB banner */}
+        <div style={{ marginBottom: 10 }}>
+          <Text strong>Date de naissance du client : </Text>
+          {clientDob ? (
+            <Tag color="blue" style={{ fontWeight: 600 }}>
+              {new Date(clientDob).toLocaleDateString("fr-FR")}
+            </Tag>
+          ) : (
+            <Text type="warning">
+              non renseignée — la comparaison automatique est impossible
+            </Text>
+          )}
         </div>
-      );
+  
+        <Table
+          size="small"
+          pagination={false}
+          showHeader={true}
+          rowClassName={(record) =>
+            record._dobMatch === true ? "dob-match-row" : ""
+          }
+          dataSource={enriched}
+          columns={[
+            {
+              title: "Liste",
+              dataIndex: "control_list",
+              key: "control_list",
+              width: 140,
+              render: (v) => <Tag color="blue">{controlListLabel(v)}</Tag>,
+            },
+            { title: "Source", dataIndex: "source", key: "source", width: 140 },
+            {
+              title: "Précision",
+              dataIndex: "accuracy",
+              key: "accuracy",
+              width: 90,
+              render: (v) => (
+                <Tag color={v >= 99 ? "red" : "volcano"}>{v}%</Tag>
+              ),
+            },
+            {
+              title: "Nom détecté",
+              dataIndex: "matched_name",
+              key: "matched_name",
+            },
+            {
+              title: "DOB (détectée)",
+              dataIndex: "birth_date",
+              key: "birth_date",
+              width: 130,
+              render: (v) =>
+                v ? (
+                  <Tag color="orange" style={{ fontWeight: 600 }}>
+                    {v}
+                  </Tag>
+                ) : (
+                  <Text type="secondary">—</Text>
+                ),
+            },
+            {
+              title: "Correspondance",
+              key: "dob_match",
+              width: 140,
+              render: (_, r) => {
+                if (r._dobMatch === null) {
+                  return <Text type="secondary">Non comparable</Text>;
+                }
+                return r._dobMatch ? (
+                  <Tag color="red">✓ Identique</Tag>
+                ) : (
+                  <Tag color="blue">Diffère</Tag>
+                );
+              },
+            },
+            {
+              title: "Détecté le",
+              dataIndex: "detected_at",
+              key: "detected_at",
+              width: 140,
+            },
+          ]}
+        />
+      </div>
+    );
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <Title level={3} className="mb-0 flex items-center gap-2">
-          <SafetyOutlined />
-          Contrats en attente de validation conformité
-          {contracts.length > 0 && (
-            <Badge count={contracts.length} style={{ backgroundColor: "#faad14" }} />
-          )}
-        </Title>
-      </div>
+    // <div className="max-w-7xl mx-auto p-6">
+    //   <div className="flex items-center justify-between mb-6">
+    //     <Title level={3} className="mb-0 flex items-center gap-2">
+    //       <SafetyOutlined />
+    //       Contrats en attente de validation conformité
+    //       {contracts.length > 0 && (
+    //         <Badge count={contracts.length} style={{ backgroundColor: "#faad14" }} />
+    //       )}
+    //     </Title>
+    //   </div>
 
-      {loading ? (
-        <Skeleton active paragraph={{ rows: 6 }} />
-      ) : contracts.length === 0 ? (
-        <Card>
+    //   {loading ? (
+    //     <Skeleton active paragraph={{ rows: 6 }} />
+    //   ) : contracts.length === 0 ? (
+    //     <Card>
+    //       <Empty
+    //         image={Empty.PRESENTED_IMAGE_SIMPLE}
+    //         description="Aucun contrat en attente de validation conformité."
+    //       />
+    //     </Card>
+    //   ) : (
+    //     <Card bodyStyle={{ padding: 0 }}>
+    //       <Table
+    //         columns={columns}
+    //         dataSource={contracts.map((c) => ({ ...c, key: c._id }))}
+    //         expandedRowRender={expandedRowRender}
+    //         pagination={false}
+    //       />
+    //     </Card>
+    //   )}
+
+    //   <Modal
+    //     title="Approuver le contrat"
+    //     open={!!approveModal}
+    //     onCancel={() => !submitting && setApproveModal(null)}
+    //     onOk={handleApprove}
+    //     okText="Confirmer l'approbation"
+    //     cancelText="Annuler"
+    //     confirmLoading={submitting}
+    //   >
+    //     <div className="space-y-3">
+    //       <Alert
+    //         type="info"
+    //         showIcon
+    //         message={
+    //           <span>
+    //             Vous allez approuver le contrat{" "}
+    //             <b>{approveModal?.contract?.contractNumber || "—"}</b>{" "}
+    //             malgré les signalements détectés. Cette action sera enregistrée.
+    //           </span>
+    //         }
+    //       />
+    //       <div>
+    //         <Text strong>Notes (optionnel)</Text>
+    //         <TextArea
+    //           rows={4}
+    //           placeholder="Justification, contexte, vérifications complémentaires..."
+    //           value={approveModal?.notes || ""}
+    //           onChange={(e) => setApproveModal((m) => ({ ...m, notes: e.target.value }))}
+    //           style={{ marginTop: 6 }}
+    //         />
+    //       </div>
+    //     </div>
+    //   </Modal>
+    // </div>
+    <div className="max-w-7xl mx-auto p-6">
+  <div className="flex items-center justify-between mb-6">
+    <Title level={3} className="mb-0 flex items-center gap-2">
+      <SafetyOutlined />
+      Contrats en attente de validation conformité
+      {contracts.length > 0 && (
+        <Badge count={contracts.length} style={{ backgroundColor: "#faad14" }} />
+      )}
+    </Title>
+  </div>
+
+  {loading ? (
+    <Skeleton active paragraph={{ rows: 6 }} />
+  ) : contracts.length === 0 ? (
+    <Card>
+      <Empty
+        image={Empty.PRESENTED_IMAGE_SIMPLE}
+        description="Aucun contrat en attente de validation conformité."
+      />
+    </Card>
+  ) : (
+    <>
+      {/* ───── Priority section: confirmed name + DOB matches ───── */}
+      <Card
+        title={
+          <Space>
+            <WarningOutlined style={{ color: "#ff4d4f" }} />
+            <span style={{ color: "#ff4d4f" }}>
+              Signalements confirmés (nom + date de naissance)
+            </span>
+            <Badge
+              count={confirmedContracts.length}
+              style={{ backgroundColor: "#ff4d4f" }}
+            />
+          </Space>
+        }
+        style={{ marginBottom: 24, borderColor: "#ffccc7" }}
+        headStyle={{ backgroundColor: "#fff2f0" }}
+      >
+        {confirmedContracts.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="Aucun contrat en attente de validation conformité."
+            description="Aucun signalement confirmé sur la base du nom et de la date de naissance."
           />
-        </Card>
-      ) : (
-        <Card bodyStyle={{ padding: 0 }}>
+        ) : (
           <Table
             columns={columns}
-            dataSource={contracts.map((c) => ({ ...c, key: c._id }))}
+            dataSource={confirmedContracts.map((c) => ({ ...c, key: c._id }))}
             expandedRowRender={expandedRowRender}
             pagination={false}
           />
-        </Card>
-      )}
+        )}
+      </Card>
 
-      <Modal
-        title="Approuver le contrat"
-        open={!!approveModal}
-        onCancel={() => !submitting && setApproveModal(null)}
-        onOk={handleApprove}
-        okText="Confirmer l'approbation"
-        cancelText="Annuler"
-        confirmLoading={submitting}
-      >
-        <div className="space-y-3">
-          <Alert
-            type="info"
-            showIcon
-            message={
-              <span>
-                Vous allez approuver le contrat{" "}
-                <b>{approveModal?.contract?.contractNumber || "—"}</b>{" "}
-                malgré les signalements détectés. Cette action sera enregistrée.
-              </span>
-            }
-          />
-          <div>
-            <Text strong>Notes (optionnel)</Text>
-            <TextArea
-              rows={4}
-              placeholder="Justification, contexte, vérifications complémentaires..."
-              value={approveModal?.notes || ""}
-              onChange={(e) => setApproveModal((m) => ({ ...m, notes: e.target.value }))}
-              style={{ marginTop: 6 }}
+      {/* ───── Secondary section: name-only matches ───── */}
+      <Card
+        title={
+          <Space>
+            <SafetyOutlined style={{ color: "#faad14" }} />
+            <span style={{ color: "#8c6c00" }}>
+              À vérifier — correspondance nom uniquement (date de naissance
+              différente ou manquante)
+            </span>
+            <Badge
+              count={uncertainContracts.length}
+              style={{ backgroundColor: "#faad14" }}
             />
-          </div>
-        </div>
-      </Modal>
-    </div>
+          </Space>
+        }
+        style={{ borderColor: "#ffe58f" }}
+        headStyle={{ backgroundColor: "#fffbe6" }}
+      >
+        {uncertainContracts.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="Aucun signalement nom-seul à vérifier."
+          />
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={uncertainContracts.map((c) => ({ ...c, key: c._id }))}
+            expandedRowRender={expandedRowRender}
+            pagination={false}
+          />
+        )}
+      </Card>
+    </>
+  )}
+</div>
   );
 };
 
