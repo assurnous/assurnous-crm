@@ -59,14 +59,35 @@ const ComplianceReview = () => {
     );
   }
 
+  // const fetchPending = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const { data } = await axios.get("/contrats/pending-review");
+  //     setContracts(data.data || []);
+  //   } catch (err) {
+  //     console.error("[ComplianceReview] fetch error:", err);
+  //     message.error("Impossible de charger les contrats en attente");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const fetchPending = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get("/contrats/pending-review");
+      const token = localStorage.getItem("token");
+      const { data } = await axios.get("/contrats/pending-review", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       setContracts(data.data || []);
     } catch (err) {
       console.error("[ComplianceReview] fetch error:", err);
-      message.error("Impossible de charger les contrats en attente");
+      if (err?.response?.status === 403) {
+        message.error("Vous n'avez pas accès à cette page.");
+      } else if (err?.response?.status === 401) {
+        message.error("Session expirée — veuillez vous reconnecter.");
+      } else {
+        message.error("Impossible de charger les contrats en attente");
+      }
     } finally {
       setLoading(false);
     }
@@ -79,12 +100,23 @@ const ComplianceReview = () => {
     setSubmitting(true);
     try {
       const approvedByLabel = userRole === "admin" ? "Admin" : "Manager";
+      // await axios.put(
+      //   `/contrat/${approveModal.contract._id}/approve-compliance`,
+      //   {
+      //     approvedBy: approvedByLabel,
+      //     approvedById: userId,
+      //     notes: approveModal.notes || null,
+      //   }
+      // );
       await axios.put(
         `/contrat/${approveModal.contract._id}/approve-compliance`,
         {
           approvedBy: approvedByLabel,
           approvedById: userId,
           notes: approveModal.notes || null,
+        },
+        {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         }
       );
       message.success("Contrat approuvé");
