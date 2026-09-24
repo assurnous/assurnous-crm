@@ -93,7 +93,13 @@ nav a {
 .ant-input::placeholder {
   font-size: 12px; /* Adjust the value as needed */
 }
-
+/* Highlight rows in the compliance review where the DOB matches the client's */
+.dob-match-row > td {
+  background-color: #fff1f0 !important;
+}
+.dob-match-row:hover > td {
+  background-color: #ffccc7 !important;
+}
 /* Reduce the font size for table headers */
 .ant-table th {
   font-size: 13px; /* Adjust the size for header titles */
