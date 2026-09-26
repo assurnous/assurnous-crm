@@ -1827,6 +1827,7 @@ import "tailwindcss/tailwind.css";
 import { Spin, Alert } from "antd";
 import { useNavigate } from "react-router-dom";
 import ImportLeads from "../components/ImportLeads";
+import { matchesAgence } from "../utils/agenceFilter";
 
 const { Option } = Select;
 
@@ -1893,22 +1894,38 @@ const Leads = () => {
   const applyFilters = (filterValues) => {
     let result = [...chatData]; // Start with all client data
 
-    if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-      result = result.filter((client) => {
-        const commercialName = getCommercialName(client);
-        const managerName = getManagerName(client);
+    // if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
+    //   result = result.filter((client) => {
+    //     const commercialName = getCommercialName(client);
+    //     const managerName = getManagerName(client);
 
-        // Return true if either name matches (case-insensitive)
-        return (
-          (commercialName.toLowerCase() !== "n/a" &&
-            commercialName
-              .toLowerCase()
-              .includes(filterValues.gestionnaire.toLowerCase())) ||
-          (managerName.toLowerCase() !== "n/a" &&
-            managerName
-              .toLowerCase()
-              .includes(filterValues.gestionnaire.toLowerCase()))
-        );
+    //     // Return true if either name matches (case-insensitive)
+    //     return (
+    //       (commercialName.toLowerCase() !== "n/a" &&
+    //         commercialName
+    //           .toLowerCase()
+    //           .includes(filterValues.gestionnaire.toLowerCase())) ||
+    //       (managerName.toLowerCase() !== "n/a" &&
+    //         managerName
+    //           .toLowerCase()
+    //           .includes(filterValues.gestionnaire.toLowerCase()))
+    //     );
+    //   });
+    // }
+    if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
+      const selectedId = String(filterValues.gestionnaire);
+      result = result.filter((client) => {
+        // Check every place a user can be referenced on a client
+        const refs = [
+          client.gestionnaire?._id,
+          client.gestionnaire,
+          client.commercial?._id,
+          client.commercial,
+          client.manager?._id,
+          client.manager,
+          client.cree_par,
+        ];
+        return refs.some((r) => r && String(r) === selectedId);
       });
     }
 
@@ -1926,10 +1943,16 @@ const Leads = () => {
       });
     }
     // Agence filter
+// if (filterValues.agence && filterValues.agence !== "tous") {
+//   result = result.filter((client) => {
+//     return client.agence === filterValues.agence;
+//   });
+// }
+// Agence filter — uses the same helper as the rest of the app,
+// so it understands both the `agence` field AND the postal code fallback.
 if (filterValues.agence && filterValues.agence !== "tous") {
-  result = result.filter((client) => {
-    return client.agence === filterValues.agence;
-  });
+  const allowedAgences = [filterValues.agence];
+  result = result.filter((client) => matchesAgence(client, allowedAgences));
 }
 
     // Search filter
@@ -3075,7 +3098,8 @@ const applyColumnSearches = (searches) => {
     <div className="md:p-4 p-1 w-full">
       <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0 mb-6">
         <h2 className="text-xs sm:text-sm font-semibold text-blue-900 text-center md:text-left">
-          CLIENTS ({chatData.length})
+          {/* CLIENTS ({chatData.length}) */}
+          CLIENTS ({filteredData.length})
         </h2>
         {/* Buttons container - column on mobile, row on desktop */}
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
@@ -3107,7 +3131,7 @@ const applyColumnSearches = (searches) => {
         </div>
       </div>
 
-      <Row gutter={16} className="mb-6">
+      {/* <Row gutter={16} className="mb-6">
         <Col xs={24} sm={8} md={6}>
           <Card>
             <Statistic
@@ -3148,7 +3172,7 @@ const applyColumnSearches = (searches) => {
             />
           </Card>
         </Col>
-      </Row>
+      </Row> */}
       {/* Assignment Status Info */}
       {/* <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
         <div className="flex items-center">
@@ -3261,7 +3285,7 @@ const applyColumnSearches = (searches) => {
               value={filters.gestionnaire}
             >
               <Option value="tous">Tous</Option>
-              {users.map((user) => {
+              {/* {users.map((user) => {
                 const displayName =
                   user.userType === "admin"
                     ? user.name
@@ -3272,7 +3296,26 @@ const applyColumnSearches = (searches) => {
                     {displayName}
                   </Option>
                 );
-              })}
+              })} */}
+               {users.map((user) => {
+  const displayName =
+    user.userType === "admin"
+      ? user.name || user.nom || ""
+      : `${user.nom || ""} ${user.prenom || ""}`.trim();
+
+  const typeLabel =
+    user.userType === "admin"
+      ? "Admin"
+      : user.userType === "manager"
+      ? "Manager"
+      : "Commercial";
+
+  return (
+    <Option key={user._id} value={user._id}>
+      {displayName} ({typeLabel}) — {user.email}
+    </Option>
+  );
+})}
             </Select>
           </div>
 

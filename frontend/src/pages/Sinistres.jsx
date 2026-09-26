@@ -1550,7 +1550,7 @@ const Sinistres = () => {
                 allowClear
               >
                 <Option value="tous">Tous les gestionnaires</Option>
-                {users.map((user) => {
+                {/* {users.map((user) => {
                   const displayName =
                     user.userType === "admin"
                       ? `${user.name}`
@@ -1565,7 +1565,26 @@ const Sinistres = () => {
                       {user.userType === "admin" ? "Admin" : "Commercial"})
                     </Option>
                   );
-                })}
+                })} */}
+                    {users.map((user) => {
+  const displayName =
+    user.userType === "admin"
+      ? user.name || user.nom || ""
+      : `${user.nom || ""} ${user.prenom || ""}`.trim();
+
+  const typeLabel =
+    user.userType === "admin"
+      ? "Admin"
+      : user.userType === "manager"
+      ? "Manager"
+      : "Commercial";
+
+  return (
+    <Option key={user._id} value={user._id}>
+      {displayName} ({typeLabel}) — {user.email}
+    </Option>
+  );
+})}
               </Select>
             </div>
 

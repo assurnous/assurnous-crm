@@ -1292,7 +1292,7 @@ const handleLeadClick = (lead) => {
     </div>
 
     {/* Manager Select */}
-    <div>
+    {/* <div>
       <label className="block text-[12px] font-medium text-gray-700 mb-1">
         Gestionnaire
       </label>
@@ -1323,7 +1323,64 @@ const handleLeadClick = (lead) => {
           );
         })}
       </Select>
-    </div>
+    </div> */}
+    <div>
+  <label className="block text-[12px] font-medium text-gray-700 mb-1">
+    Gestionnaire
+  </label>
+  <Select
+    className="w-full"
+    placeholder="-- Choisissez --"
+    onChange={(value) => handleFilterChange("gestionnaire", value)}
+    loading={loading}
+    showSearch
+    optionFilterProp="children"
+    filterOption={(input, option) =>
+      option.children.toLowerCase().includes(input.toLowerCase())
+    }
+    allowClear
+  >
+    <Option value="tous">Tous les gestionnaires</Option>
+    {/* {users.map((user) => {
+      const displayName =
+        user.userType === "admin"
+          ? user.name || user.nom || ""
+          : `${user.nom || ""} ${user.prenom || ""}`.trim();
+
+      const typeLabel =
+        user.userType === "admin"
+          ? "Admin"
+          : user.userType === "manager"
+          ? "Manager"
+          : "Commercial";
+
+      return (
+        <Option key={user._id} value={user._id}>
+          {displayName} ({typeLabel})
+        </Option>
+      );
+    })} */}
+    {users.map((user) => {
+  const displayName =
+    user.userType === "admin"
+      ? user.name || user.nom || ""
+      : `${user.nom || ""} ${user.prenom || ""}`.trim();
+
+  const typeLabel =
+    user.userType === "admin"
+      ? "Admin"
+      : user.userType === "manager"
+      ? "Manager"
+      : "Commercial";
+
+  return (
+    <Option key={user._id} value={user._id}>
+      {displayName} ({typeLabel}) — {user.email}
+    </Option>
+  );
+})}
+  </Select>
+</div>
 
     {/* Category Select */}
     <div>

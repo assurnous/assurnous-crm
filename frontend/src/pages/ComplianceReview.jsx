@@ -523,163 +523,299 @@ const ComplianceReview = () => {
       </div>
     );
   };
-
   return (
-    // <div className="max-w-7xl mx-auto p-6">
-    //   <div className="flex items-center justify-between mb-6">
-    //     <Title level={3} className="mb-0 flex items-center gap-2">
-    //       <SafetyOutlined />
-    //       Contrats en attente de validation conformité
-    //       {contracts.length > 0 && (
-    //         <Badge count={contracts.length} style={{ backgroundColor: "#faad14" }} />
-    //       )}
-    //     </Title>
-    //   </div>
-
-    //   {loading ? (
-    //     <Skeleton active paragraph={{ rows: 6 }} />
-    //   ) : contracts.length === 0 ? (
-    //     <Card>
-    //       <Empty
-    //         image={Empty.PRESENTED_IMAGE_SIMPLE}
-    //         description="Aucun contrat en attente de validation conformité."
-    //       />
-    //     </Card>
-    //   ) : (
-    //     <Card bodyStyle={{ padding: 0 }}>
-    //       <Table
-    //         columns={columns}
-    //         dataSource={contracts.map((c) => ({ ...c, key: c._id }))}
-    //         expandedRowRender={expandedRowRender}
-    //         pagination={false}
-    //       />
-    //     </Card>
-    //   )}
-
-    //   <Modal
-    //     title="Approuver le contrat"
-    //     open={!!approveModal}
-    //     onCancel={() => !submitting && setApproveModal(null)}
-    //     onOk={handleApprove}
-    //     okText="Confirmer l'approbation"
-    //     cancelText="Annuler"
-    //     confirmLoading={submitting}
-    //   >
-    //     <div className="space-y-3">
-    //       <Alert
-    //         type="info"
-    //         showIcon
-    //         message={
-    //           <span>
-    //             Vous allez approuver le contrat{" "}
-    //             <b>{approveModal?.contract?.contractNumber || "—"}</b>{" "}
-    //             malgré les signalements détectés. Cette action sera enregistrée.
-    //           </span>
-    //         }
-    //       />
-    //       <div>
-    //         <Text strong>Notes (optionnel)</Text>
-    //         <TextArea
-    //           rows={4}
-    //           placeholder="Justification, contexte, vérifications complémentaires..."
-    //           value={approveModal?.notes || ""}
-    //           onChange={(e) => setApproveModal((m) => ({ ...m, notes: e.target.value }))}
-    //           style={{ marginTop: 6 }}
-    //         />
-    //       </div>
-    //     </div>
-    //   </Modal>
-    // </div>
     <div className="max-w-7xl mx-auto p-6">
-  <div className="flex items-center justify-between mb-6">
-    <Title level={3} className="mb-0 flex items-center gap-2">
-      <SafetyOutlined />
-      Contrats en attente de validation conformité
-      {contracts.length > 0 && (
-        <Badge count={contracts.length} style={{ backgroundColor: "#faad14" }} />
-      )}
-    </Title>
-  </div>
-
-  {loading ? (
-    <Skeleton active paragraph={{ rows: 6 }} />
-  ) : contracts.length === 0 ? (
-    <Card>
-      <Empty
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-        description="Aucun contrat en attente de validation conformité."
-      />
-    </Card>
-  ) : (
-    <>
-      {/* ───── Priority section: confirmed name + DOB matches ───── */}
-      <Card
-        title={
-          <Space>
-            <WarningOutlined style={{ color: "#ff4d4f" }} />
-            <span style={{ color: "#ff4d4f" }}>
-              Signalements confirmés (nom + date de naissance)
-            </span>
+      <div className="flex items-center justify-between mb-6">
+        <Title level={3} className="mb-0 flex items-center gap-2">
+          <SafetyOutlined />
+          Contrats en attente de validation conformité
+          {contracts.length > 0 && (
             <Badge
-              count={confirmedContracts.length}
-              style={{ backgroundColor: "#ff4d4f" }}
-            />
-          </Space>
-        }
-        style={{ marginBottom: 24, borderColor: "#ffccc7" }}
-        headStyle={{ backgroundColor: "#fff2f0" }}
-      >
-        {confirmedContracts.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="Aucun signalement confirmé sur la base du nom et de la date de naissance."
-          />
-        ) : (
-          <Table
-            columns={columns}
-            dataSource={confirmedContracts.map((c) => ({ ...c, key: c._id }))}
-            expandedRowRender={expandedRowRender}
-            pagination={false}
-          />
-        )}
-      </Card>
-
-      {/* ───── Secondary section: name-only matches ───── */}
-      <Card
-        title={
-          <Space>
-            <SafetyOutlined style={{ color: "#faad14" }} />
-            <span style={{ color: "#8c6c00" }}>
-              À vérifier — correspondance nom uniquement (date de naissance
-              différente ou manquante)
-            </span>
-            <Badge
-              count={uncertainContracts.length}
+              count={contracts.length}
               style={{ backgroundColor: "#faad14" }}
             />
-          </Space>
-        }
-        style={{ borderColor: "#ffe58f" }}
-        headStyle={{ backgroundColor: "#fffbe6" }}
-      >
-        {uncertainContracts.length === 0 ? (
+          )}
+        </Title>
+      </div>
+
+      {loading ? (
+        <Skeleton active paragraph={{ rows: 6 }} />
+      ) : contracts.length === 0 ? (
+        <Card>
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="Aucun signalement nom-seul à vérifier."
+            description="Aucun contrat en attente de validation conformité."
           />
-        ) : (
-          <Table
-            columns={columns}
-            dataSource={uncertainContracts.map((c) => ({ ...c, key: c._id }))}
-            expandedRowRender={expandedRowRender}
-            pagination={false}
+        </Card>
+      ) : (
+        <>
+          {/* Priority section: confirmed name + DOB matches */}
+          <Card
+            title={
+              <Space>
+                <WarningOutlined style={{ color: "#ff4d4f" }} />
+                <span style={{ color: "#ff4d4f" }}>
+                  Signalements confirmés (nom + date de naissance)
+                </span>
+                <Badge
+                  count={confirmedContracts.length}
+                  style={{ backgroundColor: "#ff4d4f" }}
+                />
+              </Space>
+            }
+            style={{ marginBottom: 24, borderColor: "#ffccc7" }}
+            headStyle={{ backgroundColor: "#fff2f0" }}
+          >
+            {confirmedContracts.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Aucun signalement confirmé sur la base du nom et de la date de naissance."
+              />
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={confirmedContracts.map((c) => ({
+                  ...c,
+                  key: c._id,
+                }))}
+                expandedRowRender={expandedRowRender}
+                pagination={false}
+              />
+            )}
+          </Card>
+
+          {/* Secondary section: name-only matches */}
+          <Card
+            title={
+              <Space>
+                <SafetyOutlined style={{ color: "#faad14" }} />
+                <span style={{ color: "#8c6c00" }}>
+                  À vérifier — correspondance nom uniquement (date de naissance
+                  différente ou manquante)
+                </span>
+                <Badge
+                  count={uncertainContracts.length}
+                  style={{ backgroundColor: "#faad14" }}
+                />
+              </Space>
+            }
+            style={{ borderColor: "#ffe58f" }}
+            headStyle={{ backgroundColor: "#fffbe6" }}
+          >
+            {uncertainContracts.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Aucun signalement nom-seul à vérifier."
+              />
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={uncertainContracts.map((c) => ({
+                  ...c,
+                  key: c._id,
+                }))}
+                expandedRowRender={expandedRowRender}
+                pagination={false}
+              />
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* ⬇️ MODAL — this was the missing piece ⬇️ */}
+      <Modal
+        title="Approuver le contrat"
+        open={!!approveModal}
+        onCancel={() => !submitting && setApproveModal(null)}
+        onOk={handleApprove}
+        okText="Confirmer l'approbation"
+        cancelText="Annuler"
+        confirmLoading={submitting}
+      >
+        <div className="space-y-3">
+          <Alert
+            type="info"
+            showIcon
+            message={
+              <span>
+                Vous allez approuver le contrat{" "}
+                <b>{approveModal?.contract?.contractNumber || "—"}</b>{" "}
+                malgré les signalements détectés. Cette action sera enregistrée.
+              </span>
+            }
           />
-        )}
-      </Card>
-    </>
-  )}
-</div>
+          <div>
+            <Text strong>Notes (optionnel)</Text>
+            <TextArea
+              rows={4}
+              placeholder="Justification, contexte, vérifications complémentaires..."
+              value={approveModal?.notes || ""}
+              onChange={(e) =>
+                setApproveModal((m) => ({ ...m, notes: e.target.value }))
+              }
+              style={{ marginTop: 6 }}
+            />
+          </div>
+        </div>
+      </Modal>
+    </div>
   );
+//   return (
+//     // <div className="max-w-7xl mx-auto p-6">
+//     //   <div className="flex items-center justify-between mb-6">
+//     //     <Title level={3} className="mb-0 flex items-center gap-2">
+//     //       <SafetyOutlined />
+//     //       Contrats en attente de validation conformité
+//     //       {contracts.length > 0 && (
+//     //         <Badge count={contracts.length} style={{ backgroundColor: "#faad14" }} />
+//     //       )}
+//     //     </Title>
+//     //   </div>
+
+//     //   {loading ? (
+//     //     <Skeleton active paragraph={{ rows: 6 }} />
+//     //   ) : contracts.length === 0 ? (
+//     //     <Card>
+//     //       <Empty
+//     //         image={Empty.PRESENTED_IMAGE_SIMPLE}
+//     //         description="Aucun contrat en attente de validation conformité."
+//     //       />
+//     //     </Card>
+//     //   ) : (
+//     //     <Card bodyStyle={{ padding: 0 }}>
+//     //       <Table
+//     //         columns={columns}
+//     //         dataSource={contracts.map((c) => ({ ...c, key: c._id }))}
+//     //         expandedRowRender={expandedRowRender}
+//     //         pagination={false}
+//     //       />
+//     //     </Card>
+//     //   )}
+
+//     //   <Modal
+//     //     title="Approuver le contrat"
+//     //     open={!!approveModal}
+//     //     onCancel={() => !submitting && setApproveModal(null)}
+//     //     onOk={handleApprove}
+//     //     okText="Confirmer l'approbation"
+//     //     cancelText="Annuler"
+//     //     confirmLoading={submitting}
+//     //   >
+//     //     <div className="space-y-3">
+//     //       <Alert
+//     //         type="info"
+//     //         showIcon
+//     //         message={
+//     //           <span>
+//     //             Vous allez approuver le contrat{" "}
+//     //             <b>{approveModal?.contract?.contractNumber || "—"}</b>{" "}
+//     //             malgré les signalements détectés. Cette action sera enregistrée.
+//     //           </span>
+//     //         }
+//     //       />
+//     //       <div>
+//     //         <Text strong>Notes (optionnel)</Text>
+//     //         <TextArea
+//     //           rows={4}
+//     //           placeholder="Justification, contexte, vérifications complémentaires..."
+//     //           value={approveModal?.notes || ""}
+//     //           onChange={(e) => setApproveModal((m) => ({ ...m, notes: e.target.value }))}
+//     //           style={{ marginTop: 6 }}
+//     //         />
+//     //       </div>
+//     //     </div>
+//     //   </Modal>
+//     // </div>
+//     <div className="max-w-7xl mx-auto p-6">
+//   <div className="flex items-center justify-between mb-6">
+//     <Title level={3} className="mb-0 flex items-center gap-2">
+//       <SafetyOutlined />
+//       Contrats en attente de validation conformité
+//       {contracts.length > 0 && (
+//         <Badge count={contracts.length} style={{ backgroundColor: "#faad14" }} />
+//       )}
+//     </Title>
+//   </div>
+
+//   {loading ? (
+//     <Skeleton active paragraph={{ rows: 6 }} />
+//   ) : contracts.length === 0 ? (
+//     <Card>
+//       <Empty
+//         image={Empty.PRESENTED_IMAGE_SIMPLE}
+//         description="Aucun contrat en attente de validation conformité."
+//       />
+//     </Card>
+//   ) : (
+//     <>
+//       {/* ───── Priority section: confirmed name + DOB matches ───── */}
+//       <Card
+//         title={
+//           <Space>
+//             <WarningOutlined style={{ color: "#ff4d4f" }} />
+//             <span style={{ color: "#ff4d4f" }}>
+//               Signalements confirmés (nom + date de naissance)
+//             </span>
+//             <Badge
+//               count={confirmedContracts.length}
+//               style={{ backgroundColor: "#ff4d4f" }}
+//             />
+//           </Space>
+//         }
+//         style={{ marginBottom: 24, borderColor: "#ffccc7" }}
+//         headStyle={{ backgroundColor: "#fff2f0" }}
+//       >
+//         {confirmedContracts.length === 0 ? (
+//           <Empty
+//             image={Empty.PRESENTED_IMAGE_SIMPLE}
+//             description="Aucun signalement confirmé sur la base du nom et de la date de naissance."
+//           />
+//         ) : (
+//           <Table
+//             columns={columns}
+//             dataSource={confirmedContracts.map((c) => ({ ...c, key: c._id }))}
+//             expandedRowRender={expandedRowRender}
+//             pagination={false}
+//           />
+//         )}
+//       </Card>
+
+//       {/* ───── Secondary section: name-only matches ───── */}
+//       <Card
+//         title={
+//           <Space>
+//             <SafetyOutlined style={{ color: "#faad14" }} />
+//             <span style={{ color: "#8c6c00" }}>
+//               À vérifier — correspondance nom uniquement (date de naissance
+//               différente ou manquante)
+//             </span>
+//             <Badge
+//               count={uncertainContracts.length}
+//               style={{ backgroundColor: "#faad14" }}
+//             />
+//           </Space>
+//         }
+//         style={{ borderColor: "#ffe58f" }}
+//         headStyle={{ backgroundColor: "#fffbe6" }}
+//       >
+//         {uncertainContracts.length === 0 ? (
+//           <Empty
+//             image={Empty.PRESENTED_IMAGE_SIMPLE}
+//             description="Aucun signalement nom-seul à vérifier."
+//           />
+//         ) : (
+//           <Table
+//             columns={columns}
+//             dataSource={uncertainContracts.map((c) => ({ ...c, key: c._id }))}
+//             expandedRowRender={expandedRowRender}
+//             pagination={false}
+//           />
+//         )}
+//       </Card>
+//     </>
+//   )}
+// </div>
+//   );
 };
 
 export default ComplianceReview;

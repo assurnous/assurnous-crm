@@ -36,6 +36,7 @@ import {
 } from "@ant-design/icons";
 import PhoneInput from "react-phone-input-2";
 import ImportLeads from "../../components/ImportLeads";
+import { matchesAgence } from "../../utils/agenceFilter";
 
 const { Option } = Select;
 
@@ -286,22 +287,38 @@ const ListManagerLeads = () => {
   const applyFilters = (filterValues) => {
     let result = [...chatData]; // Start with all client data
 
-    if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
-      result = result.filter((client) => {
-        const commercialName = getCommercialName(client);
-        const managerName = getManagerName(client);
+    // if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
+    //   result = result.filter((client) => {
+    //     const commercialName = getCommercialName(client);
+    //     const managerName = getManagerName(client);
 
-        // Return true if either name matches (case-insensitive)
-        return (
-          (commercialName.toLowerCase() !== "n/a" &&
-            commercialName
-              .toLowerCase()
-              .includes(filterValues.gestionnaire.toLowerCase())) ||
-          (managerName.toLowerCase() !== "n/a" &&
-            managerName
-              .toLowerCase()
-              .includes(filterValues.gestionnaire.toLowerCase()))
-        );
+    //     // Return true if either name matches (case-insensitive)
+    //     return (
+    //       (commercialName.toLowerCase() !== "n/a" &&
+    //         commercialName
+    //           .toLowerCase()
+    //           .includes(filterValues.gestionnaire.toLowerCase())) ||
+    //       (managerName.toLowerCase() !== "n/a" &&
+    //         managerName
+    //           .toLowerCase()
+    //           .includes(filterValues.gestionnaire.toLowerCase()))
+    //     );
+    //   });
+    // }
+    if (filterValues.gestionnaire && filterValues.gestionnaire !== "tous") {
+      const selectedId = String(filterValues.gestionnaire);
+      result = result.filter((client) => {
+        // Check every place a user can be referenced on a client
+        const refs = [
+          client.gestionnaire?._id,
+          client.gestionnaire,
+          client.commercial?._id,
+          client.commercial,
+          client.manager?._id,
+          client.manager,
+          client.cree_par,
+        ];
+        return refs.some((r) => r && String(r) === selectedId);
       });
     }
 
@@ -319,11 +336,28 @@ const ListManagerLeads = () => {
       });
     }
     // Agence filter
-    if (filterValues.agence && filterValues.agence !== "tous") {
-      result = result.filter((client) => {
-        return client.agence === filterValues.agence;
-      });
-    }
+    // if (filterValues.agence && filterValues.agence !== "tous") {
+    //   result = result.filter((client) => {
+    //     return client.agence === filterValues.agence;
+    //   });
+    // }
+    // Agence filter — uses the shared helper (agence field + CP fallback)
+if (filterValues.agence && filterValues.agence !== "tous") {
+  if (filterValues.agence === "non_renseigne") {
+    result = result.filter((client) => {
+      const explicit = (client.agence || "").trim().toUpperCase();
+      if (["LILLE", "LENS", "VALENCIENNES"].includes(explicit)) return false;
+      const cp = String(client.code_postal || client.codepostal || "")
+        .trim().replace(/\s/g, "");
+      if (cp.startsWith("59") || cp.startsWith("62")) return false;
+      return true;
+    });
+  } else {
+    result = result.filter((client) =>
+      matchesAgence(client, [filterValues.agence])
+    );
+  }
+}
 
     // Search filter
     if (filterValues.search) {
@@ -2029,7 +2063,7 @@ const ListManagerLeads = () => {
               <Option value="tous">Tous</Option>
 
               {/* Show current manager first */}
-              {users
+              {/* {users
                 .filter(
                   (user) =>
                     user.userType === "manager" && user._id === currentManagerId
@@ -2062,7 +2096,26 @@ const ListManagerLeads = () => {
                       {`${commercial.prenom} ${commercial.nom}`} (Commercial)
                     </Option>
                   );
-                })}
+                })} */}
+                {users.map((user) => {
+  const displayName =
+    user.userType === "admin"
+      ? user.name || user.nom || ""
+      : `${user.nom || ""} ${user.prenom || ""}`.trim();
+
+  const typeLabel =
+    user.userType === "admin"
+      ? "Admin"
+      : user.userType === "manager"
+      ? "Manager"
+      : "Commercial";
+
+  return (
+    <Option key={user._id} value={user._id}>
+      {displayName} ({typeLabel}) — {user.email}
+    </Option>
+  );
+})}
             </Select>
           </div>
 

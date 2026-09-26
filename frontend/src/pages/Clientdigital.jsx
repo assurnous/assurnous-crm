@@ -1169,7 +1169,7 @@ console.log("userRole:", response.data.userRole, "userVilles:", response.data.us
               onChange={(value) => handleFilterChange("gestionnaire", value)}
             >
               <Option value="tous">Tous</Option>
-              {users.map((user) => {
+              {/* {users.map((user) => {
                 const displayName =
                   user.userType === "admin"
                     ? user.name
@@ -1183,7 +1183,26 @@ console.log("userRole:", response.data.userRole, "userVilles:", response.data.us
                     {displayName}
                   </Option>
                 );
-              })}
+              })} */}
+               {users.map((user) => {
+  const displayName =
+    user.userType === "admin"
+      ? user.name || user.nom || ""
+      : `${user.nom || ""} ${user.prenom || ""}`.trim();
+
+  const typeLabel =
+    user.userType === "admin"
+      ? "Admin"
+      : user.userType === "manager"
+      ? "Manager"
+      : "Commercial";
+
+  return (
+    <Option key={user._id} value={user._id}>
+      {displayName} ({typeLabel}) — {user.email}
+    </Option>
+  );
+})}
             </Select>
           </div>
 
