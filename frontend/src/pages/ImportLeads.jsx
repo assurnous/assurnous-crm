@@ -19,6 +19,24 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
   });
   const [validationError, setValidationError] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
+    // Compute agence validation as soon as fileData changes
+    const agenceValidation = React.useMemo(() => {
+      if (!fileData || fileData.length === 0) return { valid: true, errors: [] };
+  
+      const validValues = ["LENS", "VALENCIENNES", "LILLE"];
+      const errors = [];
+  
+      fileData.forEach((lead, index) => {
+        const value = (lead.agence || "").trim().toUpperCase();
+        if (!value) {
+          errors.push({ row: index + 2, reason: "agence manquante", value: "" }); // +2 because Excel row 1 = header
+        } else if (!validValues.includes(value)) {
+          errors.push({ row: index + 2, reason: "agence invalide", value: lead.agence });
+        }
+      });
+  
+      return { valid: errors.length === 0, errors };
+    }, [fileData]);
 
   // const handleUpload = ({ file }) => {
   //   const reader = new FileReader();
@@ -96,7 +114,13 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
         message.error("Aucune donnée à transférer");
         return;
     }
-
+    if (!agenceValidation.valid) {
+      message.error(
+        `Import bloqué : ${agenceValidation.errors.length} ligne(s) sans agence valide. ` +
+        `Corrigez le fichier Excel (LENS / VALENCIENNES / LILLE) et réessayez.`
+      );
+      return;
+  }
     setIsImporting(true);
     setValidationError(null);
 
@@ -165,16 +189,75 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
         // CORRECT APPROACH: Let xlsx auto-detect headers
         const leads = XLSX.utils.sheet_to_json(worksheet);
   
-        if (leads.length) {
-          // Transform dates if needed
-          const processedLeads = leads.map(lead => {
-            if (lead.date && typeof lead.date === "number") {
-              const date = new Date(Math.round((lead.date - 25569) * 86400 * 1000));
-              lead.date = date.toISOString().split("T")[0];
-            }
-            return lead;
-          });
+        // if (leads.length) {
+        //   // Transform dates if needed
+        //   const processedLeads = leads.map(lead => {
+        //     if (lead.date && typeof lead.date === "number") {
+        //       const date = new Date(Math.round((lead.date - 25569) * 86400 * 1000));
+        //       lead.date = date.toISOString().split("T")[0];
+        //     }
+        //     return lead;
+        //   });
   
+        //   setFileData(processedLeads);
+        //   setFileName(file.name);
+        //   message.success(`${processedLeads.length} leads loaded`);
+        // } else {
+        //   message.error("Empty file - no data found");
+        // }
+        if (leads.length) {
+          // Normalize each row:
+          //  - lowercase all keys, trim, strip accents
+          //  - map common header aliases to schema field names
+          //  - normalize agence value to uppercase (LENS/VALENCIENNES/LILLE)
+          const normalizeKey = (key) =>
+            String(key).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+          const aliasMap = {
+            "agence": "agence",
+            "agence de rattachement": "agence",
+            "agence rattachement": "agence",
+            "nom": "nom", "lastname": "nom", "last name": "nom",
+            "prenom": "prenom", "firstname": "prenom", "first name": "prenom",
+            "tel": "portable", "telephone": "portable", "phone": "portable",
+            "portable": "portable", "mobile": "portable",
+            "email": "email", "mail": "email", "courriel": "email",
+            "cp": "code_postal", "code postal": "code_postal",
+            "codepostal": "code_postal", "code_postal": "code_postal",
+            "ville": "ville", "city": "ville",
+            "categorie": "categorie", "statut": "statut", "status": "statut",
+            "date de naissance": "date_naissance", "date_naissance": "date_naissance",
+          };
+
+          const processedLeads = leads.map((lead) => {
+            const normalized = {};
+            Object.entries(lead).forEach(([key, value]) => {
+              const lower = normalizeKey(key);
+              normalized[aliasMap[lower] || lower] = value;
+            });
+
+            // Convert Excel numeric dates
+            ["date", "date_naissance"].forEach((f) => {
+              if (normalized[f] && typeof normalized[f] === "number") {
+                const d = new Date(Math.round((normalized[f] - 25569) * 86400 * 1000));
+                normalized[f] = d.toISOString().split("T")[0];
+              }
+            });
+
+            // Trim strings
+            Object.keys(normalized).forEach((k) => {
+              if (typeof normalized[k] === "string") normalized[k] = normalized[k].trim();
+            });
+
+            // Normalize agence value (do NOT delete invalid ones — we want to show them)
+            if (normalized.agence) {
+              normalized.agence = String(normalized.agence).trim().toUpperCase();
+            }
+
+            return normalized;
+          });
+
+          console.log("Sample normalized lead:", processedLeads[0]);
           setFileData(processedLeads);
           setFileName(file.name);
           message.success(`${processedLeads.length} leads loaded`);
@@ -239,7 +322,32 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
   return (
     <div className="p-4">
       <h2 className="text-lg font-bold mb-4">Importer des Leads</h2>
-      
+      {!agenceValidation.valid && (
+        <Alert
+          message="Import bloqué : agence manquante ou invalide"
+          description={
+            <div>
+              <div className="mb-2">
+                {agenceValidation.errors.length} ligne(s) sur {fileData?.length || 0} ont un problème d'agence.
+                L'agence doit être <strong>LENS</strong>, <strong>VALENCIENNES</strong> ou <strong>LILLE</strong>.
+              </div>
+              <div className="max-h-32 overflow-y-auto text-xs">
+                {agenceValidation.errors.slice(0, 10).map((e, i) => (
+                  <div key={i}>
+                    Ligne {e.row} : {e.reason} {e.value ? `("${e.value}")` : ""}
+                  </div>
+                ))}
+                {agenceValidation.errors.length > 10 && (
+                  <div>… et {agenceValidation.errors.length - 10} autres</div>
+                )}
+              </div>
+            </div>
+          }
+          type="error"
+          showIcon
+          className="mb-4"
+        />
+      )}
       {validationError && (
         <Alert
           message="Erreur de validation"
@@ -299,12 +407,26 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
             )}
           />
           
-          <Button 
+          {/* <Button 
             type="primary" 
             onClick={handleTransfer} 
             className="mt-4"
             loading={isImporting}
             disabled={!fileData || fileData.length === 0 || isImporting}
+          >
+            {isImporting ? 'Importation...' : 'Transférer dans la base de données'}
+          </Button> */}
+                    <Button 
+            type="primary" 
+            onClick={handleTransfer} 
+            className="mt-4"
+            loading={isImporting}
+            disabled={
+              !fileData ||
+              fileData.length === 0 ||
+              isImporting ||
+              !agenceValidation.valid
+            }
           >
             {isImporting ? 'Importation...' : 'Transférer dans la base de données'}
           </Button>

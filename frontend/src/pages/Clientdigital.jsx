@@ -618,47 +618,102 @@ const handleTransfer = async () => {
             'Content-Type': 'application/json'
           }
         });
+        console.log("RAW /datas response:", response.data);
+console.log("userRole:", response.data.userRole, "userVilles:", response.data.userVilles);
         
+        // const allData = response.data.chatData || [];
+        // const userRole = response.data.userRole;
+        
+        // let filteredData = [];
+        
+        
+        // if (userRole === 'Commercial') {
+        //   // SIMPLE: Commercial sees all LILLE clients (assigned or not)
+        //   filteredData = allData.filter(client => 
+        //     client.agence?.toUpperCase() === 'LILLE'
+        //   );
+          
+        //   console.log(`Commercial sees ${filteredData.length} LILLE clients`);
+          
+        //   // Separate assigned vs unassigned
+        //   const commercialUserId = user.userId || user.id || user._id;
+        //   const assignedToMe = filteredData.filter(c => 
+        //     c.commercial === commercialUserId || c.commercial?._id === commercialUserId
+        //   );
+        //   const unassigned = filteredData.filter(c => 
+        //     !c.commercial || c.commercial === ''
+        //   );
+          
+   
+          
+   
+          
+        // } else if (userRole === 'Manager') {
+        //   const userVilles = response.data.userVilles || [];
+        //   if (userVilles.length > 0) {
+        //     filteredData = allData.filter(client => {
+        //       const clientAgence = client.agence?.toUpperCase() || '';
+        //       return userVilles.some(ville => 
+        //         clientAgence === ville?.toUpperCase()
+        //       );
+        //     });
+  
+        //   } else {
+        //     filteredData = allData;
+        //   }
+        // } else {
+        //   filteredData = allData;
+        // }
         const allData = response.data.chatData || [];
         const userRole = response.data.userRole;
-        
+        const userVilles = response.data.userVilles || [];
+
+        // Helper — resolve a client's effective agence:
+        //   1. use explicit client.agence if set and valid
+        //   2. fall back to postal code inference (59 → LILLE, 62 → LENS)
+        const inferAgence = (client) => {
+          const explicit = (client.agence || "").trim().toUpperCase();
+          if (["LENS", "VALENCIENNES", "LILLE"].includes(explicit)) {
+            return explicit;
+          }
+          const cp = String(client.code_postal || client.codepostal || "")
+            .trim()
+            .replace(/\s/g, "");
+          if (cp.startsWith("59")) return "LILLE";
+          if (cp.startsWith("62")) return "LENS";
+          return null;
+        };
+
         let filteredData = [];
-        
-        if (userRole === 'Commercial') {
-          // SIMPLE: Commercial sees all LILLE clients (assigned or not)
-          filteredData = allData.filter(client => 
-            client.agence?.toUpperCase() === 'LILLE'
+
+        if (userRole === "Commercial") {
+          // Commercial sees all clients whose agence resolves to one of their villes
+          // For now: fallback to LILLE if userVilles is empty
+          const targetAgences = userVilles.length > 0
+            ? userVilles.map((v) => v.toUpperCase())
+            : ["LILLE"];
+
+          filteredData = allData.filter((client) =>
+            targetAgences.includes(inferAgence(client))
           );
-          
-          console.log(`Commercial sees ${filteredData.length} LILLE clients`);
-          
-          // Separate assigned vs unassigned
-          const commercialUserId = user.userId || user.id || user._id;
-          const assignedToMe = filteredData.filter(c => 
-            c.commercial === commercialUserId || c.commercial?._id === commercialUserId
+
+          console.log(
+            `Commercial sees ${filteredData.length} clients for agences ${targetAgences.join(", ")}`
           );
-          const unassigned = filteredData.filter(c => 
-            !c.commercial || c.commercial === ''
-          );
-          
-   
-          
-   
-          
-        } else if (userRole === 'Manager') {
-          const userVilles = response.data.userVilles || [];
+        } else if (userRole === "Manager") {
           if (userVilles.length > 0) {
-            filteredData = allData.filter(client => {
-              const clientAgence = client.agence?.toUpperCase() || '';
-              return userVilles.some(ville => 
-                clientAgence === ville?.toUpperCase()
-              );
-            });
-  
+            const targetAgences = userVilles.map((v) => v.toUpperCase());
+            filteredData = allData.filter((client) =>
+              targetAgences.includes(inferAgence(client))
+            );
+            console.log(
+              `Manager sees ${filteredData.length} clients for agences ${targetAgences.join(", ")}`
+            );
           } else {
             filteredData = allData;
           }
         } else {
+          // Admin (or anyone else) sees everything
           filteredData = allData;
         }
         

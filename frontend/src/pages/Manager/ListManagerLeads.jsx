@@ -2099,7 +2099,7 @@ const ListManagerLeads = () => {
             </Select>
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-[12px] font-medium text-gray-700 mb-1">
               Agence
             </label>
@@ -2114,7 +2114,7 @@ const ListManagerLeads = () => {
               <Option value="VALENCIENNES">VALENCIENNES</Option>
               <Option value="LILLE">LILLE</Option>
             </Select>
-          </div>
+          </div> */}
           <div className="mt-1">
             <label className="block text-[12px] font-medium text-gray-700 mb-1">
               Recherche
@@ -2278,6 +2278,23 @@ const ListManagerLeads = () => {
                 <Option value="ancien_client">Ancien client</Option>
               </Select>
             </Form.Item>
+
+            {/* Agence */}
+<Form.Item
+  label={<span className="text-xs font-medium">AGENCE</span>}
+  name="agence"
+  className="mb-0"
+  rules={[{ required: true, message: "L'agence est obligatoire" }]}
+>
+  <Select
+    className="w-full text-xs h-7"
+    placeholder="-- Choisissez l'agence --"
+  >
+    <Option value="LENS">LENS</Option>
+    <Option value="VALENCIENNES">VALENCIENNES</Option>
+    <Option value="LILLE">LILLE</Option>
+  </Select>
+</Form.Item>
 
             {/* Civilité */}
             <Form.Item

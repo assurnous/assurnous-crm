@@ -3582,6 +3582,23 @@ const applyColumnSearches = (searches) => {
               </Select>
             </Form.Item>
 
+            {/* Agence */}
+<Form.Item
+  label={<span className="text-xs font-medium">AGENCE</span>}
+  name="agence"
+  className="mb-0"
+  rules={[{ required: true, message: "L'agence est obligatoire" }]}
+>
+  <Select
+    className="w-full text-xs h-7"
+    placeholder="-- Choisissez l'agence --"
+  >
+    <Option value="LENS">LENS</Option>
+    <Option value="VALENCIENNES">VALENCIENNES</Option>
+    <Option value="LILLE">LILLE</Option>
+  </Select>
+</Form.Item>
+
             <Form.Item
               label={<span className="text-xs font-medium">CIVILITÉ</span>}
               name="civilite"
