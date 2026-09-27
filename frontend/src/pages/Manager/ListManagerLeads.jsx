@@ -1840,7 +1840,7 @@ if (filterValues.agence && filterValues.agence !== "tous") {
         </h2>
 
         {/* Buttons container - column on mobile, row on desktop */}
-        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
+        {/* <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
           <Button
             type="primary"
             className="w-full  md:w-auto"
@@ -1866,7 +1866,37 @@ if (filterValues.agence && filterValues.agence !== "tous") {
               </span>
             </div>
           </Button>
-        </div>
+        </div> */}
+        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
+  {/* Only managers can import */}
+  {currentUserInfo?.role === "manager" && (
+    <Button
+      type="primary"
+      className="w-full md:w-auto"
+      onClick={showModalImport}
+    >
+      <div className="flex items-center justify-center gap-2">
+        <span className="text-lg pb-1">+</span>
+        <span className="text-[10px] sm:text-xs whitespace-nowrap">
+          IMPORTER VOTRE BASE CLIENTS/PROSPECTS
+        </span>
+      </div>
+    </Button>
+  )}
+
+  <Button
+    type="primary"
+    className="w-full md:w-auto"
+    onClick={showModal}
+  >
+    <div className="flex items-center justify-center gap-2">
+      <span className="text-lg">+</span>
+      <span className="text-[10px]  sm:text-xs whitespace-nowrap">
+        ENREGISTRER UN CLIENT/PROSPECT
+      </span>
+    </div>
+  </Button>
+</div>
       </div>
 
       <Row gutter={16} className="mb-6">
