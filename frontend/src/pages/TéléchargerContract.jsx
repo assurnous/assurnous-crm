@@ -1335,9 +1335,9 @@ const handleLeadClick = (lead) => {
     loading={loading}
     showSearch
     optionFilterProp="children"
-    filterOption={(input, option) =>
-      option.children.toLowerCase().includes(input.toLowerCase())
-    }
+    // filterOption={(input, option) =>
+    //   option.children.toLowerCase().includes(input.toLowerCase())
+    // }
     allowClear
   >
     <Option value="tous">Tous les gestionnaires</Option>
