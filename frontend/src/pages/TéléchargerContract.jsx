@@ -1535,19 +1535,20 @@ const handleLeadClick = (lead) => {
                   },
                 ]}
               >
-                <Select
+                {/* <Select
                   showSearch
-                  optionFilterProp="children"
+                  // optionFilterProp="children"
+                  optionFilterProp="label"    
                   className="w-full"
                   loading={clientLoading}
                   onChange={handleClientChange}
                   placeholder="-- Sélectionnez un client --"
-                  filterOption={(input, option) => {
-                    const children = option.children?.props?.children || "";
-                    return String(children)
-                      .toLowerCase()
-                      .includes(input.toLowerCase());
-                  }}
+                  // filterOption={(input, option) => {
+                  //   const children = option.children?.props?.children || "";
+                  //   return String(children)
+                  //     .toLowerCase()
+                  //     .includes(input.toLowerCase());
+                  // }}
                   notFoundContent={
                     clientLoading ? "Chargement..." : "Aucun client trouvé"
                   }
@@ -1562,7 +1563,29 @@ const handleLeadClick = (lead) => {
                       </div>
                     </Option>
                   ))}
-                </Select>
+                </Select> */}
+      
+  <Select
+    showSearch
+    optionFilterProp="label"           // ⬅️ filtrer sur "label"
+    className="w-full"
+    loading={clientLoading}
+    onChange={handleClientChange}
+    placeholder="-- Sélectionnez un client --"
+    notFoundContent={clientLoading ? "Chargement..." : "Aucun client trouvé"}
+  >
+    {clients.map((client) => {
+      const label = `${client.nom || ""} ${client.prenom ? "- " + client.prenom : ""}`.trim();
+      return (
+        <Option key={client._id} value={client._id} label={label}>   {/* ⬅️ LE label */}
+          <div className="flex justify-between">
+            <span>{label}</span>
+          </div>
+        </Option>
+      );
+    })}
+  </Select>
+
               </Form.Item>
             
             </div>

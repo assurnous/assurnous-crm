@@ -1416,10 +1416,11 @@ const deleteDevis = async (id) => {
 };
 
  
-
-
-  // return (
-  //   <section className="container mx-auto">
+console.log("clients state:", {
+  count: clients.length,
+  firstClient: clients[0],
+  clientLoading,
+});
   return (
     <ConfigProvider locale={fr_FR}>
     <section className="container mx-auto">
@@ -1466,9 +1467,9 @@ const deleteDevis = async (id) => {
                loading={loading}
                showSearch
                optionFilterProp="children"
-               filterOption={(input, option) =>
-                 option.children.toLowerCase().includes(input.toLowerCase())
-               }
+              //  filterOption={(input, option) =>
+              //    option.children.toLowerCase().includes(input.toLowerCase())
+              //  }
                allowClear
              >
                <Option value="tous">Tous les gestionnaires</Option>
@@ -1689,7 +1690,7 @@ const deleteDevis = async (id) => {
   name="clientId"
   rules={[{ required: true, message: 'Veuillez sélectionner un client' }]}
 >
-  <Select
+  {/* <Select
     showSearch
     optionFilterProp="children"
     className="w-full"
@@ -1712,7 +1713,27 @@ const deleteDevis = async (id) => {
         </div>
       </Option>
     ))}
-  </Select>
+  </Select> */}
+  <Select
+  showSearch
+  optionFilterProp="label"          // ⬅️ filtrer sur la prop "label"
+  className="w-full"
+  loading={clientLoading}
+  onChange={handleClientChange}
+  placeholder="-- Sélectionnez un client --"
+  notFoundContent={clientLoading ? "Chargement..." : "Aucun client trouvé"}
+>
+  {clients.map((client) => {
+    const label = `${client.nom || ''} ${client.prenom ? '- ' + client.prenom : ''}`.trim();
+    return (
+      <Option key={client._id} value={client._id} label={label}>
+        <div className="flex justify-between">
+          <span>{label}</span>
+        </div>
+      </Option>
+    );
+  })}
+</Select>
 </Form.Item>
       
                   {/* === RISQUE ET ASSUREUR === */}
@@ -1832,9 +1853,9 @@ const deleteDevis = async (id) => {
     loading={loading}
     showSearch
     optionFilterProp="children"
-    filterOption={(input, option) => 
-      option.children.toLowerCase().includes(input.toLowerCase())
-    }
+    // filterOption={(input, option) => 
+    //   option.children.toLowerCase().includes(input.toLowerCase())
+    // }
     disabled={loading}
   >
              {users.map((user) => {
@@ -1884,9 +1905,9 @@ const deleteDevis = async (id) => {
                       placeholder="-- Choisissez un créateur --"
                       showSearch
                       optionFilterProp="children"
-                      filterOption={(input, option) =>
-                        option.children.toLowerCase().includes(input.toLowerCase())
-                      }
+                      // filterOption={(input, option) =>
+                      //   option.children.toLowerCase().includes(input.toLowerCase())
+                      // }
                     >
                       {users.map((user) => {
                         const displayName =
@@ -1919,9 +1940,9 @@ const deleteDevis = async (id) => {
                       placeholder="-- Choisissez un intermediaire--"
                       showSearch
                       optionFilterProp="children"
-                      filterOption={(input, option) =>
-                        option.children.toLowerCase().includes(input.toLowerCase())
-                      }
+                      // filterOption={(input, option) =>
+                      //   option.children.toLowerCase().includes(input.toLowerCase())
+                      // }
                     >
                       {users.map((user) => {
                         const displayName =
