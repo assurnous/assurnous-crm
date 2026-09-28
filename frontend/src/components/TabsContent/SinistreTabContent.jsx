@@ -93,22 +93,168 @@ const handleSinistreFilter = (value) => {
   }
 };
 
+  // useEffect(() => {
+  //   const fetchContrats = async () => {
+  //     try {
+  //       setLoadingContrats(true);
+  //       const response = await axios.get("/contrat");
+  //       console.log("Fetched contracts:", response.data);
+  //       setContrats(response.data);
+  //     } catch (error) {
+  //       console.error("Error fetching contracts:", error);
+  //     } finally {
+  //       setLoadingContrats(false);
+  //     }
+  //   };
+
+  //   fetchContrats();
+  // }, []);
   useEffect(() => {
     const fetchContrats = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+  
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken?.userId;
+      const userRole = decodedToken?.role?.toLowerCase();
+  
       try {
         setLoadingContrats(true);
-        const response = await axios.get("/contrat");
-        console.log("Fetched contracts:", response.data);
-        setContrats(response.data);
+  
+        // ── Récupérer TOUS les contrats ─────────────────────────────────
+        const response = await axios.get("/contrat", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+  
+        const rawData = response.data;
+        const allContrats = Array.isArray(rawData) ? rawData : rawData?.data || [];
+  
+        console.log("📦 [fetchContrats] /contrat retourné");
+        console.log("   → Nombre total de contrats:", allContrats.length);
+  
+        // ── Construire teamUserIds ──────────────────────────────────────
+        let teamUserIds = [userId];
+  
+        if (userRole === "manager" || userRole === "commercial") {
+          try {
+            const commercialsRes = await axios.get("/commercials", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+  
+            const rawCommercials = commercialsRes.data;
+            const allCommercials = Array.isArray(rawCommercials)
+              ? rawCommercials
+              : rawCommercials?.data || [];
+  
+            if (userRole === "manager") {
+              const teamCommercials = allCommercials.filter((c) => {
+                const m = c.manager || c.createdBy;
+                return m === userId || m?.toString() === userId;
+              });
+  
+              teamCommercials.forEach((c) => {
+                if (c._id) teamUserIds.push(c._id.toString());
+              });
+  
+              console.log("   → Manager team IDs:", teamUserIds);
+            } else if (userRole === "commercial") {
+              const me = allCommercials.find(
+                (c) => c._id === userId || c._id?.toString() === userId
+              );
+              const myManagerId = me?.manager || me?.createdBy;
+              if (myManagerId) {
+                teamUserIds.push(myManagerId.toString());
+                allCommercials
+                  .filter((c) => {
+                    const m = c.manager || c.createdBy;
+                    return m === myManagerId || m?.toString() === myManagerId;
+                  })
+                  .forEach((c) => {
+                    if (c._id) teamUserIds.push(c._id.toString());
+                  });
+              }
+              console.log("   → Commercial team IDs:", teamUserIds);
+            }
+          } catch (err) {
+            console.error("❌ [fetchContrats] Erreur /commercials:", err);
+          }
+        }
+  
+        // ── Filtrer selon le rôle ───────────────────────────────────────
+        let filteredContrats;
+  
+        if (userRole === "admin") {
+          filteredContrats = allContrats;
+          console.log("🔓 ADMIN → tous les contrats:", filteredContrats.length);
+        } else {
+          let bySession = 0;
+          let byGestionnaire = 0;
+          let byLeadCommercial = 0;
+          let byLeadManager = 0;
+  
+          filteredContrats = allContrats.filter((contrat) => {
+            const sessionId =
+              contrat.session?._id?.toString() || contrat.session?.toString();
+            const gestionnaireId =
+              contrat.gestionnaire?._id?.toString() ||
+              contrat.gestionnaire?.toString();
+            const leadCommercialId =
+              contrat.lead?.commercial?._id?.toString() ||
+              contrat.lead?.commercial?.toString();
+            const leadManagerId =
+              contrat.lead?.manager?._id?.toString() ||
+              contrat.lead?.manager?.toString();
+  
+            const matchesSession = teamUserIds.some(
+              (id) => id?.toString() === sessionId
+            );
+            const matchesGestionnaire = teamUserIds.some(
+              (id) => id?.toString() === gestionnaireId
+            );
+            const matchesLeadCommercial = teamUserIds.some(
+              (id) => id?.toString() === leadCommercialId
+            );
+            const matchesLeadManager = teamUserIds.some(
+              (id) => id?.toString() === leadManagerId
+            );
+  
+            if (matchesSession) bySession++;
+            if (matchesGestionnaire) byGestionnaire++;
+            if (matchesLeadCommercial) byLeadCommercial++;
+            if (matchesLeadManager) byLeadManager++;
+  
+            return (
+              matchesSession ||
+              matchesGestionnaire ||
+              matchesLeadCommercial ||
+              matchesLeadManager
+            );
+          });
+  
+          console.log(`🔍 ${userRole.toUpperCase()} → contrats filtrés:`, {
+            total: allContrats.length,
+            filtered: filteredContrats.length,
+            breakdown: {
+              bySession,
+              byGestionnaire,
+              byLeadCommercial,
+              byLeadManager,
+            },
+            teamUserIds,
+          });
+        }
+  
+        setContrats(filteredContrats);
       } catch (error) {
-        console.error("Error fetching contracts:", error);
+        console.error("❌ [fetchContrats] ERREUR:", error);
+        setContrats([]);
       } finally {
         setLoadingContrats(false);
       }
     };
-
+  
     fetchContrats();
-  }, []);
+  }, [refreshTrigger]);
 
   const handleStatusFilter = (value) => {
     setStatusFilter(value);
@@ -428,7 +574,7 @@ const handleSinistreFilter = (value) => {
         // ═══════════════════════════════════════════════════════════════
         // ÉTAPE 2 : Construire la liste d'IDs de l'équipe
         // ═══════════════════════════════════════════════════════════════
-        let teamUserIds = [userId];
+        let teamUserIds = [];
         let allCommercialsForNames = [];
   
         if (userRole === "manager" || userRole === "commercial") {

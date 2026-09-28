@@ -429,14 +429,23 @@ const ContratTabContent = () => {
               type="text"
             />
      
-          {userRole === "Admin" && (
+          {/* {userRole === "Admin" && (
             <Button
               icon={<DeleteOutlined />}
               onClick={() => showDeleteConfirm(record.key)}
               type="text"
               danger
             />
-          )}
+          )} */}
+          {["admin", "manager"].includes(userRole?.toLowerCase()) && (
+  <Button
+    icon={<DeleteOutlined />}
+    onClick={() => showDeleteConfirm(record.key)}
+    type="text"
+    danger
+    title="Supprimer le contrat"
+  />
+)}
         </Space>
       ),
     },
