@@ -121,79 +121,540 @@ const handleSinistreFilter = (value) => {
     }
   };
 
-  useEffect(() => {
-       const fetchClients = async () => {
-             const token = localStorage.getItem("token");
-             const decodedToken = jwtDecode(token);
-             const userId = decodedToken?.userId;
-             const userRole = decodedToken?.role?.toLowerCase(); // or userType
+  // useEffect(() => {
+  //      const fetchClients = async () => {
+  //            const token = localStorage.getItem("token");
+  //            const decodedToken = jwtDecode(token);
+  //            const userId = decodedToken?.userId;
+  //            const userRole = decodedToken?.role?.toLowerCase(); // or userType
            
-             try {
-               setLoading(true);
+  //            try {
+  //              setLoading(true);
                
-               // Always fetch all clients (admin will use all, commercial will filter)
-               const response = await axios.get('/data', {
-                 headers: { Authorization: `Bearer ${token}` }
-               });
+  //              // Always fetch all clients (admin will use all, commercial will filter)
+  //              const response = await axios.get('/data', {
+  //                headers: { Authorization: `Bearer ${token}` }
+  //              });
            
-               const allLeads = response.data?.chatData || [];
-               console.log("All leads:", allLeads);
+  //              const allLeads = response.data?.chatData || [];
+  //              console.log("All leads:", allLeads);
            
-               const filteredLeads = allLeads.filter(lead => {
-                 // ADMIN: See all clients
-                 if (userRole === 'admin') {
-                   return true;
-                 }
+  //              const filteredLeads = allLeads.filter(lead => {
+  //                // ADMIN: See all clients
+  //                if (userRole === 'admin') {
+  //                  return true;
+  //                }
            
-                 // COMMERCIAL: Only see clients assigned to them via commercial field
-                 if (userRole === 'commercial') {
-                   const commercialId = 
-                     typeof lead.commercial === 'string' 
-                       ? lead.commercial 
-                       : lead.commercial?._id?.toString();
-                   return commercialId === userId;
-                 }
+  //                // COMMERCIAL: Only see clients assigned to them via commercial field
+  //                if (userRole === 'commercial') {
+  //                  const commercialId = 
+  //                    typeof lead.commercial === 'string' 
+  //                      ? lead.commercial 
+  //                      : lead.commercial?._id?.toString();
+  //                  return commercialId === userId;
+  //                }
            
-                 // MANAGER: Only see clients assigned to them via manager field
-                 if (userRole === 'manager') {
-                   const managerId = 
-                     typeof lead.manager === 'string' 
-                       ? lead.manager 
-                       : lead.manager?._id?.toString();
-                   return managerId === userId;
-                 }
+  //                // MANAGER: Only see clients assigned to them via manager field
+  //                if (userRole === 'manager') {
+  //                  const managerId = 
+  //                    typeof lead.manager === 'string' 
+  //                      ? lead.manager 
+  //                      : lead.manager?._id?.toString();
+  //                  return managerId === userId;
+  //                }
            
-                 // Default: no access if role not recognized
-                 return false;
-               });
+  //                // Default: no access if role not recognized
+  //                return false;
+  //              });
            
-               // Sort by createdAt in descending order (newest first)
-               const sortedLeads = filteredLeads.sort((a, b) => {
-                 return new Date(b.createdAt) - new Date(a.createdAt);
-               });
+  //              // Sort by createdAt in descending order (newest first)
+  //              const sortedLeads = filteredLeads.sort((a, b) => {
+  //                return new Date(b.createdAt) - new Date(a.createdAt);
+  //              });
            
-               console.log("Filtered and sorted leads:", {
-                 userId,
-                 userRole,
-                 totalLeads: allLeads.length,
-                 filteredCount: sortedLeads.length,
-                 sampleLead: sortedLeads[0],
-                 breakdown: {
-                   admin: userRole === 'admin' ? 'ALL' : 'N/A',
-                   commercial: userRole === 'commercial' ? sortedLeads.length : 'N/A',
-                   manager: userRole === 'manager' ? sortedLeads.length : 'N/A'
-                 }
-               });
+  //              console.log("Filtered and sorted leads:", {
+  //                userId,
+  //                userRole,
+  //                totalLeads: allLeads.length,
+  //                filteredCount: sortedLeads.length,
+  //                sampleLead: sortedLeads[0],
+  //                breakdown: {
+  //                  admin: userRole === 'admin' ? 'ALL' : 'N/A',
+  //                  commercial: userRole === 'commercial' ? sortedLeads.length : 'N/A',
+  //                  manager: userRole === 'manager' ? sortedLeads.length : 'N/A'
+  //                }
+  //              });
            
-               setChatData(sortedLeads);
-             } catch (error) {
-               console.error("Error fetching leads:", error);
-               message.error("Failed to fetch leads");
-             } finally {
-               setLoading(false);
-             }
-           };
-           fetchClients();
+  //              setChatData(sortedLeads);
+  //            } catch (error) {
+  //              console.error("Error fetching leads:", error);
+  //              message.error("Failed to fetch leads");
+  //            } finally {
+  //              setLoading(false);
+  //            }
+  //          };
+  //          fetchClients();
+  // }, [id, currentUserId, token]);
+  // useEffect(() => {
+  //   const fetchClients = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+  
+  //     const decodedToken = jwtDecode(token);
+  //     const userId = decodedToken?.userId;
+  //     const userName = decodedToken?.name;
+  //     const userRole = decodedToken?.role?.toLowerCase();
+  
+  //     try {
+  //       setLoading(true);
+  
+  //       // ── Récupérer tous les leads ─────────────────────────────────────
+  //       const response = await axios.get("/data", {
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       });
+  //       const allLeads = response.data?.chatData || [];
+  //       console.log("Total leads from /data:", allLeads.length);
+  
+  //       // ── Construire la liste d'IDs de l'équipe ────────────────────────
+  //       let teamUserIds = [userId]; // on commence par soi-même
+  //       let allCommercialsForNames = [];
+  
+  //       if (userRole === "manager" || userRole === "commercial") {
+  //         try {
+  //           const commercialsRes = await axios.get("/commercials", {
+  //             headers: { Authorization: `Bearer ${token}` },
+  //           });
+  //           allCommercialsForNames = commercialsRes.data || [];
+  
+  //           if (userRole === "manager") {
+  //             // Commerciaux dont le manager est ce manager
+  //             const teamCommercials = allCommercialsForNames.filter((c) => {
+  //               const m = c.manager || c.createdBy;
+  //               return m === userId || m?.toString() === userId;
+  //             });
+  
+  //             teamCommercials.forEach((c) => {
+  //               if (c._id) teamUserIds.push(c._id.toString());
+  //             });
+  
+  //             console.log("Manager team structure (sinistre):", {
+  //               managerId: userId,
+  //               teamUserIds,
+  //               teamCount: teamCommercials.length,
+  //             });
+  //           } else if (userRole === "commercial") {
+  //             // Le manager du commercial + les collègues de son équipe
+  //             const me = allCommercialsForNames.find(
+  //               (c) => c._id === userId || c._id?.toString() === userId
+  //             );
+  //             const myManagerId = me?.manager || me?.createdBy;
+  //             if (myManagerId) {
+  //               teamUserIds.push(myManagerId.toString());
+  //               allCommercialsForNames
+  //                 .filter((c) => {
+  //                   const m = c.manager || c.createdBy;
+  //                   return m === myManagerId || m?.toString() === myManagerId;
+  //                 })
+  //                 .forEach((c) => {
+  //                   if (c._id) teamUserIds.push(c._id.toString());
+  //                 });
+  //             }
+  //             console.log("Commercial team structure (sinistre):", {
+  //               userId,
+  //               teamUserIds,
+  //             });
+  //           }
+  //         } catch (err) {
+  //           console.error("Error fetching commercials:", err);
+  //         }
+  //       }
+  
+  //       // ── Filtrer les leads selon le rôle ──────────────────────────────
+  //       let filteredLeads;
+  
+  //       if (userRole === "admin") {
+  //         filteredLeads = allLeads;
+  //       } else if (userRole === "manager" || userRole === "commercial") {
+  //         // Noms des membres de l'équipe (pour matcher cree_par)
+  //         const teamMembers = allCommercialsForNames.filter((c) =>
+  //           teamUserIds.includes(c._id?.toString())
+  //         );
+  
+  //         filteredLeads = allLeads.filter((lead) => {
+  //           const leadManagerId =
+  //             lead.manager?._id?.toString() || lead.manager;
+  //           const gestionnaireId =
+  //             lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+  //           const commercialId =
+  //             lead.commercial?._id?.toString() || lead.commercial;
+  //           const creatorName = lead.cree_par;
+  
+  //           const isTeamLeadManager = teamUserIds.some(
+  //             (id) => id?.toString() === leadManagerId?.toString()
+  //           );
+  //           const isTeamGestionnaire = teamUserIds.some(
+  //             (id) => id?.toString() === gestionnaireId?.toString()
+  //           );
+  //           const isTeamCommercial = teamUserIds.some(
+  //             (id) => id?.toString() === commercialId?.toString()
+  //           );
+  
+  //           let isCreatedByTeam = false;
+  //           if (creatorName && teamMembers.length > 0) {
+  //             isCreatedByTeam = teamMembers.some((member) => {
+  //               const memberName = `${member.prenom || ""} ${
+  //                 member.nom || ""
+  //               }`.trim();
+  //               return (
+  //                 creatorName.includes(memberName) ||
+  //                 memberName.includes(creatorName)
+  //               );
+  //             });
+  //           }
+  
+  //           return (
+  //             isTeamLeadManager ||
+  //             isTeamGestionnaire ||
+  //             isTeamCommercial ||
+  //             isCreatedByTeam
+  //           );
+  //         });
+  
+  //         console.log(`${userRole} filtered clients (sinistre):`, {
+  //           total: allLeads.length,
+  //           filtered: filteredLeads.length,
+  //           teamUserIds,
+  //         });
+  //       } else {
+  //         // Rôle inconnu : on ne montre que ses propres leads
+  //         filteredLeads = allLeads.filter((lead) => {
+  //           const gId = lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+  //           const cId = lead.commercial?._id?.toString() || lead.commercial;
+  //           const mId = lead.manager?._id?.toString() || lead.manager;
+  //           return gId === userId || cId === userId || mId === userId;
+  //         });
+  //       }
+  
+  //       // ── Ajouter les noms formatés pour l'affichage ───────────────────
+  //       const leadsWithNames = filteredLeads.map((lead) => ({
+  //         ...lead,
+  //         managerName: lead.manager
+  //           ? `${lead.manager.prenom || ""} ${lead.manager.nom || ""}`.trim()
+  //           : "Non assigné",
+  //         commercialName: lead.commercial
+  //           ? `${lead.commercial.prenom || ""} ${lead.commercial.nom || ""}`.trim()
+  //           : "Non assigné",
+  //         gestionnaireName:
+  //           lead.gestionnaireName ||
+  //           (lead.gestionnaire && typeof lead.gestionnaire === "object"
+  //             ? `${lead.gestionnaire.prenom || ""} ${
+  //                 lead.gestionnaire.nom || ""
+  //               }`.trim()
+  //             : "Non assigné"),
+  //       }));
+  
+  //       // ── Trier par date ───────────────────────────────────────────────
+  //       const sortedLeads = leadsWithNames.sort(
+  //         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  //       );
+  
+  //       console.log("Final leads for SinistreTab:", {
+  //         count: sortedLeads.length,
+  //         sample: sortedLeads[0],
+  //       });
+  
+  //       setChatData(sortedLeads);
+  //     } catch (error) {
+  //       console.error("Error fetching leads:", error);
+  //       message.error("Failed to fetch leads");
+  //       setChatData([]);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  
+  //   fetchClients();
+  // }, [id, currentUserId, token]);
+  useEffect(() => {
+    const fetchClients = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.warn("❌ [fetchClients] No token");
+        return;
+      }
+  
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken?.userId;
+      const userName = decodedToken?.name;
+      const userRole = decodedToken?.role?.toLowerCase();
+  
+      console.log("═══════════════════════════════════════════════");
+      console.log("🚀 [fetchClients] START");
+      console.log("👤 User info:", {
+        userId,
+        userName,
+        userRole,
+      });
+      console.log("═══════════════════════════════════════════════");
+  
+      try {
+        setLoading(true);
+  
+        // ═══════════════════════════════════════════════════════════════
+        // ÉTAPE 1 : Récupérer TOUS les leads via /data
+        // ═══════════════════════════════════════════════════════════════
+        const response = await axios.get("/data", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+  
+        const allLeads = response.data?.chatData || [];
+  
+        console.log("📦 [ÉTAPE 1] /data retourné");
+        console.log("   → Nombre total de leads (TOUS):", allLeads.length);
+        console.log("   → Type de la réponse:", typeof response.data);
+        console.log("   → Clés de la réponse:", Object.keys(response.data || {}));
+        if (allLeads.length > 0) {
+          console.log("   → Exemple de lead (1er):", {
+            _id: allLeads[0]._id,
+            nom: allLeads[0].nom,
+            prenom: allLeads[0].prenom,
+            manager: allLeads[0].manager,
+            gestionnaire: allLeads[0].gestionnaire,
+            commercial: allLeads[0].commercial,
+            cree_par: allLeads[0].cree_par,
+          });
+        }
+  
+        // ═══════════════════════════════════════════════════════════════
+        // ÉTAPE 2 : Construire la liste d'IDs de l'équipe
+        // ═══════════════════════════════════════════════════════════════
+        let teamUserIds = [userId];
+        let allCommercialsForNames = [];
+  
+        if (userRole === "manager" || userRole === "commercial") {
+          try {
+            const commercialsRes = await axios.get("/commercials", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+  
+            // Gérer les deux formats possibles : tableau direct ou {data: []}
+            const rawCommercials = commercialsRes.data;
+            allCommercialsForNames = Array.isArray(rawCommercials)
+              ? rawCommercials
+              : rawCommercials?.data || [];
+  
+            console.log("📦 [ÉTAPE 2] /commercials retourné");
+            console.log("   → Nombre de commerciaux (TOTAL):", allCommercialsForNames.length);
+  
+            if (userRole === "manager") {
+              const teamCommercials = allCommercialsForNames.filter((c) => {
+                const m = c.manager || c.createdBy;
+                return m === userId || m?.toString() === userId;
+              });
+  
+              console.log("   → Commerciaux de CE manager:", teamCommercials.length);
+              console.log(
+                "   → Détails:",
+                teamCommercials.map((c) => ({
+                  id: c._id,
+                  nom: `${c.prenom || ""} ${c.nom || ""}`,
+                  manager: c.manager,
+                  createdBy: c.createdBy,
+                }))
+              );
+  
+              teamCommercials.forEach((c) => {
+                if (c._id) teamUserIds.push(c._id.toString());
+              });
+  
+              console.log("   → Team IDs finaux:", teamUserIds);
+            } else if (userRole === "commercial") {
+              const me = allCommercialsForNames.find(
+                (c) => c._id === userId || c._id?.toString() === userId
+              );
+              const myManagerId = me?.manager || me?.createdBy;
+  
+              console.log("   → Mon manager ID:", myManagerId);
+  
+              if (myManagerId) {
+                teamUserIds.push(myManagerId.toString());
+  
+                const teamCommercials = allCommercialsForNames.filter((c) => {
+                  const m = c.manager || c.createdBy;
+                  return m === myManagerId || m?.toString() === myManagerId;
+                });
+  
+                console.log("   → Collègues de mon équipe:", teamCommercials.length);
+  
+                teamCommercials.forEach((c) => {
+                  if (c._id) teamUserIds.push(c._id.toString());
+                });
+              }
+  
+              console.log("   → Team IDs finaux:", teamUserIds);
+            }
+          } catch (err) {
+            console.error("❌ [ÉTAPE 2] Erreur /commercials:", err);
+          }
+        }
+  
+        // ═══════════════════════════════════════════════════════════════
+        // ÉTAPE 3 : Filtrer les leads selon le rôle
+        // ═══════════════════════════════════════════════════════════════
+        let filteredLeads;
+  
+        if (userRole === "admin") {
+          filteredLeads = allLeads;
+          console.log(
+            "🔓 [ÉTAPE 3] ADMIN → voit TOUS les leads:",
+            filteredLeads.length
+          );
+        } else if (userRole === "manager" || userRole === "commercial") {
+          const teamMembers = allCommercialsForNames.filter((c) =>
+            teamUserIds.includes(c._id?.toString())
+          );
+  
+          // Compteurs par critère pour diagnostiquer
+          let countByManager = 0;
+          let countByGestionnaire = 0;
+          let countByCommercial = 0;
+          let countByCreator = 0;
+          let countMatchAny = 0;
+  
+          filteredLeads = allLeads.filter((lead) => {
+            const leadManagerId = lead.manager?._id?.toString() || lead.manager;
+            const gestionnaireId =
+              lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+            const commercialId =
+              lead.commercial?._id?.toString() || lead.commercial;
+            const creatorName = lead.cree_par;
+  
+            const isTeamLeadManager = teamUserIds.some(
+              (id) => id?.toString() === leadManagerId?.toString()
+            );
+            const isTeamGestionnaire = teamUserIds.some(
+              (id) => id?.toString() === gestionnaireId?.toString()
+            );
+            const isTeamCommercial = teamUserIds.some(
+              (id) => id?.toString() === commercialId?.toString()
+            );
+  
+            let isCreatedByTeam = false;
+            if (creatorName && teamMembers.length > 0) {
+              isCreatedByTeam = teamMembers.some((member) => {
+                const memberName = `${member.prenom || ""} ${
+                  member.nom || ""
+                }`.trim();
+                return (
+                  creatorName.includes(memberName) ||
+                  memberName.includes(creatorName)
+                );
+              });
+            }
+  
+            if (isTeamLeadManager) countByManager++;
+            if (isTeamGestionnaire) countByGestionnaire++;
+            if (isTeamCommercial) countByCommercial++;
+            if (isCreatedByTeam) countByCreator++;
+  
+            const match =
+              isTeamLeadManager ||
+              isTeamGestionnaire ||
+              isTeamCommercial ||
+              isCreatedByTeam;
+            if (match) countMatchAny++;
+  
+            return match;
+          });
+  
+          console.log(`🔍 [ÉTAPE 3] ${userRole.toUpperCase()} → filtrage`);
+          console.log("   → Team IDs utilisés:", teamUserIds);
+          console.log("   → Nombre de teamMembers (pour matcher cree_par):", teamMembers.length);
+          console.log("   ─────────────────────────────");
+          console.log("   📊 Répartition des matches:");
+          console.log("      • Via lead.manager      :", countByManager);
+          console.log("      • Via lead.gestionnaire :", countByGestionnaire);
+          console.log("      • Via lead.commercial   :", countByCommercial);
+          console.log("      • Via cree_par (nom)    :", countByCreator);
+          console.log("      • Total matches (any)   :", countMatchAny);
+          console.log("   ─────────────────────────────");
+          console.log("   ✅ Leads retenus:", filteredLeads.length, "/", allLeads.length);
+        } else {
+          filteredLeads = allLeads.filter((lead) => {
+            const gId = lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+            const cId = lead.commercial?._id?.toString() || lead.commercial;
+            const mId = lead.manager?._id?.toString() || lead.manager;
+            return gId === userId || cId === userId || mId === userId;
+          });
+          console.log(
+            `⚠️ [ÉTAPE 3] Rôle inconnu "${userRole}" → filtrage fallback:`,
+            filteredLeads.length
+          );
+        }
+  
+        // ═══════════════════════════════════════════════════════════════
+        // ÉTAPE 4 : Enrichir + trier
+        // ═══════════════════════════════════════════════════════════════
+        const leadsWithNames = filteredLeads.map((lead) => ({
+          ...lead,
+          managerName: lead.manager
+            ? `${lead.manager.prenom || ""} ${lead.manager.nom || ""}`.trim()
+            : "Non assigné",
+          commercialName: lead.commercial
+            ? `${lead.commercial.prenom || ""} ${lead.commercial.nom || ""}`.trim()
+            : "Non assigné",
+          gestionnaireName:
+            lead.gestionnaireName ||
+            (lead.gestionnaire && typeof lead.gestionnaire === "object"
+              ? `${lead.gestionnaire.prenom || ""} ${
+                  lead.gestionnaire.nom || ""
+                }`.trim()
+              : "Non assigné"),
+        }));
+  
+        const sortedLeads = leadsWithNames.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+  
+        // ═══════════════════════════════════════════════════════════════
+        // ÉTAPE 5 : Résumé final
+        // ═══════════════════════════════════════════════════════════════
+        console.log("═══════════════════════════════════════════════");
+        console.log("📋 RÉSUMÉ FINAL [fetchClients]");
+        console.log("   👤 Rôle:", userRole);
+        console.log("   📥 Leads reçus de /data    :", allLeads.length);
+        console.log("   👥 Commerciaux de l'équipe :", teamUserIds.length - 1);
+        console.log("   ✅ Leads affichés          :", sortedLeads.length);
+        console.log("   🎯 Filtre appliqué         :", 
+          userRole === "admin" 
+            ? "AUCUN (admin voit tout)" 
+            : `teamUserIds (${teamUserIds.length} IDs)`
+        );
+        console.log("═══════════════════════════════════════════════");
+  
+        if (sortedLeads.length > 0) {
+          console.log("   📄 Exemple de client affiché:");
+          console.log("   ", {
+            nom: sortedLeads[0].nom,
+            prenom: sortedLeads[0].prenom,
+            manager: sortedLeads[0].managerName,
+            commercial: sortedLeads[0].commercialName,
+            gestionnaire: sortedLeads[0].gestionnaireName,
+          });
+        }
+  
+        setChatData(sortedLeads);
+      } catch (error) {
+        console.error("❌ [fetchClients] ERREUR:", error);
+        message.error("Failed to fetch leads");
+        setChatData([]);
+      } finally {
+        setLoading(false);
+        console.log("🏁 [fetchClients] END");
+      }
+    };
+  
+    fetchClients();
   }, [id, currentUserId, token]);
 
   useEffect(() => {
