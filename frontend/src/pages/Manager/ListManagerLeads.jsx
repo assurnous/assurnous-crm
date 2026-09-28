@@ -56,7 +56,7 @@ const ListManagerLeads = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [filters, setFilters] = useState({
-    gestionaire: "tous",
+    gestionnaire: "tous",
     categorie: "tous",
     status: "tous",
     agence: "tous",
@@ -2084,9 +2084,9 @@ if (filterValues.agence && filterValues.agence !== "tous") {
               placeholder="-- Choisissez le gestionnaire --"
               showSearch
               optionFilterProp="children"
-              filterOption={(input, option) =>
-                option.children.toLowerCase().includes(input.toLowerCase())
-              }
+              // filterOption={(input, option) =>
+              //   option.children.toLowerCase().includes(input.toLowerCase())
+              // }
               onChange={(value) => handleFilterChange("gestionnaire", value)}
               value={filters.gestionnaire}
             >
