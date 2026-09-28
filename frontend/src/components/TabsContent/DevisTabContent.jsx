@@ -841,9 +841,9 @@ const handleEdit = (record) => {
                 placeholder="-- Choisissez un créateur --"
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
+                // filterOption={(input, option) =>
+                //   option.children.toLowerCase().includes(input.toLowerCase())
+                // }
               >
                 {users.map((user) => {
                   const displayName =
@@ -878,9 +878,9 @@ const handleEdit = (record) => {
                 placeholder="-- Choisissez un intermediaire--"
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
+                // filterOption={(input, option) =>
+                //   option.children.toLowerCase().includes(input.toLowerCase())
+                // }
               >
                 {users.map((user) => {
                   const displayName =

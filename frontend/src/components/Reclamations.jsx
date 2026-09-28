@@ -1903,9 +1903,9 @@ const Reclamations = () => {
                 placeholder="-- Choisissez un créateur --"
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
+                // filterOption={(input, option) =>
+                //   option.children.toLowerCase().includes(input.toLowerCase())
+                // }
               >
                 {users.map((user) => {
                   const displayName =

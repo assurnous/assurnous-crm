@@ -1754,15 +1754,31 @@ const handleLeadClick = (lead) => {
                 placeholder="-- Choisissez un gestionnaire --"
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
+                // filterOption={(input, option) =>
+                //   option.children.toLowerCase().includes(input.toLowerCase())
+                // }
               >
-                {users.map((user) => (
+                {/* {users.map((user) => (
                   <Option key={user._id} value={user._id}>
                     {`${user.nom} ${user.prenom}`} 
                   </Option>
-                ))}
+                ))} */}
+                 {users.map((user) => {
+                    const displayName =
+                      user.userType === "admin"
+                        ? user.name
+                        : `${user.nom} ${user.prenom}`;
+
+                    return (
+                      <Option
+                        key={`${user.userType}-${user._id}`}
+                        value={displayName}
+                      >
+                        {displayName} (
+                          {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
+                      </Option>
+                    );
+                  })}
               </Select>
             </Form.Item>
 
@@ -1789,11 +1805,11 @@ const handleLeadClick = (lead) => {
                   placeholder="-- Choisissez un créateur --"
                   showSearch
                   optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
-                  }
+                  // filterOption={(input, option) =>
+                  //   option.children.toLowerCase().includes(input.toLowerCase())
+                  // }
                 >
-                  {users.map((user) => {
+                  {/* {users.map((user) => {
                     const displayName =
                       user.userType === "admin"
                         ? user.name
@@ -1801,6 +1817,22 @@ const handleLeadClick = (lead) => {
 
                     return (
                       <Option key={user._id} value={user._id}>
+                        {displayName} (
+                          {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
+                      </Option>
+                    );
+                  })} */}
+                   {users.map((user) => {
+                    const displayName =
+                      user.userType === "admin"
+                        ? user.name
+                        : `${user.nom} ${user.prenom}`;
+
+                    return (
+                      <Option
+                        key={`${user.userType}-${user._id}`}
+                        value={displayName}
+                      >
                         {displayName} (
                           {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
                       </Option>
@@ -1824,9 +1856,9 @@ const handleLeadClick = (lead) => {
                   placeholder="-- Choisissez un intermediaire--"
                   showSearch
                   optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
-                  }
+                  // filterOption={(input, option) =>
+                  //   option.children.toLowerCase().includes(input.toLowerCase())
+                  // }
                 >
                   {users.map((user) => {
                     const displayName =

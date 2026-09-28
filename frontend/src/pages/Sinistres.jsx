@@ -1544,9 +1544,9 @@ const Sinistres = () => {
                 loading={loading}
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
+                // filterOption={(input, option) =>
+                //   option.children.toLowerCase().includes(input.toLowerCase())
+                // }
                 allowClear
               >
                 <Option value="tous">Tous les gestionnaires</Option>
@@ -1753,9 +1753,9 @@ const Sinistres = () => {
                   optionFilterProp="children"
                   placeholder="-- Choisissez un sinistré --"
                   loading={loadingClients}
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
-                  }
+                  // filterOption={(input, option) =>
+                  //   option.children.toLowerCase().includes(input.toLowerCase())
+                  // }
                 >
                   {clients.map((client) => (
                     <Option key={client._id} value={client._id}>
@@ -1847,11 +1847,11 @@ const Sinistres = () => {
                       loading={loadingContrats}
                       showSearch
                       optionFilterProp="children"
-                      filterOption={(input, option) =>
-                        option.children
-                          .toLowerCase()
-                          .includes(input.toLowerCase())
-                      }
+                      // filterOption={(input, option) =>
+                      //   option.children
+                      //     .toLowerCase()
+                      //     .includes(input.toLowerCase())
+                      // }
                     >
                       {contrats.map((contrat) => (
                         <Option key={contrat._id} value={contrat._id}>

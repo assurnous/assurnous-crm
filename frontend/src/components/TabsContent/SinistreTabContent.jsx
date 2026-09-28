@@ -377,8 +377,15 @@ dateDeclaration: sinistre.dateDeclaration
       
       setLoading(true);
       try {
+        // const response = await axios.get(`/sinistres/${id}`, {
+        //   headers: { Authorization: `Bearer ${token}` }
+        // });
         const response = await axios.get(`/sinistres/${id}`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "x-user-id": decodedToken?.userId,
+            "x-user-role": decodedToken?.role,
+          },
         });
   
         console.log("All sinistres for lead:", response.data);
@@ -1380,9 +1387,9 @@ useEffect(() => {
                   optionFilterProp="children"
                   placeholder="-- Choisissez un sinistré --"
                   loading={loadingClients}
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
-                  }
+                  // filterOption={(input, option) =>
+                  //   option.children.toLowerCase().includes(input.toLowerCase())
+                  // }
                 >
                   {chatData.map((client) => (
                     <Option key={client._id} value={client._id}>

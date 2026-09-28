@@ -3278,9 +3278,9 @@ const applyColumnSearches = (searches) => {
               placeholder="-- Choisissez le gestionnaire --"
               showSearch
               optionFilterProp="children"
-              filterOption={(input, option) =>
-                option.children.toLowerCase().includes(input.toLowerCase())
-              }
+              // filterOption={(input, option) =>
+              //   option.children.toLowerCase().includes(input.toLowerCase())
+              // }
               onChange={(value) => handleFilterChange("gestionnaire", value)}
               value={filters.gestionnaire}
             >
@@ -4333,9 +4333,9 @@ const applyColumnSearches = (searches) => {
                 placeholder="-- Choisissez un créateur --"
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
+                // filterOption={(input, option) =>
+                //   option.children.toLowerCase().includes(input.toLowerCase())
+                // }
               >
                 {users.map((user) => {
                   const displayName =
@@ -4368,9 +4368,9 @@ const applyColumnSearches = (searches) => {
                 placeholder="-- Choisissez un intermediaire--"
                 showSearch
                 optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
+                // filterOption={(input, option) =>
+                //   option.children.toLowerCase().includes(input.toLowerCase())
+                // }
               >
                 {users.map((user) => {
                   const displayName =

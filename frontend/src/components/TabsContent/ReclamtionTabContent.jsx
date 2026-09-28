@@ -874,9 +874,9 @@ const handleEdit = (record) => {
                        showSearch
                        optionFilterProp="children"
                        placeholder="-- Choisissez un sinistré --"
-                       filterOption={(input, option) =>
-                         option.children.toLowerCase().includes(input.toLowerCase())
-                       }
+                      //  filterOption={(input, option) =>
+                      //    option.children.toLowerCase().includes(input.toLowerCase())
+                      //  }
                     >
                       {chatData.map((client) => (
                               <Option key={client._id} value={client._id}>
