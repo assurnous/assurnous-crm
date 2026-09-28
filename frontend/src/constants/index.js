@@ -772,8 +772,9 @@ export const ASSUREURS = [
 {value : 'hoken/spring', label: 'Hoken/Spring'},
 {value : 'progeas', label: 'Progeas'},
 {value: 'iassure', label: 'Iassure'},
-
-  ];
+{value: 'leocare', label: 'Leocare'},
+{value: 'hiscox', label: 'Hiscox'},
+];
 
   export const RISQUES = [
     { value: 'risque_2_roues', label: '2-Roues' },

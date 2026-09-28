@@ -393,7 +393,7 @@ const ContratTabContent = () => {
           en_cours:        { bg: "#16a34a", text: "En cours" },         // vert
           mise_en_demeure: { bg: "#ea580c", text: "Mise en demeure" },  // orange foncé
           reduit:          { bg: "#0891b2", text: "Réduit" },           // cyan foncé
-          resilie:         { bg: "#db2777", text: "Résilié" },          // rose/magenta
+          resilie:         { bg: "#dc2626", text: "Résilié" },          // rose/magenta
           sans_effet:      { bg: "#6b7280", text: "Sans effet" },       // gris
           suspendu:        { bg: "#ca8a04", text: "Suspendu" },         // or/doré
           temporaire:      { bg: "#65a30d", text: "Temporaire" },       // lime foncé

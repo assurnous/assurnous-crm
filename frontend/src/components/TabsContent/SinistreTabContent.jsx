@@ -36,7 +36,7 @@ import { jwtDecode } from "jwt-decode";
 import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../../constants";
 import { ConfigProvider } from "antd";
-import fr_FR from 'antd/locale/fr_FR';
+import fr_FR from "antd/locale/fr_FR";
 
 const { Option } = Select;
 const { TabPane } = Tabs;
@@ -68,7 +68,7 @@ const SinistreTabContent = () => {
   const contratExist = useWatch("contratExist", form);
   const [loadingClients, setLoadingClients] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-
+  const [selectedClientId, setSelectedClientId] = useState(null);
   // Document states
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -76,22 +76,26 @@ const SinistreTabContent = () => {
   const [uploadForm] = Form.useForm();
   const [activeTabKey, setActiveTabKey] = useState("sinistres");
   // Ajouter cet état près des autres states
-const [selectedSinistreId, setSelectedSinistreId] = useState(null);
-const [sinistreFilter, setSinistreFilter] = useState("all");
-const [filteredDocuments, setFilteredDocuments] = useState([]);
+  const [selectedSinistreId, setSelectedSinistreId] = useState(null);
+  const [sinistreFilter, setSinistreFilter] = useState("all");
+  const [filteredDocuments, setFilteredDocuments] = useState([]);
 
+  const watchedSinistreId = useWatch("sinistreId", form);
+  useEffect(() => {
+    setSelectedClientId(watchedSinistreId || null);
+  }, [watchedSinistreId]);
 
-// Fonction pour filtrer les documents par sinistre
-const handleSinistreFilter = (value) => {
-  setSinistreFilter(value);
-  
-  if (value === "all") {
-    setFilteredDocuments(documents);
-  } else {
-    const filtered = documents.filter((doc) => doc.sinistreId === value);
-    setFilteredDocuments(filtered);
-  }
-};
+  // Fonction pour filtrer les documents par sinistre
+  const handleSinistreFilter = (value) => {
+    setSinistreFilter(value);
+
+    if (value === "all") {
+      setFilteredDocuments(documents);
+    } else {
+      const filtered = documents.filter((doc) => doc.sinistreId === value);
+      setFilteredDocuments(filtered);
+    }
+  };
 
   // useEffect(() => {
   //   const fetchContrats = async () => {
@@ -109,142 +113,170 @@ const handleSinistreFilter = (value) => {
 
   //   fetchContrats();
   // }, []);
+  // useEffect(() => {
+  //   const fetchContrats = async () => {
+  //     const token = localStorage.getItem("token");
+  //     if (!token) return;
+
+  //     const decodedToken = jwtDecode(token);
+  //     const userId = decodedToken?.userId;
+  //     const userRole = decodedToken?.role?.toLowerCase();
+
+  //     try {
+  //       setLoadingContrats(true);
+
+  //       // ── Récupérer TOUS les contrats ─────────────────────────────────
+  //       const response = await axios.get("/contrat", {
+  //         headers: { Authorization: `Bearer ${token}` },
+  //       });
+
+  //       const rawData = response.data;
+  //       const allContrats = Array.isArray(rawData) ? rawData : rawData?.data || [];
+
+  //       console.log("📦 [fetchContrats] /contrat retourné");
+  //       console.log("   → Nombre total de contrats:", allContrats.length);
+
+  //       // ── Construire teamUserIds ──────────────────────────────────────
+  //       let teamUserIds = [userId];
+
+  //       if (userRole === "manager" || userRole === "commercial") {
+  //         try {
+  //           const commercialsRes = await axios.get("/commercials", {
+  //             headers: { Authorization: `Bearer ${token}` },
+  //           });
+
+  //           const rawCommercials = commercialsRes.data;
+  //           const allCommercials = Array.isArray(rawCommercials)
+  //             ? rawCommercials
+  //             : rawCommercials?.data || [];
+
+  //           if (userRole === "manager") {
+  //             const teamCommercials = allCommercials.filter((c) => {
+  //               const m = c.manager || c.createdBy;
+  //               return m === userId || m?.toString() === userId;
+  //             });
+
+  //             teamCommercials.forEach((c) => {
+  //               if (c._id) teamUserIds.push(c._id.toString());
+  //             });
+
+  //             console.log("   → Manager team IDs:", teamUserIds);
+  //           } else if (userRole === "commercial") {
+  //             const me = allCommercials.find(
+  //               (c) => c._id === userId || c._id?.toString() === userId
+  //             );
+  //             const myManagerId = me?.manager || me?.createdBy;
+  //             if (myManagerId) {
+  //               teamUserIds.push(myManagerId.toString());
+  //               allCommercials
+  //                 .filter((c) => {
+  //                   const m = c.manager || c.createdBy;
+  //                   return m === myManagerId || m?.toString() === myManagerId;
+  //                 })
+  //                 .forEach((c) => {
+  //                   if (c._id) teamUserIds.push(c._id.toString());
+  //                 });
+  //             }
+  //             console.log("   → Commercial team IDs:", teamUserIds);
+  //           }
+  //         } catch (err) {
+  //           console.error("❌ [fetchContrats] Erreur /commercials:", err);
+  //         }
+  //       }
+
+  //       // ── Filtrer selon le rôle ───────────────────────────────────────
+  //       let filteredContrats;
+
+  //       if (userRole === "admin") {
+  //         filteredContrats = allContrats;
+  //         console.log("🔓 ADMIN → tous les contrats:", filteredContrats.length);
+  //       } else {
+  //         let bySession = 0;
+  //         let byGestionnaire = 0;
+  //         let byLeadCommercial = 0;
+  //         let byLeadManager = 0;
+
+  //         filteredContrats = allContrats.filter((contrat) => {
+  //           const sessionId =
+  //             contrat.session?._id?.toString() || contrat.session?.toString();
+  //           const gestionnaireId =
+  //             contrat.gestionnaire?._id?.toString() ||
+  //             contrat.gestionnaire?.toString();
+  //           const leadCommercialId =
+  //             contrat.lead?.commercial?._id?.toString() ||
+  //             contrat.lead?.commercial?.toString();
+  //           const leadManagerId =
+  //             contrat.lead?.manager?._id?.toString() ||
+  //             contrat.lead?.manager?.toString();
+
+  //           const matchesSession = teamUserIds.some(
+  //             (id) => id?.toString() === sessionId
+  //           );
+  //           const matchesGestionnaire = teamUserIds.some(
+  //             (id) => id?.toString() === gestionnaireId
+  //           );
+  //           const matchesLeadCommercial = teamUserIds.some(
+  //             (id) => id?.toString() === leadCommercialId
+  //           );
+  //           const matchesLeadManager = teamUserIds.some(
+  //             (id) => id?.toString() === leadManagerId
+  //           );
+
+  //           if (matchesSession) bySession++;
+  //           if (matchesGestionnaire) byGestionnaire++;
+  //           if (matchesLeadCommercial) byLeadCommercial++;
+  //           if (matchesLeadManager) byLeadManager++;
+
+  //           return (
+  //             matchesSession ||
+  //             matchesGestionnaire ||
+  //             matchesLeadCommercial ||
+  //             matchesLeadManager
+  //           );
+  //         });
+
+  //         console.log(`🔍 ${userRole.toUpperCase()} → contrats filtrés:`, {
+  //           total: allContrats.length,
+  //           filtered: filteredContrats.length,
+  //           breakdown: {
+  //             bySession,
+  //             byGestionnaire,
+  //             byLeadCommercial,
+  //             byLeadManager,
+  //           },
+  //           teamUserIds,
+  //         });
+  //       }
+
+  //       setContrats(filteredContrats);
+  //     } catch (error) {
+  //       console.error("❌ [fetchContrats] ERREUR:", error);
+  //       setContrats([]);
+  //     } finally {
+  //       setLoadingContrats(false);
+  //     }
+  //   };
+
+  //   fetchContrats();
+  // }, [refreshTrigger]);
   useEffect(() => {
     const fetchContrats = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
-  
-      const decodedToken = jwtDecode(token);
-      const userId = decodedToken?.userId;
-      const userRole = decodedToken?.role?.toLowerCase();
-  
+
       try {
         setLoadingContrats(true);
-  
-        // ── Récupérer TOUS les contrats ─────────────────────────────────
+
         const response = await axios.get("/contrat", {
           headers: { Authorization: `Bearer ${token}` },
         });
-  
+
         const rawData = response.data;
-        const allContrats = Array.isArray(rawData) ? rawData : rawData?.data || [];
-  
-        console.log("📦 [fetchContrats] /contrat retourné");
-        console.log("   → Nombre total de contrats:", allContrats.length);
-  
-        // ── Construire teamUserIds ──────────────────────────────────────
-        let teamUserIds = [userId];
-  
-        if (userRole === "manager" || userRole === "commercial") {
-          try {
-            const commercialsRes = await axios.get("/commercials", {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-  
-            const rawCommercials = commercialsRes.data;
-            const allCommercials = Array.isArray(rawCommercials)
-              ? rawCommercials
-              : rawCommercials?.data || [];
-  
-            if (userRole === "manager") {
-              const teamCommercials = allCommercials.filter((c) => {
-                const m = c.manager || c.createdBy;
-                return m === userId || m?.toString() === userId;
-              });
-  
-              teamCommercials.forEach((c) => {
-                if (c._id) teamUserIds.push(c._id.toString());
-              });
-  
-              console.log("   → Manager team IDs:", teamUserIds);
-            } else if (userRole === "commercial") {
-              const me = allCommercials.find(
-                (c) => c._id === userId || c._id?.toString() === userId
-              );
-              const myManagerId = me?.manager || me?.createdBy;
-              if (myManagerId) {
-                teamUserIds.push(myManagerId.toString());
-                allCommercials
-                  .filter((c) => {
-                    const m = c.manager || c.createdBy;
-                    return m === myManagerId || m?.toString() === myManagerId;
-                  })
-                  .forEach((c) => {
-                    if (c._id) teamUserIds.push(c._id.toString());
-                  });
-              }
-              console.log("   → Commercial team IDs:", teamUserIds);
-            }
-          } catch (err) {
-            console.error("❌ [fetchContrats] Erreur /commercials:", err);
-          }
-        }
-  
-        // ── Filtrer selon le rôle ───────────────────────────────────────
-        let filteredContrats;
-  
-        if (userRole === "admin") {
-          filteredContrats = allContrats;
-          console.log("🔓 ADMIN → tous les contrats:", filteredContrats.length);
-        } else {
-          let bySession = 0;
-          let byGestionnaire = 0;
-          let byLeadCommercial = 0;
-          let byLeadManager = 0;
-  
-          filteredContrats = allContrats.filter((contrat) => {
-            const sessionId =
-              contrat.session?._id?.toString() || contrat.session?.toString();
-            const gestionnaireId =
-              contrat.gestionnaire?._id?.toString() ||
-              contrat.gestionnaire?.toString();
-            const leadCommercialId =
-              contrat.lead?.commercial?._id?.toString() ||
-              contrat.lead?.commercial?.toString();
-            const leadManagerId =
-              contrat.lead?.manager?._id?.toString() ||
-              contrat.lead?.manager?.toString();
-  
-            const matchesSession = teamUserIds.some(
-              (id) => id?.toString() === sessionId
-            );
-            const matchesGestionnaire = teamUserIds.some(
-              (id) => id?.toString() === gestionnaireId
-            );
-            const matchesLeadCommercial = teamUserIds.some(
-              (id) => id?.toString() === leadCommercialId
-            );
-            const matchesLeadManager = teamUserIds.some(
-              (id) => id?.toString() === leadManagerId
-            );
-  
-            if (matchesSession) bySession++;
-            if (matchesGestionnaire) byGestionnaire++;
-            if (matchesLeadCommercial) byLeadCommercial++;
-            if (matchesLeadManager) byLeadManager++;
-  
-            return (
-              matchesSession ||
-              matchesGestionnaire ||
-              matchesLeadCommercial ||
-              matchesLeadManager
-            );
-          });
-  
-          console.log(`🔍 ${userRole.toUpperCase()} → contrats filtrés:`, {
-            total: allContrats.length,
-            filtered: filteredContrats.length,
-            breakdown: {
-              bySession,
-              byGestionnaire,
-              byLeadCommercial,
-              byLeadManager,
-            },
-            teamUserIds,
-          });
-        }
-  
-        setContrats(filteredContrats);
+        const allContrats = Array.isArray(rawData)
+          ? rawData
+          : rawData?.data || [];
+
+        setContrats(allContrats);
       } catch (error) {
         console.error("❌ [fetchContrats] ERREUR:", error);
         setContrats([]);
@@ -252,7 +284,7 @@ const handleSinistreFilter = (value) => {
         setLoadingContrats(false);
       }
     };
-  
+
     fetchContrats();
   }, [refreshTrigger]);
 
@@ -273,51 +305,51 @@ const handleSinistreFilter = (value) => {
   //            const decodedToken = jwtDecode(token);
   //            const userId = decodedToken?.userId;
   //            const userRole = decodedToken?.role?.toLowerCase(); // or userType
-           
+
   //            try {
   //              setLoading(true);
-               
+
   //              // Always fetch all clients (admin will use all, commercial will filter)
   //              const response = await axios.get('/data', {
   //                headers: { Authorization: `Bearer ${token}` }
   //              });
-           
+
   //              const allLeads = response.data?.chatData || [];
   //              console.log("All leads:", allLeads);
-           
+
   //              const filteredLeads = allLeads.filter(lead => {
   //                // ADMIN: See all clients
   //                if (userRole === 'admin') {
   //                  return true;
   //                }
-           
+
   //                // COMMERCIAL: Only see clients assigned to them via commercial field
   //                if (userRole === 'commercial') {
-  //                  const commercialId = 
-  //                    typeof lead.commercial === 'string' 
-  //                      ? lead.commercial 
+  //                  const commercialId =
+  //                    typeof lead.commercial === 'string'
+  //                      ? lead.commercial
   //                      : lead.commercial?._id?.toString();
   //                  return commercialId === userId;
   //                }
-           
+
   //                // MANAGER: Only see clients assigned to them via manager field
   //                if (userRole === 'manager') {
-  //                  const managerId = 
-  //                    typeof lead.manager === 'string' 
-  //                      ? lead.manager 
+  //                  const managerId =
+  //                    typeof lead.manager === 'string'
+  //                      ? lead.manager
   //                      : lead.manager?._id?.toString();
   //                  return managerId === userId;
   //                }
-           
+
   //                // Default: no access if role not recognized
   //                return false;
   //              });
-           
+
   //              // Sort by createdAt in descending order (newest first)
   //              const sortedLeads = filteredLeads.sort((a, b) => {
   //                return new Date(b.createdAt) - new Date(a.createdAt);
   //              });
-           
+
   //              console.log("Filtered and sorted leads:", {
   //                userId,
   //                userRole,
@@ -330,7 +362,7 @@ const handleSinistreFilter = (value) => {
   //                  manager: userRole === 'manager' ? sortedLeads.length : 'N/A'
   //                }
   //              });
-           
+
   //              setChatData(sortedLeads);
   //            } catch (error) {
   //              console.error("Error fetching leads:", error);
@@ -345,44 +377,44 @@ const handleSinistreFilter = (value) => {
   //   const fetchClients = async () => {
   //     const token = localStorage.getItem("token");
   //     if (!token) return;
-  
+
   //     const decodedToken = jwtDecode(token);
   //     const userId = decodedToken?.userId;
   //     const userName = decodedToken?.name;
   //     const userRole = decodedToken?.role?.toLowerCase();
-  
+
   //     try {
   //       setLoading(true);
-  
+
   //       // ── Récupérer tous les leads ─────────────────────────────────────
   //       const response = await axios.get("/data", {
   //         headers: { Authorization: `Bearer ${token}` },
   //       });
   //       const allLeads = response.data?.chatData || [];
   //       console.log("Total leads from /data:", allLeads.length);
-  
+
   //       // ── Construire la liste d'IDs de l'équipe ────────────────────────
   //       let teamUserIds = [userId]; // on commence par soi-même
   //       let allCommercialsForNames = [];
-  
+
   //       if (userRole === "manager" || userRole === "commercial") {
   //         try {
   //           const commercialsRes = await axios.get("/commercials", {
   //             headers: { Authorization: `Bearer ${token}` },
   //           });
   //           allCommercialsForNames = commercialsRes.data || [];
-  
+
   //           if (userRole === "manager") {
   //             // Commerciaux dont le manager est ce manager
   //             const teamCommercials = allCommercialsForNames.filter((c) => {
   //               const m = c.manager || c.createdBy;
   //               return m === userId || m?.toString() === userId;
   //             });
-  
+
   //             teamCommercials.forEach((c) => {
   //               if (c._id) teamUserIds.push(c._id.toString());
   //             });
-  
+
   //             console.log("Manager team structure (sinistre):", {
   //               managerId: userId,
   //               teamUserIds,
@@ -414,10 +446,10 @@ const handleSinistreFilter = (value) => {
   //           console.error("Error fetching commercials:", err);
   //         }
   //       }
-  
+
   //       // ── Filtrer les leads selon le rôle ──────────────────────────────
   //       let filteredLeads;
-  
+
   //       if (userRole === "admin") {
   //         filteredLeads = allLeads;
   //       } else if (userRole === "manager" || userRole === "commercial") {
@@ -425,7 +457,7 @@ const handleSinistreFilter = (value) => {
   //         const teamMembers = allCommercialsForNames.filter((c) =>
   //           teamUserIds.includes(c._id?.toString())
   //         );
-  
+
   //         filteredLeads = allLeads.filter((lead) => {
   //           const leadManagerId =
   //             lead.manager?._id?.toString() || lead.manager;
@@ -434,7 +466,7 @@ const handleSinistreFilter = (value) => {
   //           const commercialId =
   //             lead.commercial?._id?.toString() || lead.commercial;
   //           const creatorName = lead.cree_par;
-  
+
   //           const isTeamLeadManager = teamUserIds.some(
   //             (id) => id?.toString() === leadManagerId?.toString()
   //           );
@@ -444,7 +476,7 @@ const handleSinistreFilter = (value) => {
   //           const isTeamCommercial = teamUserIds.some(
   //             (id) => id?.toString() === commercialId?.toString()
   //           );
-  
+
   //           let isCreatedByTeam = false;
   //           if (creatorName && teamMembers.length > 0) {
   //             isCreatedByTeam = teamMembers.some((member) => {
@@ -457,7 +489,7 @@ const handleSinistreFilter = (value) => {
   //               );
   //             });
   //           }
-  
+
   //           return (
   //             isTeamLeadManager ||
   //             isTeamGestionnaire ||
@@ -465,7 +497,7 @@ const handleSinistreFilter = (value) => {
   //             isCreatedByTeam
   //           );
   //         });
-  
+
   //         console.log(`${userRole} filtered clients (sinistre):`, {
   //           total: allLeads.length,
   //           filtered: filteredLeads.length,
@@ -480,7 +512,7 @@ const handleSinistreFilter = (value) => {
   //           return gId === userId || cId === userId || mId === userId;
   //         });
   //       }
-  
+
   //       // ── Ajouter les noms formatés pour l'affichage ───────────────────
   //       const leadsWithNames = filteredLeads.map((lead) => ({
   //         ...lead,
@@ -498,17 +530,17 @@ const handleSinistreFilter = (value) => {
   //               }`.trim()
   //             : "Non assigné"),
   //       }));
-  
+
   //       // ── Trier par date ───────────────────────────────────────────────
   //       const sortedLeads = leadsWithNames.sort(
   //         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
   //       );
-  
+
   //       console.log("Final leads for SinistreTab:", {
   //         count: sortedLeads.length,
   //         sample: sortedLeads[0],
   //       });
-  
+
   //       setChatData(sortedLeads);
   //     } catch (error) {
   //       console.error("Error fetching leads:", error);
@@ -518,7 +550,7 @@ const handleSinistreFilter = (value) => {
   //       setLoading(false);
   //     }
   //   };
-  
+
   //   fetchClients();
   // }, [id, currentUserId, token]);
   useEffect(() => {
@@ -528,12 +560,12 @@ const handleSinistreFilter = (value) => {
         console.warn("❌ [fetchClients] No token");
         return;
       }
-  
+
       const decodedToken = jwtDecode(token);
       const userId = decodedToken?.userId;
       const userName = decodedToken?.name;
       const userRole = decodedToken?.role?.toLowerCase();
-  
+
       console.log("═══════════════════════════════════════════════");
       console.log("🚀 [fetchClients] START");
       console.log("👤 User info:", {
@@ -542,23 +574,19 @@ const handleSinistreFilter = (value) => {
         userRole,
       });
       console.log("═══════════════════════════════════════════════");
-  
+
       try {
         setLoading(true);
-  
+
         // ═══════════════════════════════════════════════════════════════
         // ÉTAPE 1 : Récupérer TOUS les leads via /data
         // ═══════════════════════════════════════════════════════════════
         const response = await axios.get("/data", {
           headers: { Authorization: `Bearer ${token}` },
         });
-  
+
         const allLeads = response.data?.chatData || [];
-  
-        console.log("📦 [ÉTAPE 1] /data retourné");
-        console.log("   → Nombre total de leads (TOUS):", allLeads.length);
-        console.log("   → Type de la réponse:", typeof response.data);
-        console.log("   → Clés de la réponse:", Object.keys(response.data || {}));
+
         if (allLeads.length > 0) {
           console.log("   → Exemple de lead (1er):", {
             _id: allLeads[0]._id,
@@ -570,35 +598,41 @@ const handleSinistreFilter = (value) => {
             cree_par: allLeads[0].cree_par,
           });
         }
-  
+
         // ═══════════════════════════════════════════════════════════════
         // ÉTAPE 2 : Construire la liste d'IDs de l'équipe
         // ═══════════════════════════════════════════════════════════════
         let teamUserIds = [];
         let allCommercialsForNames = [];
-  
+
         if (userRole === "manager" || userRole === "commercial") {
           try {
             const commercialsRes = await axios.get("/commercials", {
               headers: { Authorization: `Bearer ${token}` },
             });
-  
+
             // Gérer les deux formats possibles : tableau direct ou {data: []}
             const rawCommercials = commercialsRes.data;
             allCommercialsForNames = Array.isArray(rawCommercials)
               ? rawCommercials
               : rawCommercials?.data || [];
-  
+
             console.log("📦 [ÉTAPE 2] /commercials retourné");
-            console.log("   → Nombre de commerciaux (TOTAL):", allCommercialsForNames.length);
-  
+            console.log(
+              "   → Nombre de commerciaux (TOTAL):",
+              allCommercialsForNames.length
+            );
+
             if (userRole === "manager") {
               const teamCommercials = allCommercialsForNames.filter((c) => {
                 const m = c.manager || c.createdBy;
                 return m === userId || m?.toString() === userId;
               });
-  
-              console.log("   → Commerciaux de CE manager:", teamCommercials.length);
+
+              console.log(
+                "   → Commerciaux de CE manager:",
+                teamCommercials.length
+              );
               console.log(
                 "   → Détails:",
                 teamCommercials.map((c) => ({
@@ -608,47 +642,50 @@ const handleSinistreFilter = (value) => {
                   createdBy: c.createdBy,
                 }))
               );
-  
+
               teamCommercials.forEach((c) => {
                 if (c._id) teamUserIds.push(c._id.toString());
               });
-  
+
               console.log("   → Team IDs finaux:", teamUserIds);
             } else if (userRole === "commercial") {
               const me = allCommercialsForNames.find(
                 (c) => c._id === userId || c._id?.toString() === userId
               );
               const myManagerId = me?.manager || me?.createdBy;
-  
+
               console.log("   → Mon manager ID:", myManagerId);
-  
+
               if (myManagerId) {
                 teamUserIds.push(myManagerId.toString());
-  
+
                 const teamCommercials = allCommercialsForNames.filter((c) => {
                   const m = c.manager || c.createdBy;
                   return m === myManagerId || m?.toString() === myManagerId;
                 });
-  
-                console.log("   → Collègues de mon équipe:", teamCommercials.length);
-  
+
+                console.log(
+                  "   → Collègues de mon équipe:",
+                  teamCommercials.length
+                );
+
                 teamCommercials.forEach((c) => {
                   if (c._id) teamUserIds.push(c._id.toString());
                 });
               }
-  
+
               console.log("   → Team IDs finaux:", teamUserIds);
             }
           } catch (err) {
             console.error("❌ [ÉTAPE 2] Erreur /commercials:", err);
           }
         }
-  
+
         // ═══════════════════════════════════════════════════════════════
         // ÉTAPE 3 : Filtrer les leads selon le rôle
         // ═══════════════════════════════════════════════════════════════
         let filteredLeads;
-  
+
         if (userRole === "admin") {
           filteredLeads = allLeads;
           console.log(
@@ -659,14 +696,14 @@ const handleSinistreFilter = (value) => {
           const teamMembers = allCommercialsForNames.filter((c) =>
             teamUserIds.includes(c._id?.toString())
           );
-  
+
           // Compteurs par critère pour diagnostiquer
           let countByManager = 0;
           let countByGestionnaire = 0;
           let countByCommercial = 0;
           let countByCreator = 0;
           let countMatchAny = 0;
-  
+
           filteredLeads = allLeads.filter((lead) => {
             const leadManagerId = lead.manager?._id?.toString() || lead.manager;
             const gestionnaireId =
@@ -674,17 +711,17 @@ const handleSinistreFilter = (value) => {
             const commercialId =
               lead.commercial?._id?.toString() || lead.commercial;
             const creatorName = lead.cree_par;
-  
+
             const isTeamLeadManager = teamUserIds.some(
-              (id) => id?.toString() === leadManagerId?.toString()
+              (id) => id === leadManagerId
             );
             const isTeamGestionnaire = teamUserIds.some(
-              (id) => id?.toString() === gestionnaireId?.toString()
+              (id) => id === gestionnaireId
             );
             const isTeamCommercial = teamUserIds.some(
-              (id) => id?.toString() === commercialId?.toString()
+              (id) => id === commercialId
             );
-  
+
             let isCreatedByTeam = false;
             if (creatorName && teamMembers.length > 0) {
               isCreatedByTeam = teamMembers.some((member) => {
@@ -697,34 +734,14 @@ const handleSinistreFilter = (value) => {
                 );
               });
             }
-  
-            if (isTeamLeadManager) countByManager++;
-            if (isTeamGestionnaire) countByGestionnaire++;
-            if (isTeamCommercial) countByCommercial++;
-            if (isCreatedByTeam) countByCreator++;
-  
-            const match =
+
+            return (
               isTeamLeadManager ||
               isTeamGestionnaire ||
               isTeamCommercial ||
-              isCreatedByTeam;
-            if (match) countMatchAny++;
-  
-            return match;
+              isCreatedByTeam
+            );
           });
-  
-          console.log(`🔍 [ÉTAPE 3] ${userRole.toUpperCase()} → filtrage`);
-          console.log("   → Team IDs utilisés:", teamUserIds);
-          console.log("   → Nombre de teamMembers (pour matcher cree_par):", teamMembers.length);
-          console.log("   ─────────────────────────────");
-          console.log("   📊 Répartition des matches:");
-          console.log("      • Via lead.manager      :", countByManager);
-          console.log("      • Via lead.gestionnaire :", countByGestionnaire);
-          console.log("      • Via lead.commercial   :", countByCommercial);
-          console.log("      • Via cree_par (nom)    :", countByCreator);
-          console.log("      • Total matches (any)   :", countMatchAny);
-          console.log("   ─────────────────────────────");
-          console.log("   ✅ Leads retenus:", filteredLeads.length, "/", allLeads.length);
         } else {
           filteredLeads = allLeads.filter((lead) => {
             const gId = lead.gestionnaire?._id?.toString() || lead.gestionnaire;
@@ -732,12 +749,8 @@ const handleSinistreFilter = (value) => {
             const mId = lead.manager?._id?.toString() || lead.manager;
             return gId === userId || cId === userId || mId === userId;
           });
-          console.log(
-            `⚠️ [ÉTAPE 3] Rôle inconnu "${userRole}" → filtrage fallback:`,
-            filteredLeads.length
-          );
         }
-  
+
         // ═══════════════════════════════════════════════════════════════
         // ÉTAPE 4 : Enrichir + trier
         // ═══════════════════════════════════════════════════════════════
@@ -747,7 +760,9 @@ const handleSinistreFilter = (value) => {
             ? `${lead.manager.prenom || ""} ${lead.manager.nom || ""}`.trim()
             : "Non assigné",
           commercialName: lead.commercial
-            ? `${lead.commercial.prenom || ""} ${lead.commercial.nom || ""}`.trim()
+            ? `${lead.commercial.prenom || ""} ${
+                lead.commercial.nom || ""
+              }`.trim()
             : "Non assigné",
           gestionnaireName:
             lead.gestionnaireName ||
@@ -757,27 +772,11 @@ const handleSinistreFilter = (value) => {
                 }`.trim()
               : "Non assigné"),
         }));
-  
+
         const sortedLeads = leadsWithNames.sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
-  
-        // ═══════════════════════════════════════════════════════════════
-        // ÉTAPE 5 : Résumé final
-        // ═══════════════════════════════════════════════════════════════
-        console.log("═══════════════════════════════════════════════");
-        console.log("📋 RÉSUMÉ FINAL [fetchClients]");
-        console.log("   👤 Rôle:", userRole);
-        console.log("   📥 Leads reçus de /data    :", allLeads.length);
-        console.log("   👥 Commerciaux de l'équipe :", teamUserIds.length - 1);
-        console.log("   ✅ Leads affichés          :", sortedLeads.length);
-        console.log("   🎯 Filtre appliqué         :", 
-          userRole === "admin" 
-            ? "AUCUN (admin voit tout)" 
-            : `teamUserIds (${teamUserIds.length} IDs)`
-        );
-        console.log("═══════════════════════════════════════════════");
-  
+
         if (sortedLeads.length > 0) {
           console.log("   📄 Exemple de client affiché:");
           console.log("   ", {
@@ -788,7 +787,7 @@ const handleSinistreFilter = (value) => {
             gestionnaire: sortedLeads[0].gestionnaireName,
           });
         }
-  
+
         setChatData(sortedLeads);
       } catch (error) {
         console.error("❌ [fetchClients] ERREUR:", error);
@@ -799,7 +798,7 @@ const handleSinistreFilter = (value) => {
         console.log("🏁 [fetchClients] END");
       }
     };
-  
+
     fetchClients();
   }, [id, currentUserId, token]);
 
@@ -871,11 +870,11 @@ const handleSinistreFilter = (value) => {
     //   ? new Date(sinistre.dateDeclaration).toLocaleDateString("fr-FR")
     //   : "N/A",
     dateSinistre: sinistre.dateSinistre
-  ? dayjs(sinistre.dateSinistre).format("DD/MM/YYYY")
-  : "N/A",
-dateDeclaration: sinistre.dateDeclaration
-  ? dayjs(sinistre.dateDeclaration).format("DD/MM/YYYY")
-  : "N/A",
+      ? dayjs(sinistre.dateSinistre).format("DD/MM/YYYY")
+      : "N/A",
+    dateDeclaration: sinistre.dateDeclaration
+      ? dayjs(sinistre.dateDeclaration).format("DD/MM/YYYY")
+      : "N/A",
     responsabilite: sinistre.responsabilite || "N/A",
     montantSinistre: sinistre.montantSinistre || 0,
     delegation: sinistre.delegation || "non",
@@ -892,11 +891,16 @@ dateDeclaration: sinistre.dateDeclaration
     console.log("Form values:", values);
     const token = localStorage.getItem("token");
     const decodedToken = token ? jwtDecode(token) : null;
-    const isAdmin = decodedToken.role === "Admin" || decodedToken.role === "admin";
-    const isManager = decodedToken.role === "Manager" || decodedToken.role === "manager";
+    const isAdmin =
+      decodedToken.role === "Admin" || decodedToken.role === "admin";
+    const isManager =
+      decodedToken.role === "Manager" || decodedToken.role === "manager";
     const sessionId = decodedToken.userId;
-    const sessionModel = isAdmin ? "Admin" : isManager ? "Manager" : "Commercial";
-    
+    const sessionModel = isAdmin
+      ? "Admin"
+      : isManager
+      ? "Manager"
+      : "Commercial";
 
     let gestionnaireModel = null;
     if (values.gestionnaire) {
@@ -904,7 +908,11 @@ dateDeclaration: sinistre.dateDeclaration
         (user) => user._id === values.gestionnaire
       );
       gestionnaireModel =
-        selectedUser?.userType === "admin" ? "Admin" : selectedUser?.userType === "manager" ? "Manager" : "Commercial";
+        selectedUser?.userType === "admin"
+          ? "Admin"
+          : selectedUser?.userType === "manager"
+          ? "Manager"
+          : "Commercial";
     }
 
     try {
@@ -981,7 +989,7 @@ dateDeclaration: sinistre.dateDeclaration
     const fetchSinistresForLead = async () => {
       const token = localStorage.getItem("token");
       if (!token || !id) return;
-      
+
       setLoading(true);
       try {
         // const response = await axios.get(`/sinistres/${id}`, {
@@ -994,46 +1002,53 @@ dateDeclaration: sinistre.dateDeclaration
             "x-user-role": decodedToken?.role,
           },
         });
-  
+
         console.log("All sinistres for lead:", response.data);
-        
+
         if (response.data.success && Array.isArray(response.data.data)) {
           const sinistresArray = response.data.data;
-          
+
           console.log(`Processing ${sinistresArray.length} sinistre(s)`);
 
-          const formattedData = sinistresArray.map(sinistre => {
+          const formattedData = sinistresArray.map((sinistre) => {
             let contratNumber = "N/A";
-            
+
             if (sinistre.contratExist === "oui") {
-              contratNumber = sinistre.contratId && sinistre.contratId.contractNumber 
-                ? sinistre.contratId.contractNumber 
-                : "N/A";
+              contratNumber =
+                sinistre.contratId && sinistre.contratId.contractNumber
+                  ? sinistre.contratId.contractNumber
+                  : "N/A";
             } else if (sinistre.contratExist === "non") {
               contratNumber = sinistre.contratNumber || "N/A";
             }
-            
-            if (sinistre.sinistreExist === "non" && (contratNumber === "N/A" || !contratNumber)) {
+
+            if (
+              sinistre.sinistreExist === "non" &&
+              (contratNumber === "N/A" || !contratNumber)
+            ) {
               contratNumber = sinistre.sinistreInput || "N/A";
             }
 
             return {
               key: sinistre._id,
               numero_sinistre: sinistre.numeroSinistre || "N/A",
-              gestionnaire: sinistre.gestionnaireName || 
-                           (sinistre.gestionnaire ? 
-                             `${sinistre.gestionnaire.nom || ''} ${sinistre.gestionnaire.prenom || ''}`.trim() 
-                             : "N/A"),
+              gestionnaire:
+                sinistre.gestionnaireName ||
+                (sinistre.gestionnaire
+                  ? `${sinistre.gestionnaire.nom || ""} ${
+                      sinistre.gestionnaire.prenom || ""
+                    }`.trim()
+                  : "N/A"),
               risque: sinistre.risque || "N/A",
               contratNumber: contratNumber,
               assureur: sinistre.assureur || "N/A",
               statutSinistre: sinistre.statutSinistre || "N/A",
               typeSinistre: sinistre.typeSinistre || "N/A",
-              dateSinistre: sinistre.dateSinistre 
-                ? new Date(sinistre.dateSinistre).toLocaleDateString('fr-FR') 
+              dateSinistre: sinistre.dateSinistre
+                ? new Date(sinistre.dateSinistre).toLocaleDateString("fr-FR")
                 : "N/A",
               dateDeclaration: sinistre.dateDeclaration
-                ? new Date(sinistre.dateDeclaration).toLocaleDateString('fr-FR')
+                ? new Date(sinistre.dateDeclaration).toLocaleDateString("fr-FR")
                 : "N/A",
               responsabilite: sinistre.responsabilite || "N/A",
               montantSinistre: sinistre.montantSinistre || 0,
@@ -1048,10 +1063,10 @@ dateDeclaration: sinistre.dateDeclaration
               sinistreExist: sinistre.sinistreExist || "non",
               sinistreNom: sinistre.sinistreNom || "N/A",
               sinistrePrenom: sinistre.sinistrePrenom || "N/A",
-              sinistreInput: sinistre.sinistreInput || "N/A"
+              sinistreInput: sinistre.sinistreInput || "N/A",
             };
           });
-          
+
           console.log("Formatted sinistres data:", formattedData);
           setSinistreData(formattedData);
           setFilteredSinistre(formattedData);
@@ -1060,7 +1075,6 @@ dateDeclaration: sinistre.dateDeclaration
           setSinistreData([]);
           setFilteredSinistre([]);
         }
-  
       } catch (error) {
         console.error("Error fetching sinistres:", error);
         setSinistreData([]);
@@ -1069,14 +1083,14 @@ dateDeclaration: sinistre.dateDeclaration
         setLoading(false);
       }
     };
-  
+
     fetchSinistresForLead();
   }, [id, refreshTrigger]);
 
   const fetchDocuments = async () => {
     try {
       const token = localStorage.getItem("token");
-      
+
       // Récupérer tous les sinistres pour ce client
       const sinistresResponse = await axios.get(`/sinistres/${id}`, {
         headers: {
@@ -1085,54 +1099,67 @@ dateDeclaration: sinistre.dateDeclaration
           "x-user-role": decodedToken?.role,
         },
       });
-  
-      if (sinistresResponse.data.success && Array.isArray(sinistresResponse.data.data)) {
+
+      if (
+        sinistresResponse.data.success &&
+        Array.isArray(sinistresResponse.data.data)
+      ) {
         let allDocuments = [];
-  
+
         for (const sinistre of sinistresResponse.data.data) {
           // Récupérer les détails complets des documents du sinistre
-          if (sinistre.documents && Array.isArray(sinistre.documents) && sinistre.documents.length > 0) {
+          if (
+            sinistre.documents &&
+            Array.isArray(sinistre.documents) &&
+            sinistre.documents.length > 0
+          ) {
             for (const documentId of sinistre.documents) {
               try {
                 // Récupérer les détails du document par son ID
-                const documentResponse = await axios.get(`/documentes/${documentId}`, {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                    "x-user-id": decodedToken?.userId,
-                    "x-user-role": decodedToken?.role,
-                  },
-                });
-  
+                const documentResponse = await axios.get(
+                  `/documentes/${documentId}`,
+                  {
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      "x-user-id": decodedToken?.userId,
+                      "x-user-role": decodedToken?.role,
+                    },
+                  }
+                );
+
                 if (documentResponse.data.success) {
                   const documentData = documentResponse.data.data;
                   allDocuments.push({
                     ...documentData,
                     _id: documentId,
-                    source: 'sinistre',
+                    source: "sinistre",
                     sinistreNumero: sinistre.numeroSinistre,
                     sinistreId: sinistre._id,
-                    uploadedBy: sinistre.gestionnaire
+                    uploadedBy: sinistre.gestionnaire,
                   });
                 }
               } catch (docError) {
-                console.error(`Error fetching document ${documentId}:`, docError);
+                console.error(
+                  `Error fetching document ${documentId}:`,
+                  docError
+                );
                 // Si l'appel API échoue, créer un document basique avec l'ID
                 allDocuments.push({
                   _id: documentId,
                   filename: `Document ${documentId}`,
-                  source: 'sinistre',
+                  source: "sinistre",
                   sinistreNumero: sinistre.numeroSinistre,
                   sinistreId: sinistre._id,
                   uploadedBy: sinistre.gestionnaire,
-                  fileType: 'Unknown',
+                  fileType: "Unknown",
                   fileSize: 0,
-                  createdAt: new Date().toISOString()
+                  createdAt: new Date().toISOString(),
                 });
               }
             }
           }
         }
-  
+
         console.log("All documents collected:", allDocuments);
         setDocuments(allDocuments);
         setFilteredDocuments(allDocuments);
@@ -1149,22 +1176,25 @@ dateDeclaration: sinistre.dateDeclaration
     const formData = new FormData();
     formData.append("document", values.document.file);
     formData.append("description", values.description || "");
-  
+
     setUploading(true);
     try {
       const token = localStorage.getItem("token");
-      
+
       // Vérifier s'il y a des sinistres disponibles
       if (sinistreData.length === 0) {
-        message.error("Veuillez d'abord créer un sinistre avant d'uploader des documents");
+        message.error(
+          "Veuillez d'abord créer un sinistre avant d'uploader des documents"
+        );
         return;
       }
-  
+
       // Si un sinistre est sélectionné, l'utiliser, sinon prendre le premier
-      const sinistreIdToUse = selectedSinistreId || sinistreData[0].originalData._id;
-      
+      const sinistreIdToUse =
+        selectedSinistreId || sinistreData[0].originalData._id;
+
       console.log("Uploading document to sinistre:", sinistreIdToUse);
-  
+
       const uploadResponse = await axios.post(
         `/sinistres/${sinistreIdToUse}/documents`,
         formData,
@@ -1177,27 +1207,31 @@ dateDeclaration: sinistre.dateDeclaration
           },
         }
       );
-  
+
       const newDocument = uploadResponse.data.data;
-      
+
       // Trouver le sinistre correspondant pour obtenir son numéro
-      const targetSinistre = sinistreData.find(s => s.originalData._id === sinistreIdToUse);
-      
-      setDocuments((prev) => [{
-        ...newDocument,
-        source: 'sinistre',
-        sinistreNumero: targetSinistre?.numero_sinistre || 'N/A',
-        sinistreId: sinistreIdToUse
-      }, ...prev]);
-      
+      const targetSinistre = sinistreData.find(
+        (s) => s.originalData._id === sinistreIdToUse
+      );
+
+      setDocuments((prev) => [
+        {
+          ...newDocument,
+          source: "sinistre",
+          sinistreNumero: targetSinistre?.numero_sinistre || "N/A",
+          sinistreId: sinistreIdToUse,
+        },
+        ...prev,
+      ]);
+
       setIsUploadModalVisible(false);
       uploadForm.resetFields();
       setSelectedSinistreId(null); // Reset la sélection
       message.success("Document uploadé avec succès");
-      
+
       // Recharger les documents
       fetchDocuments();
-      
     } catch (error) {
       console.error("Error uploading file:", error);
       message.error(
@@ -1207,54 +1241,58 @@ dateDeclaration: sinistre.dateDeclaration
       setUploading(false);
     }
   };
- 
-    const handleDeleteDocument = async (documentId, sinistreId = null) => {
-      try {
-        const token = localStorage.getItem("token");
-        
-        // 1. Supprimer le document de la base de données
-        await axios.delete(`/documentes/${documentId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "x-user-id": decodedToken?.userId,
-            "x-user-role": decodedToken?.role,
-          },
-        });
-    
-        // 2. Si le document est associé à un sinistre, le retirer du sinistre aussi
-        if (sinistreId) {
-          try {
-            await axios.put(`/sinistres/${sinistreId}/remove-document`, {
-              documentId: documentId
-            }, {
+
+  const handleDeleteDocument = async (documentId, sinistreId = null) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      // 1. Supprimer le document de la base de données
+      await axios.delete(`/documentes/${documentId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "x-user-id": decodedToken?.userId,
+          "x-user-role": decodedToken?.role,
+        },
+      });
+
+      // 2. Si le document est associé à un sinistre, le retirer du sinistre aussi
+      if (sinistreId) {
+        try {
+          await axios.put(
+            `/sinistres/${sinistreId}/remove-document`,
+            {
+              documentId: documentId,
+            },
+            {
               headers: {
                 Authorization: `Bearer ${token}`,
                 "x-user-id": decodedToken?.userId,
                 "x-user-role": decodedToken?.role,
               },
-            });
-          } catch (sinistreError) {
-            console.error("Error removing document from sinistre:", sinistreError);
-            // Ne pas bloquer la suppression si l'erreur vient seulement de la dissociation
-            if (sinistreError.response?.status !== 404) {
-              throw sinistreError;
             }
+          );
+        } catch (sinistreError) {
+          console.error(
+            "Error removing document from sinistre:",
+            sinistreError
+          );
+          // Ne pas bloquer la suppression si l'erreur vient seulement de la dissociation
+          if (sinistreError.response?.status !== 404) {
+            throw sinistreError;
           }
         }
-    
-        setDocuments((prev) => prev.filter((doc) => doc._id !== documentId));
-        message.success("Document supprimé avec succès");
-      } catch (error) {
-        console.error("Error deleting document:", error);
-        message.error(
-          error.response?.data?.message ||
-            "Erreur lors de la suppression du document"
-        );
       }
-    };
 
-
-
+      setDocuments((prev) => prev.filter((doc) => doc._id !== documentId));
+      message.success("Document supprimé avec succès");
+    } catch (error) {
+      console.error("Error deleting document:", error);
+      message.error(
+        error.response?.data?.message ||
+          "Erreur lors de la suppression du document"
+      );
+    }
+  };
 
   const documentColumns = [
     {
@@ -1265,8 +1303,11 @@ dateDeclaration: sinistre.dateDeclaration
         <Space>
           <FileTextOutlined />
           <span>{text}</span>
-          <Tag color={record.source === 'contrat' ? 'blue' : 'green'} size="small">
-            {record.source === 'contrat' ? 'Contrat' : 'Sinistre'}
+          <Tag
+            color={record.source === "contrat" ? "blue" : "green"}
+            size="small"
+          >
+            {record.source === "contrat" ? "Contrat" : "Sinistre"}
           </Tag>
         </Space>
       ),
@@ -1277,29 +1318,32 @@ dateDeclaration: sinistre.dateDeclaration
       key: "source",
       render: (source, record) => (
         <div>
-          <div>{source === 'contrat' ? 'Contrat' : 'Sinistre'}</div>
+          <div>{source === "contrat" ? "Contrat" : "Sinistre"}</div>
           {record.sinistreNumero && (
-            <div className="text-xs text-gray-500">Sinistre: {record.sinistreNumero}</div>
+            <div className="text-xs text-gray-500">
+              Sinistre: {record.sinistreNumero}
+            </div>
           )}
         </div>
       ),
       filters: [
-        { text: 'Sinistre', value: 'sinistre' },
-        { text: 'Contrat', value: 'contrat' },
+        { text: "Sinistre", value: "sinistre" },
+        { text: "Contrat", value: "contrat" },
       ],
       onFilter: (value, record) => record.source === value,
     },
- 
 
     {
       title: "Uploadé par",
       dataIndex: "uploadedBy",
       key: "uploadedBy",
       render: (uploadedBy, record) => {
-        if (typeof uploadedBy === 'string') {
+        if (typeof uploadedBy === "string") {
           return uploadedBy;
-        } else if (uploadedBy && typeof uploadedBy === 'object') {
-          return `${uploadedBy.nom || ""} ${uploadedBy.prenom || ""}`.trim() || "N/A";
+        } else if (uploadedBy && typeof uploadedBy === "object") {
+          return (
+            `${uploadedBy.nom || ""} ${uploadedBy.prenom || ""}`.trim() || "N/A"
+          );
         }
         return "N/A";
       },
@@ -1308,7 +1352,7 @@ dateDeclaration: sinistre.dateDeclaration
       title: "Date d'upload",
       dataIndex: "createdAt",
       key: "createdAt",
-      render: (date) => date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "N/A",
+      render: (date) => (date ? dayjs(date).format("DD/MM/YYYY HH:mm") : "N/A"),
     },
     {
       title: "Actions",
@@ -1322,24 +1366,25 @@ dateDeclaration: sinistre.dateDeclaration
           >
             Télécharger
           </Button>
-        
-            <Popconfirm
-              title="Supprimer le document"
-              description="Êtes-vous sûr de vouloir supprimer ce document ?"
-              onConfirm={() => handleDeleteDocument(record._id, record.sinistreId)}
-              okText="Oui"
-              cancelText="Non"
-            >
-              <Button type="link" danger icon={<DeleteOutlined />}>
-                Supprimer
-              </Button>
-            </Popconfirm>
-  
+
+          <Popconfirm
+            title="Supprimer le document"
+            description="Êtes-vous sûr de vouloir supprimer ce document ?"
+            onConfirm={() =>
+              handleDeleteDocument(record._id, record.sinistreId)
+            }
+            okText="Oui"
+            cancelText="Non"
+          >
+            <Button type="link" danger icon={<DeleteOutlined />}>
+              Supprimer
+            </Button>
+          </Popconfirm>
         </Space>
       ),
     },
   ];
-  
+
   // Modifier la fonction de téléchargement pour utiliser l'URL correcte
   const handleDownloadDocument = async (document) => {
     try {
@@ -1356,16 +1401,14 @@ dateDeclaration: sinistre.dateDeclaration
     }
   };
 
-
-
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const [adminsRes, commercialsRes, managersRes] = await Promise.all([
-                    axios.get("/admin"),
-                    axios.get("/commercials"),
-                    axios.get("/manager"),
-                  ]);
+          axios.get("/admin"),
+          axios.get("/commercials"),
+          axios.get("/manager"),
+        ]);
 
         const combinedUsers = [
           ...adminsRes.data.map((admin) => ({
@@ -1405,25 +1448,13 @@ dateDeclaration: sinistre.dateDeclaration
       key: "contratNumber",
       render: (contratNumber, record) => {
         const { contratExist } = record.originalData;
-        
+
         if (contratExist === "oui") {
-          return (
-            <Tag color="green">
-              {contratNumber || "N/A"}
-            </Tag>
-          );
+          return <Tag color="green">{contratNumber || "N/A"}</Tag>;
         } else if (contratExist === "non") {
-          return (
-            <Tag color="orange">
-              {contratNumber || "Non applicable"}
-            </Tag>
-          );
+          return <Tag color="orange">{contratNumber || "Non applicable"}</Tag>;
         } else if (record.originalData.sinistreExist === "non") {
-          return (
-            <Tag color="orange">
-              {contratNumber || "Non renseigné"}
-            </Tag>
-          );
+          return <Tag color="orange">{contratNumber || "Non renseigné"}</Tag>;
         }
       },
     },
@@ -1467,13 +1498,13 @@ dateDeclaration: sinistre.dateDeclaration
       key: "statutSinistre",
       render: (status) => {
         const statusMap = {
-          en_cours: { bg: "#16a34a", text: "En cours" },   // vert
-          clo:      { bg: "#6b7280", text: "Clôturé" },    // gris
-          reouvert: { bg: "#ea580c", text: "Réouvert" },   // orange foncé
+          en_cours: { bg: "#16a34a", text: "En cours" }, // vert
+          clo: { bg: "#6b7280", text: "Clôturé" }, // gris
+          reouvert: { bg: "#ea580c", text: "Réouvert" }, // orange foncé
         };
-    
+
         const conf = statusMap[status];
-    
+
         return (
           <Tag
             style={{
@@ -1550,17 +1581,17 @@ dateDeclaration: sinistre.dateDeclaration
       render: (gestionnaire, record) => {
         // Use the original data that contains the session object
         const originalRecord = record.originalData || record;
-        
+
         if (gestionnaire && gestionnaire !== "N/A") {
           return <>{gestionnaire}</>;
         }
-        
+
         if (originalRecord.session && originalRecord.session.nom) {
           const nom = originalRecord.session.nom || "";
           const prenom = originalRecord.session.prenom || "";
           return <>{`${nom} ${prenom}`.trim()}</>;
         }
-        
+
         return <>N/A</>;
       },
     },
@@ -1651,14 +1682,16 @@ dateDeclaration: sinistre.dateDeclaration
     }
   };
   // Synchroniser filteredDocuments quand documents change
-useEffect(() => {
-  if (sinistreFilter === "all") {
-    setFilteredDocuments(documents);
-  } else {
-    const filtered = documents.filter((doc) => doc.sinistreId === sinistreFilter);
-    setFilteredDocuments(filtered);
-  }
-}, [documents, sinistreFilter]);
+  useEffect(() => {
+    if (sinistreFilter === "all") {
+      setFilteredDocuments(documents);
+    } else {
+      const filtered = documents.filter(
+        (doc) => doc.sinistreId === sinistreFilter
+      );
+      setFilteredDocuments(filtered);
+    }
+  }, [documents, sinistreFilter]);
 
   // Load documents when Documents tab is active
   useEffect(() => {
@@ -1669,90 +1702,94 @@ useEffect(() => {
 
   return (
     <ConfigProvider locale={fr_FR}>
-    <div className="p-2">
-      <Tabs 
-        activeKey={activeTabKey} 
-        onChange={setActiveTabKey}
-        className="w-full"
-      >
-        <TabPane tab="Sinistres" key="sinistres">
-          <div className="flex justify-between mb-4">
-            <div>
-              <Button type="primary" className="bg-blue-600" onClick={showModal}>
-                Enregistrer un sinistre
-              </Button>
+      <div className="p-2">
+        <Tabs
+          activeKey={activeTabKey}
+          onChange={setActiveTabKey}
+          className="w-full"
+        >
+          <TabPane tab="Sinistres" key="sinistres">
+            <div className="flex justify-between mb-4">
+              <div>
+                <Button
+                  type="primary"
+                  className="bg-blue-600"
+                  onClick={showModal}
+                >
+                  Enregistrer un sinistre
+                </Button>
+              </div>
+              <div className="flex space-x-2">
+                <Select
+                  placeholder="Filtrer par statut"
+                  allowClear
+                  style={{ width: 200 }}
+                  value={statusFilter}
+                  onChange={handleStatusFilter}
+                >
+                  <Option value="all">Tous les statuts</Option>
+                  <Option value="tous">Tous</Option>
+                  <Option value="en_cours">En cours</Option>
+                  <Option value="clo">Clos</Option>
+                  <Option value="reouvert">Réouvert</Option>
+                </Select>
+              </div>
             </div>
-            <div className="flex space-x-2">
-              <Select
-                placeholder="Filtrer par statut"
-                allowClear
-                style={{ width: 200 }}
-                value={statusFilter}
-                onChange={handleStatusFilter}
-              >
-                <Option value="all">Tous les statuts</Option>
-                <Option value="tous">Tous</Option>
-                <Option value="en_cours">En cours</Option>
-                <Option value="clo">Clos</Option>
-                <Option value="reouvert">Réouvert</Option>
-              </Select>
-            </div>
-          </div>
 
-          <Table
-            columns={[
-              ...columns.map((col) => ({
-                ...col,
-                title: (
-                  <div className="flex flex-col items-center">
-                    <div className="text-xs">{col.title}</div>
-                  </div>
-                ),
-              })),
-            ]}
-            dataSource={filteredSinistre.slice(
-              (currentPage - 1) * pageSize,
-              currentPage * pageSize
-            )}
-            loading={loading}
-            bordered
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: filteredSinistre.length,
-              onChange: (page, pageSize) => {
-                setCurrentPage(page);
-                setPageSize(pageSize);
-              },
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "30", "50", "100"],
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} items`,
-            }}
-            onRow={(record) => ({
-              onClick: (e) => {
-                if (e.target.closest('.ant-btn, .ant-space, .ant-tooltip')) {
-                  return;
-                }
-                window.location.href = `/Sinistres/${record.originalData._id}`;
-              },
-              style: { 
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
-              },
-              onMouseEnter: (e) => {
-                e.currentTarget.style.backgroundColor = '#f5f5f5';
-              },
-              onMouseLeave: (e) => {
-                e.currentTarget.style.backgroundColor = '';
-              },
-            })}
-            scroll={{ x: "max-content" }}
-            rowKey={(record) => record._id}
-          />
-        </TabPane>
+            <Table
+              columns={[
+                ...columns.map((col) => ({
+                  ...col,
+                  title: (
+                    <div className="flex flex-col items-center">
+                      <div className="text-xs">{col.title}</div>
+                    </div>
+                  ),
+                })),
+              ]}
+              dataSource={filteredSinistre.slice(
+                (currentPage - 1) * pageSize,
+                currentPage * pageSize
+              )}
+              loading={loading}
+              bordered
+              pagination={{
+                current: currentPage,
+                pageSize,
+                total: filteredSinistre.length,
+                onChange: (page, pageSize) => {
+                  setCurrentPage(page);
+                  setPageSize(pageSize);
+                },
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20", "30", "50", "100"],
+                showTotal: (total, range) =>
+                  `${range[0]}-${range[1]} of ${total} items`,
+              }}
+              onRow={(record) => ({
+                onClick: (e) => {
+                  if (e.target.closest(".ant-btn, .ant-space, .ant-tooltip")) {
+                    return;
+                  }
+                  window.location.href = `/Sinistres/${record.originalData._id}`;
+                },
+                style: {
+                  cursor: "pointer",
+                  transition: "background-color 0.2s",
+                },
+                onMouseEnter: (e) => {
+                  e.currentTarget.style.backgroundColor = "#f5f5f5";
+                },
+                onMouseLeave: (e) => {
+                  e.currentTarget.style.backgroundColor = "";
+                },
+              })}
+              scroll={{ x: "max-content" }}
+              rowKey={(record) => record._id}
+            />
+          </TabPane>
 
-        {/* <TabPane tab="Documents" key="documents">
+          {/* <TabPane tab="Documents" key="documents">
           <div className="mb-4">
             <Button
               type="primary"
@@ -1782,324 +1819,349 @@ useEffect(() => {
             scroll={{ x: "max-content" }}
           />
         </TabPane> */}
-        <TabPane tab="Documents" key="documents">
-  <div className="mb-4 flex justify-between items-center">
-    <div className="flex space-x-2">
-      <Button
-        type="primary"
-        icon={<UploadOutlined />}
-        onClick={() => setIsUploadModalVisible(true)}
-      >
-        Uploader Document
-      </Button>
-    </div>
-    
-    {/* Filtre par sinistre */}
-    <div className="flex space-x-2 items-center">
-      <span className="text-sm text-gray-600">Filtrer par sinistre:</span>
-      <Select
-        placeholder="Tous les sinistres"
-        style={{ width: 200 }}
-        value={sinistreFilter}
-        onChange={handleSinistreFilter}
-        allowClear
-      >
-        <Option value="all">Tous les sinistres</Option>
-        {sinistreData.map((sinistre) => (
-          <Option key={sinistre.originalData._id} value={sinistre.originalData._id}>
-            {sinistre.numero_sinistre} - {sinistre.originalData.typeSinistre}
-          </Option>
-        ))}
-      </Select>
-      
-      {/* Afficher le compteur de documents */}
-      <div className="text-sm text-gray-500">
-        {filteredDocuments.length} document(s)
-        {sinistreFilter !== "all" && ` pour ce sinistre`}
-      </div>
-    </div>
-  </div>
+          <TabPane tab="Documents" key="documents">
+            <div className="mb-4 flex justify-between items-center">
+              <div className="flex space-x-2">
+                <Button
+                  type="primary"
+                  icon={<UploadOutlined />}
+                  onClick={() => setIsUploadModalVisible(true)}
+                >
+                  Uploader Document
+                </Button>
+              </div>
 
-  <Table
-    columns={documentColumns.map((col) => ({
-      ...col,
-      title: (
-        <div className="flex flex-col items-center">
-          <div className="text-xs">{col.title}</div>
-        </div>
-      ),
-    }))}
-    dataSource={filteredDocuments}
-    rowKey="_id"
-    pagination={{ pageSize: 10 }}
-    loading={loading}
-    scroll={{ x: "max-content" }}
-    locale={{
-      emptyText: (
-        <div className="text-center py-8">
-          <FileTextOutlined className="text-4xl text-gray-300 mb-2" />
-          <p>
-            {sinistreFilter === "all" 
-              ? "Aucun document trouvé" 
-              : "Aucun document pour ce sinistre"}
-          </p>
-          <Button type="link" onClick={() => setIsUploadModalVisible(true)}>
-            Uploader un document
-          </Button>
-        </div>
-      )
-    }}
-  />
-</TabPane>
-      </Tabs>
+              {/* Filtre par sinistre */}
+              <div className="flex space-x-2 items-center">
+                <span className="text-sm text-gray-600">
+                  Filtrer par sinistre:
+                </span>
+                <Select
+                  placeholder="Tous les sinistres"
+                  style={{ width: 200 }}
+                  value={sinistreFilter}
+                  onChange={handleSinistreFilter}
+                  allowClear
+                >
+                  <Option value="all">Tous les sinistres</Option>
+                  {sinistreData.map((sinistre) => (
+                    <Option
+                      key={sinistre.originalData._id}
+                      value={sinistre.originalData._id}
+                    >
+                      {sinistre.numero_sinistre} -{" "}
+                      {sinistre.originalData.typeSinistre}
+                    </Option>
+                  ))}
+                </Select>
 
-    
-<Modal
-  title="Uploader un document"
-  open={isUploadModalVisible}
-  onCancel={() => {
-    setIsUploadModalVisible(false);
-    uploadForm.resetFields();
-    setSelectedSinistreId(null);
-  }}
-  footer={null}
->
-  <Form form={uploadForm} layout="vertical" onFinish={handleFileUpload}>
-    {/* Sélection du sinistre - Afficher seulement s'il y a plusieurs sinistres */}
-    {sinistreData.length > 1 && (
-      <Form.Item
-        label="Sélectionner un sinistre"
-        name="selectedSinistre"
-        rules={[{ required: true, message: "Veuillez sélectionner un sinistre" }]}
-      >
-        <Select
-          placeholder="-- Choisissez un sinistre --"
-          onChange={(value) => setSelectedSinistreId(value)}
-          value={selectedSinistreId}
-        >
-          {sinistreData.map((sinistre) => (
-            <Option key={sinistre.originalData._id} value={sinistre.originalData._id}>
-              {sinistre.numero_sinistre} - {sinistre.originalData.typeSinistre} ({sinistre.originalData.statutSinistre})
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
-    )}
+                {/* Afficher le compteur de documents */}
+                <div className="text-sm text-gray-500">
+                  {filteredDocuments.length} document(s)
+                  {sinistreFilter !== "all" && ` pour ce sinistre`}
+                </div>
+              </div>
+            </div>
 
-    {/* Afficher une info si un seul sinistre existe */}
-    {sinistreData.length === 1 && (
-      <div className="mb-4 p-2 bg-blue-50 rounded">
-        <p className="text-sm text-blue-700">
-          Document sera associé au sinistre: <strong>{sinistreData[0].numero_sinistre}</strong>
-        </p>
-      </div>
-    )}
+            <Table
+              columns={documentColumns.map((col) => ({
+                ...col,
+                title: (
+                  <div className="flex flex-col items-center">
+                    <div className="text-xs">{col.title}</div>
+                  </div>
+                ),
+              }))}
+              dataSource={filteredDocuments}
+              rowKey="_id"
+              pagination={{ pageSize: 10 }}
+              loading={loading}
+              scroll={{ x: "max-content" }}
+              locale={{
+                emptyText: (
+                  <div className="text-center py-8">
+                    <FileTextOutlined className="text-4xl text-gray-300 mb-2" />
+                    <p>
+                      {sinistreFilter === "all"
+                        ? "Aucun document trouvé"
+                        : "Aucun document pour ce sinistre"}
+                    </p>
+                    <Button
+                      type="link"
+                      onClick={() => setIsUploadModalVisible(true)}
+                    >
+                      Uploader un document
+                    </Button>
+                  </div>
+                ),
+              }}
+            />
+          </TabPane>
+        </Tabs>
 
-    <Form.Item
-      name="document"
-      label="Document"
-      rules={[
-        { required: true, message: "Veuillez sélectionner un fichier" },
-      ]}
-    >
-      <Upload
-        beforeUpload={(file) => {
-          return false;
-        }}
-        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-        maxCount={1}
-      >
-        <Button icon={<UploadOutlined />}>Sélectionner le fichier</Button>
-      </Upload>
-    </Form.Item>
-
-    <Form.Item name="description" label="Description (optionnel)">
-      <Input.TextArea rows={3} placeholder="Description du document" />
-    </Form.Item>
-
-    <Form.Item>
-      <Space>
-        <Button type="primary" htmlType="submit" loading={uploading}>
-          Uploader
-        </Button>
-        <Button
-          onClick={() => {
+        <Modal
+          title="Uploader un document"
+          open={isUploadModalVisible}
+          onCancel={() => {
             setIsUploadModalVisible(false);
             uploadForm.resetFields();
             setSelectedSinistreId(null);
           }}
+          footer={null}
         >
-          Annuler
-        </Button>
-      </Space>
-    </Form.Item>
-  </Form>
-</Modal>
-
-      {/* Existing Sinistre Modal */}
-      <Modal
-        title={
-          <div className="bg-gray-100 p-3 -mx-6 -mt-6 flex justify-between items-center sticky top-0 z-10 border-b">
-            <span className="font-medium text-sm">
-              {editingRecord
-                ? "MODIFIER LE SINISTRE"
-                : "ENREGISTRER UN SINISTRE"}
-            </span>
-            <button
-              onClick={handleCancel}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
-            >
-              <CloseOutlined className="text-xs" />
-            </button>
-          </div>
-        }
-        open={isModalOpen}
-        onCancel={handleCancel}
-        footer={null}
-        width="30%"
-        style={{
-          position: "fixed",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          height: "100vh",
-          margin: 0,
-          padding: 0,
-          overflow: "hidden",
-        }}
-        bodyStyle={{
-          height: "calc(100vh - 49px)",
-          padding: 0,
-          margin: 0,
-        }}
-        maskStyle={{
-          backgroundColor: "rgba(0, 0, 0, 0.1)",
-        }}
-        closeIcon={null}
-      >
-        <div
-          className="h-full overflow-y-auto ml-4 w-full"
-          style={{ scrollbarWidth: "thin" }}
-        >
-          <Form
-            form={form}
-            onFinish={handleFormSubmit}
-            layout="vertical"
-            className="w-full space-y-4"
-            initialValues={{
-              gestionnaire: gestionnaire?._id || gestionnaire || null,
-            }}
-          >
-            {/* === INFORMATIONS === */}
-            <h2 className="text-sm font-semibold mt-3 mb-2">INFORMATIONS</h2>
-
-            <Form.Item
-              name="numeroSinistre"
-              label="N° du sinistre"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-              className="w-full"
-            >
-              <Input placeholder="N° du sinistre" className="w-full" />
-            </Form.Item>
-
-            {/* LE SINISTRE */}
-            <h2 className="text-sm font-semibold mt-16 mb-4">LE SINISTRE</h2>
-
-            <Form.Item
-              label="Le sinistré existe-t-il dans votre CRM ?"
-              name="sinistreExist"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Radio.Group>
-                <Radio value="oui">Oui</Radio>
-                <Radio value="non">Non</Radio>
-              </Radio.Group>
-            </Form.Item>
-
-            {sinistreExist === "oui" && (
+          <Form form={uploadForm} layout="vertical" onFinish={handleFileUpload}>
+            {/* Sélection du sinistre - Afficher seulement s'il y a plusieurs sinistres */}
+            {sinistreData.length > 1 && (
               <Form.Item
-                label="Sinistré"
-                name="sinistreId"
+                label="Sélectionner un sinistre"
+                name="selectedSinistre"
                 rules={[
-                  { required: false, message: "Ce champ est obligatoire" },
+                  {
+                    required: true,
+                    message: "Veuillez sélectionner un sinistre",
+                  },
                 ]}
               >
                 <Select
-                  showSearch
-                  optionFilterProp="children"
-                  placeholder="-- Choisissez un sinistré --"
-                  loading={loadingClients}
-                  // filterOption={(input, option) =>
-                  //   option.children.toLowerCase().includes(input.toLowerCase())
-                  // }
+                  placeholder="-- Choisissez un sinistre --"
+                  onChange={(value) => setSelectedSinistreId(value)}
+                  value={selectedSinistreId}
                 >
-                  {chatData.map((client) => (
-                    <Option key={client._id} value={client._id}>
-                      {client.nom} {client.prenom}
+                  {sinistreData.map((sinistre) => (
+                    <Option
+                      key={sinistre.originalData._id}
+                      value={sinistre.originalData._id}
+                    >
+                      {sinistre.numero_sinistre} -{" "}
+                      {sinistre.originalData.typeSinistre} (
+                      {sinistre.originalData.statutSinistre})
                     </Option>
                   ))}
                 </Select>
               </Form.Item>
             )}
 
-            {sinistreExist === "non" && (
-              <>
-                <Form.Item
-                  label="Nom du sinistré"
-                  name="sinistreNom"
-                  rules={[
-                    {
-                      required: false,
-                      message: "Le champ nom du sinistré est obligatoire",
-                    },
-                  ]}
-                >
-                  <Input placeholder="Entrez le nom du sinistré" />
-                </Form.Item>
-
-                <Form.Item
-                  label="Prénom du sinistré"
-                  name="sinistrePrenom"
-                  rules={[
-                    {
-                      required: false,
-                      message: "Le champ prénom du sinistré est obligatoire",
-                    },
-                  ]}
-                >
-                  <Input placeholder="Entrez le prénom du sinistré" />
-                </Form.Item>
-                <Form.Item
-                  label="Numéro de contrat"
-                  name="sinistreInput"
-                  rules={[
-                    {
-                      required: false,
-                      message: "Le champ numéro de sinistre est obligatoire",
-                    },
-                  ]}
-                >
-                  <Input placeholder="Entrez le numéro de sinistre" />
-                </Form.Item>
-              </>
+            {/* Afficher une info si un seul sinistre existe */}
+            {sinistreData.length === 1 && (
+              <div className="mb-4 p-2 bg-blue-50 rounded">
+                <p className="text-sm text-blue-700">
+                  Document sera associé au sinistre:{" "}
+                  <strong>{sinistreData[0].numero_sinistre}</strong>
+                </p>
+              </div>
             )}
 
-            {sinistreExist === "oui" && (
-              <>
+            <Form.Item
+              name="document"
+              label="Document"
+              rules={[
+                { required: true, message: "Veuillez sélectionner un fichier" },
+              ]}
+            >
+              <Upload
+                beforeUpload={(file) => {
+                  return false;
+                }}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                maxCount={1}
+              >
+                <Button icon={<UploadOutlined />}>
+                  Sélectionner le fichier
+                </Button>
+              </Upload>
+            </Form.Item>
+
+            <Form.Item name="description" label="Description (optionnel)">
+              <Input.TextArea rows={3} placeholder="Description du document" />
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" loading={uploading}>
+                  Uploader
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsUploadModalVisible(false);
+                    uploadForm.resetFields();
+                    setSelectedSinistreId(null);
+                  }}
+                >
+                  Annuler
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Existing Sinistre Modal */}
+        <Modal
+          title={
+            <div className="bg-gray-100 p-3 -mx-6 -mt-6 flex justify-between items-center sticky top-0 z-10 border-b">
+              <span className="font-medium text-sm">
+                {editingRecord
+                  ? "MODIFIER LE SINISTRE"
+                  : "ENREGISTRER UN SINISTRE"}
+              </span>
+              <button
+                onClick={handleCancel}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
+              >
+                <CloseOutlined className="text-xs" />
+              </button>
+            </div>
+          }
+          open={isModalOpen}
+          onCancel={handleCancel}
+          footer={null}
+          width="30%"
+          style={{
+            position: "fixed",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            height: "100vh",
+            margin: 0,
+            padding: 0,
+            overflow: "hidden",
+          }}
+          bodyStyle={{
+            height: "calc(100vh - 49px)",
+            padding: 0,
+            margin: 0,
+          }}
+          maskStyle={{
+            backgroundColor: "rgba(0, 0, 0, 0.1)",
+          }}
+          closeIcon={null}
+        >
+          <div
+            className="h-full overflow-y-auto ml-4 w-full"
+            style={{ scrollbarWidth: "thin" }}
+          >
+            <Form
+              form={form}
+              onFinish={handleFormSubmit}
+              layout="vertical"
+              className="w-full space-y-4"
+              initialValues={{
+                gestionnaire: gestionnaire?._id || gestionnaire || null,
+              }}
+            >
+              {/* === INFORMATIONS === */}
+              <h2 className="text-sm font-semibold mt-3 mb-2">INFORMATIONS</h2>
+
+              <Form.Item
+                name="numeroSinistre"
+                label="N° du sinistre"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+                className="w-full"
+              >
+                <Input placeholder="N° du sinistre" className="w-full" />
+              </Form.Item>
+
+              {/* LE SINISTRE */}
+              <h2 className="text-sm font-semibold mt-16 mb-4">LE SINISTRE</h2>
+
+              <Form.Item
+                label="Le sinistré existe-t-il dans votre CRM ?"
+                name="sinistreExist"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Radio.Group>
+                  <Radio value="oui">Oui</Radio>
+                  <Radio value="non">Non</Radio>
+                </Radio.Group>
+              </Form.Item>
+
+              {sinistreExist === "oui" && (
                 <Form.Item
-                  label="Le contrat existe-t-il dans votre CRM ?"
-                  name="contratExist"
+                  label="Sinistré"
+                  name="sinistreId"
                   rules={[
                     { required: false, message: "Ce champ est obligatoire" },
                   ]}
                 >
-                  <Radio.Group>
-                <Radio value="oui">Oui</Radio>
-                <Radio value="non">Non</Radio>
-                  </Radio.Group>
+                  <Select
+                    showSearch
+                    optionFilterProp="children"
+                    placeholder="-- Choisissez un sinistré --"
+                    loading={loadingClients}
+                    // filterOption={(input, option) =>
+                    //   option.children.toLowerCase().includes(input.toLowerCase())
+                    // }
+                  >
+                    {chatData.map((client) => (
+                      <Option key={client._id} value={client._id}>
+                        {client.nom} {client.prenom}
+                      </Option>
+                    ))}
+                  </Select>
                 </Form.Item>
+              )}
 
-                {contratExist === "oui" && (
+              {sinistreExist === "non" && (
+                <>
+                  <Form.Item
+                    label="Nom du sinistré"
+                    name="sinistreNom"
+                    rules={[
+                      {
+                        required: false,
+                        message: "Le champ nom du sinistré est obligatoire",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Entrez le nom du sinistré" />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Prénom du sinistré"
+                    name="sinistrePrenom"
+                    rules={[
+                      {
+                        required: false,
+                        message: "Le champ prénom du sinistré est obligatoire",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Entrez le prénom du sinistré" />
+                  </Form.Item>
+                  <Form.Item
+                    label="Numéro de contrat"
+                    name="sinistreInput"
+                    rules={[
+                      {
+                        required: false,
+                        message: "Le champ numéro de sinistre est obligatoire",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Entrez le numéro de sinistre" />
+                  </Form.Item>
+                </>
+              )}
+
+              {sinistreExist === "oui" && (
+                <>
+                  <Form.Item
+                    label="Le contrat existe-t-il dans votre CRM ?"
+                    name="contratExist"
+                    rules={[
+                      { required: false, message: "Ce champ est obligatoire" },
+                    ]}
+                  >
+                    <Radio.Group>
+                      <Radio value="oui">Oui</Radio>
+                      <Radio value="non">Non</Radio>
+                    </Radio.Group>
+                  </Form.Item>
+
+                  {/* {contratExist === "oui" && (
                   <Form.Item
                     label="Contrat"
                     name="contratId"
@@ -2132,81 +2194,145 @@ useEffect(() => {
                       ))}
                     </Select>
                   </Form.Item>
-                )}
+                )} */}
+                  {contratExist === "oui" && (
+                    <Form.Item
+                      label="Contrat"
+                      name="contratId"
+                      rules={[
+                        {
+                          required: false,
+                          message: "Le champ contrat est obligatoire",
+                        },
+                      ]}
+                    >
+                      <Select
+                        placeholder={
+                          loadingContrats
+                            ? "Chargement..."
+                            : !selectedClientId
+                            ? "-- Sélectionnez d'abord un sinistré --"
+                            : "-- Choisissez un contrat --"
+                        }
+                        loading={loadingContrats}
+                        showSearch
+                        optionFilterProp="label"
+                        disabled={!selectedClientId}
+                        notFoundContent={
+                          loadingContrats
+                            ? "Chargement..."
+                            : !selectedClientId
+                            ? "Sélectionnez d'abord un sinistré"
+                            : "Aucun contrat pour ce client"
+                        }
+                      >
+                        {contrats
+                          .filter((contrat) => {
+                            // Le contrat doit appartenir au client sélectionné
+                            const leadId =
+                              contrat.lead?._id?.toString() ||
+                              contrat.lead?.toString() ||
+                              contrat.leadId?.toString();
+                            return leadId === selectedClientId?.toString();
+                          })
+                          .map((contrat) => {
+                            const label = `${contrat.contractNumber || ""} - ${
+                              contrat.insurer || ""
+                            }`;
+                            return (
+                              <Option
+                                key={contrat._id}
+                                value={contrat._id}
+                                label={label}
+                              >
+                                {label}
+                              </Option>
+                            );
+                          })}
+                      </Select>
+                    </Form.Item>
+                  )}
 
-                {contratExist === "non" && (
-                  <Form.Item
-                    label="Numéro de contrat"
-                    name="contratNumber"
-                    rules={[
-                      {
-                        required: false,
-                        message: "Le champ numéro de contrat est obligatoire",
-                      },
-                    ]}
-                  >
-                    <Input placeholder="Entrez le numéro de contrat" />
-                  </Form.Item>
-                )}
-              </>
-            )}
+                  {contratExist === "non" && (
+                    <Form.Item
+                      label="Numéro de contrat"
+                      name="contratNumber"
+                      rules={[
+                        {
+                          required: false,
+                          message: "Le champ numéro de contrat est obligatoire",
+                        },
+                      ]}
+                    >
+                      <Input placeholder="Entrez le numéro de contrat" />
+                    </Form.Item>
+                  )}
+                </>
+              )}
 
-            <Form.Item name="risque" label="Risque" className="w-full">
-              <Select placeholder="-- Choisissez --" showSearch className="w-full" 
-              filterOption={(input, option) =>
-                option.children.toLowerCase().includes(input.toLowerCase())
-              }>
-                {RISQUES.map((risque) => (
-                  <Option key={risque.value} value={risque.value}>
-                    {risque.label}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+              <Form.Item name="risque" label="Risque" className="w-full">
+                <Select
+                  placeholder="-- Choisissez --"
+                  showSearch
+                  className="w-full"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {RISQUES.map((risque) => (
+                    <Option key={risque.value} value={risque.value}>
+                      {risque.label}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
-            <Form.Item name="assureur" label="Assureur" className="w-full">
-              <Select placeholder="-- Choisissez --" showSearch
-              className="w-full" 
-              filterOption={(input, option) =>
-                option.children.toLowerCase().includes(input.toLowerCase())
-              }>
-                {ASSUREURS.map((assureur) => (
-                  <Option key={assureur.value} value={assureur.value}>
-                    {assureur.label}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
+              <Form.Item name="assureur" label="Assureur" className="w-full">
+                <Select
+                  placeholder="-- Choisissez --"
+                  showSearch
+                  className="w-full"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  {ASSUREURS.map((assureur) => (
+                    <Option key={assureur.value} value={assureur.value}>
+                      {assureur.label}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
-            {/* === DÉTAIL DU SINISTRE === */}
-            <h2 className="text-sm font-semibold mt-3 mb-2">
-              DÉTAIL DU SINISTRE
-            </h2>
+              {/* === DÉTAIL DU SINISTRE === */}
+              <h2 className="text-sm font-semibold mt-3 mb-2">
+                DÉTAIL DU SINISTRE
+              </h2>
 
-            {/* <Form.Item
+              {/* <Form.Item
               name="dateSinistre"
               label="Date du sinistre"
               className="w-full"
             >
               <DatePicker className="w-full" />
             </Form.Item> */}
-            <Form.Item
-  name="dateSinistre"
-  label="Date du sinistre"
-  className="w-full"
->
-  <DatePicker className="w-full" format="DD/MM/YYYY" />
-</Form.Item>
+              <Form.Item
+                name="dateSinistre"
+                label="Date du sinistre"
+                className="w-full"
+              >
+                <DatePicker className="w-full" format="DD/MM/YYYY" />
+              </Form.Item>
 
-<Form.Item
-  name="dateDeclaration"
-  label="Date de déclaration *"
-  className="w-full"
->
-  <DatePicker className="w-full" format="DD/MM/YYYY" />
-</Form.Item>
+              <Form.Item
+                name="dateDeclaration"
+                label="Date de déclaration *"
+                className="w-full"
+              >
+                <DatePicker className="w-full" format="DD/MM/YYYY" />
+              </Form.Item>
 
-            {/* <Form.Item
+              {/* <Form.Item
               name="dateDeclaration"
               label="Date de déclaration *"
               className="w-full"
@@ -2214,114 +2340,118 @@ useEffect(() => {
               <DatePicker className="w-full" />
             </Form.Item> */}
 
-            <Form.Item
-              name="statutSinistre"
-              label="Statut du sinistre"
-              className="w-full"
-            >
-              <Select placeholder="-- Choisissez --" className="w-full">
-                <Option value="en_cours">En cours</Option>
-                <Option value="clo">Clos</Option>
-                <Option value="reouvert">Réouvert</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="typeSinistre"
-              label="Type de sinistre"
-              className="w-full"
-            >
-              <Select placeholder="-- Choisissez --" className="w-full">
-                <Option value="dommage_corporel">Dommage corporel</Option>
-                <Option value="dommage_materiel">Dommage matériel</Option>
-                <Option value="dommage_corporel_matériel">
-                  Dommage corporel et matériel
-                </Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="responsabilite"
-              label="Responsabilité"
-              className="w-full"
-            >
-              <Input placeholder="Responsabilité" className="w-full" />
-            </Form.Item>
-
-            <Form.Item
-              name="montantSinistre"
-              label="Montant du sinistre"
-              className="w-full"
-            >
-              <InputNumber
+              <Form.Item
+                name="statutSinistre"
+                label="Statut du sinistre"
                 className="w-full"
-                addonAfter="€"
-                style={{ width: "100%" }}
-              />
-            </Form.Item>
+              >
+                <Select placeholder="-- Choisissez --" className="w-full">
+                  <Option value="en_cours">En cours</Option>
+                  <Option value="clo">Clos</Option>
+                  <Option value="reouvert">Réouvert</Option>
+                </Select>
+              </Form.Item>
 
-            <Form.Item
-              name="delegation"
-              label="Sinistre en délégation *"
-              className="w-full"
-            >
-              <Radio.Group>
-                <Radio value="oui">Oui</Radio>
-                <Radio value="non">Non</Radio>
-              </Radio.Group>
-            </Form.Item>
-
-            <Form.Item
-              name="coordonnees_expert"
-              label="Coordonnées de l'expert"
-              className="w-full"
-            >
-              <Input.TextArea
-                placeholder="Coordonnées de l'expert"
+              <Form.Item
+                name="typeSinistre"
+                label="Type de sinistre"
                 className="w-full"
-              />
-            </Form.Item>
+              >
+                <Select placeholder="-- Choisissez --" className="w-full">
+                  <Option value="dommage_corporel">Dommage corporel</Option>
+                  <Option value="dommage_materiel">Dommage matériel</Option>
+                  <Option value="dommage_corporel_matériel">
+                    Dommage corporel et matériel
+                  </Option>
+                </Select>
+              </Form.Item>
 
-            <Form.Item
-              label={<span className="text-xs font-medium">GESTIONNAIRE</span>}
-              className="mb-0"
+              <Form.Item
+                name="responsabilite"
+                label="Responsabilité"
+                className="w-full"
+              >
+                <Input placeholder="Responsabilité" className="w-full" />
+              </Form.Item>
+
+              <Form.Item
+                name="montantSinistre"
+                label="Montant du sinistre"
+                className="w-full"
+              >
+                <InputNumber
+                  className="w-full"
+                  addonAfter="€"
+                  style={{ width: "100%" }}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="delegation"
+                label="Sinistre en délégation *"
+                className="w-full"
+              >
+                <Radio.Group>
+                  <Radio value="oui">Oui</Radio>
+                  <Radio value="non">Non</Radio>
+                </Radio.Group>
+              </Form.Item>
+
+              <Form.Item
+                name="coordonnees_expert"
+                label="Coordonnées de l'expert"
+                className="w-full"
+              >
+                <Input.TextArea
+                  placeholder="Coordonnées de l'expert"
+                  className="w-full"
+                />
+              </Form.Item>
+
+              <Form.Item
+                label={
+                  <span className="text-xs font-medium">GESTIONNAIRE</span>
+                }
+                className="mb-0"
+              >
+                <Input
+                  className="w-full text-xs h-7"
+                  value={
+                    form.getFieldValue("gestionnaireName") || "Non spécifié"
+                  }
+                  disabled
+                />
+              </Form.Item>
+
+              <Form.Item name="gestionnaire" noStyle>
+                <Input type="hidden" />
+              </Form.Item>
+              <Form.Item name="gestionnaireModel" noStyle>
+                <Input type="hidden" />
+              </Form.Item>
+              <Form.Item name="gestionnaireName" noStyle>
+                <Input type="hidden" />
+              </Form.Item>
+            </Form>
+
+            <button
+              type="submit"
+              htmlType="submit"
+              disabled={loading}
+              className={`inline-block w-full py-2 mt-2 mb-2 text-white font-medium rounded-md transition ${
+                loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
+              }`}
+              onClick={() => form.submit()}
             >
-              <Input
-                className="w-full text-xs h-7"
-                value={form.getFieldValue("gestionnaireName") || "Non spécifié"}
-                disabled
-              />
-            </Form.Item>
-
-            <Form.Item name="gestionnaire" noStyle>
-              <Input type="hidden" />
-            </Form.Item>
-            <Form.Item name="gestionnaireModel" noStyle>
-              <Input type="hidden" />
-            </Form.Item>
-            <Form.Item name="gestionnaireName" noStyle>
-              <Input type="hidden" />
-            </Form.Item>
-          </Form>
-
-          <button
-            type="submit"
-            htmlType="submit"
-            disabled={loading}
-            className={`inline-block w-full py-2 mt-2 mb-2 text-white font-medium rounded-md transition ${
-              loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
-            }`}
-            onClick={() => form.submit()}
-          >
-            {loading
-              ? "Enregistrement..."
-              : editingRecord
-              ? "Modifier le sinistre"
-              : "Enregistrer le sinistre"}
-          </button>
-        </div>
-      </Modal>
-    </div>
+              {loading
+                ? "Enregistrement..."
+                : editingRecord
+                ? "Modifier le sinistre"
+                : "Enregistrer le sinistre"}
+            </button>
+          </div>
+        </Modal>
+      </div>
     </ConfigProvider>
   );
 };

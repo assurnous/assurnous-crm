@@ -21,7 +21,7 @@ import dayjs from "dayjs";
 import { ASSUREURS, RISQUES } from "../constants";
 import { useNavigate } from "react-router-dom";
 import { ConfigProvider } from "antd";
-import fr_FR from 'antd/locale/fr_FR';
+import fr_FR from "antd/locale/fr_FR";
 
 const { Option } = Select;
 const Sinistres = () => {
@@ -40,7 +40,7 @@ const Sinistres = () => {
   const [loadingContrats, setLoadingContrats] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
   const [filteredSinistres, setFilteredSinistres] = useState([]);
-
+  const [selectedClientId, setSelectedClientId] = useState(null);
   const token = localStorage.getItem("token");
   const decodedToken = token ? jwtDecode(token) : null;
   const currentUserId = decodedToken?.userId;
@@ -66,6 +66,12 @@ const Sinistres = () => {
     setIsModalOpen(false);
     setEditingRecord(null);
   };
+  const watchedSinistreId = useWatch("sinistreId", form);
+
+  useEffect(() => {
+    console.log("🔄 [Sinistres.jsx] sinistreId changé:", watchedSinistreId);
+    setSelectedClientId(watchedSinistreId || null);
+  }, [watchedSinistreId, form]);
 
   useEffect(() => {
     const fetchContrats = async () => {
@@ -76,7 +82,6 @@ const Sinistres = () => {
         setContrats(response.data);
       } catch (error) {
         console.error("Error fetching contracts:", error);
-   
       } finally {
         setLoadingContrats(false);
       }
@@ -130,7 +135,7 @@ const Sinistres = () => {
   //       const currentUserId = decodedToken?.userId;
   //       const role = decodedToken.role;
   //       const name = decodedToken.name;
-  
+
   //       // Fix the filtering logic
   //       let filteredData = response.data.data || [];
   //       if (role !== "Admin") {
@@ -141,14 +146,14 @@ const Sinistres = () => {
   //             sinistre.gestionnaire === name
   //         );
   //       }
-  
+
   //       // Sort by creation date (newest first)
   //       const sortedData = filteredData.sort((a, b) => {
   //         const dateA = new Date(a.createdAt || a.dateSinistre || 0);
   //         const dateB = new Date(b.createdAt || b.dateSinistre || 0);
   //         return dateB - dateA; // Descending order (newest first)
   //       });
-  
+
   //       setAllSinistres(sortedData);
   //       setFilteredSinistres(sortedData);
   //     } catch (error) {
@@ -163,31 +168,31 @@ const Sinistres = () => {
   //   const fetchAllSinistres = async () => {
   //     const token = localStorage.getItem("token");
   //     if (!token) return;
-  
+
   //     try {
   //       setLoading(true);
   //       const decodedToken = jwtDecode(token);
   //       const currentUserId = decodedToken?.userId;
   //       const userRole = decodedToken?.role?.toLowerCase();
   //       const userName = decodedToken.name; // Keep for backward compatibility
-        
+
   //       // Fetch all sinistres
   //       const response = await axios.get("/sinistres", {
   //         headers: { Authorization: `Bearer ${token}` }
   //       });
-        
+
   //       console.log("Fetched all sinistres:", {
   //         count: response.data?.data?.length || response.data?.length,
   //         userRole,
   //         currentUserId
   //       });
-  
+
   //       // Handle both response formats: { data: [...] } or direct array
   //       const allSinistres = response.data?.data || response.data || [];
-        
+
   //       // Filter based on user role
   //       let filteredData;
-        
+
   //       if (userRole === 'admin') {
   //         // Admin sees all
   //         filteredData = allSinistres;
@@ -196,51 +201,51 @@ const Sinistres = () => {
   //         // 1. Sinistres where they are the lead's manager
   //         // 2. Sinistres created by commercials who report to them
   //         // 3. Sinistres they created themselves
-          
+
   //         // First, get all commercials managed by this manager
   //         const commercialsResponse = await axios.get('/commercials', {
   //           headers: { Authorization: `Bearer ${token}` }
   //         });
-          
+
   //         const allCommercials = commercialsResponse.data || [];
-  //         const managedCommercials = allCommercials.filter(commercial => 
-  //           commercial.manager === currentUserId || 
+  //         const managedCommercials = allCommercials.filter(commercial =>
+  //           commercial.manager === currentUserId ||
   //           commercial.manager?.toString() === currentUserId ||
   //           commercial.createdBy === currentUserId
   //         );
-          
+
   //         const managedCommercialIds = managedCommercials.map(c => c._id);
-          
+
   //         console.log("Manager's team:", {
   //           managerId: currentUserId,
   //           managedCommercialIds,
   //           allCommercialsCount: allCommercials.length,
   //           managedCount: managedCommercials.length
   //         });
-          
+
   //         filteredData = allSinistres.filter(sinistre => {
   //           // Get lead manager from sinistreDetails or lead
   //           const leadManager = sinistre.sinistreDetails?.manager || sinistre.lead?.manager;
   //           const sessionId = sinistre.session?._id?.toString();
   //           const sinistreCreatorId = sessionId || sinistre.session;
-            
+
   //           // Check if manager is the lead's manager
-  //           const isLeadManager = leadManager === currentUserId || 
+  //           const isLeadManager = leadManager === currentUserId ||
   //                                leadManager?.toString() === currentUserId;
-            
+
   //           // Check if sinistre was created by a managed commercial
   //           const isCreatedByTeam = managedCommercialIds.includes(sinistreCreatorId);
-            
+
   //           // Check if manager created the sinistre themselves
   //           const isCreatedByManager = sinistreCreatorId === currentUserId;
-            
+
   //           // Check if sinistre's gestionnaire is the manager
   //           const gestionnaireId = sinistre.gestionnaire?._id?.toString();
   //           const isGestionnaire = gestionnaireId === currentUserId;
-            
+
   //           return isLeadManager || isCreatedByTeam || isCreatedByManager || isGestionnaire;
   //         });
-          
+
   //         console.log("Filtered sinistres for manager:", {
   //           totalSinistres: allSinistres.length,
   //           filteredCount: filteredData.length
@@ -254,266 +259,292 @@ const Sinistres = () => {
   //             sinistre.gestionnaire === userName // Keep this for backward compatibility
   //         );
   //       }
-  
+
   //       // Sort by creation date (newest first)
   //       const sortedData = filteredData.sort((a, b) => {
   //         const dateA = new Date(a.createdAt || a.dateSinistre || 0);
   //         const dateB = new Date(b.createdAt || b.dateSinistre || 0);
   //         return dateB - dateA; // Descending order (newest first)
   //       });
-  
+
   //       // Add key property to each item for Ant Design Table
   //       const dataWithKeys = sortedData.map((item, index) => ({
   //         ...item,
   //         key: item._id || index // Use _id or index as key
   //       }));
-  
+
   //       console.log("Final data for table:", {
   //         count: dataWithKeys.length,
   //         sample: dataWithKeys[0],
   //         sampleGestionnaire: dataWithKeys[0]?.gestionnaire
   //       });
-  
+
   //       setAllSinistres(dataWithKeys);
   //       setFilteredSinistres(dataWithKeys);
-        
+
   //     } catch (error) {
   //       console.error("Error fetching sinistres:", error);
   //     } finally {
   //       setLoading(false);
   //     }
   //   };
-  
+
   //   fetchAllSinistres();
   // }, [refreshTrigger]);
   useEffect(() => {
     const fetchAllSinistres = async () => {
       const token = localStorage.getItem("token");
       if (!token) return;
-  
+
       try {
         setLoading(true);
         const decodedToken = jwtDecode(token);
         const currentUserId = decodedToken?.userId;
         const userRole = decodedToken?.role?.toLowerCase();
         const userName = decodedToken.name; // Keep for backward compatibility
-        
+
         // Fetch all sinistres
         const response = await axios.get("/sinistres", {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
-        
+
         console.log("Fetched all sinistres:", {
           count: response.data?.data?.length || response.data?.length,
           userRole,
-          currentUserId
+          currentUserId,
         });
-  
+
         // Handle both response formats: { data: [...] } or direct array
         const allSinistres = response.data?.data || response.data || [];
-        
+
         // Get user information and team structure
         let userManagerId = null;
         let managerId = currentUserId; // For managers, they are their own manager
         let teamUserIds = [currentUserId]; // Start with self
-        
-        if (userRole === 'commercial') {
+
+        if (userRole === "commercial") {
           try {
             // Fetch current commercial's details
-            const commercialsResponse = await axios.get('/commercials', {
-              headers: { Authorization: `Bearer ${token}` }
+            const commercialsResponse = await axios.get("/commercials", {
+              headers: { Authorization: `Bearer ${token}` },
             });
-            
+
             const allCommercials = commercialsResponse.data || [];
-            
+
             // Find current user in commercials
-            const currentUserCommercial = allCommercials.find(c => 
-              c._id === currentUserId || c._id?.toString() === currentUserId
+            const currentUserCommercial = allCommercials.find(
+              (c) =>
+                c._id === currentUserId || c._id?.toString() === currentUserId
             );
-            
+
             // Get manager ID (manager or createdBy)
-            userManagerId = currentUserCommercial?.manager || currentUserCommercial?.createdBy;
+            userManagerId =
+              currentUserCommercial?.manager ||
+              currentUserCommercial?.createdBy;
             managerId = userManagerId; // Commercial's manager ID
-            
+
             console.log("Commercial's manager info (sinistres):", {
               currentUserId,
               managerId,
-              commercialData: currentUserCommercial
+              commercialData: currentUserCommercial,
             });
-            
+
             // Get ALL users under this manager (including manager and all commercials)
             if (managerId) {
               // Add manager to team
               teamUserIds.push(managerId);
-              
+
               // Add all commercials under this manager
-              const teamCommercials = allCommercials.filter(commercial => {
-                const commercialManager = commercial.manager || commercial.createdBy;
-                return commercialManager === managerId || 
-                       commercialManager?.toString() === managerId;
+              const teamCommercials = allCommercials.filter((commercial) => {
+                const commercialManager =
+                  commercial.manager || commercial.createdBy;
+                return (
+                  commercialManager === managerId ||
+                  commercialManager?.toString() === managerId
+                );
               });
-              
+
               // Add all commercial IDs from the team
-              teamCommercials.forEach(commercial => {
-                if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+              teamCommercials.forEach((commercial) => {
+                if (
+                  commercial._id &&
+                  !teamUserIds.includes(commercial._id.toString())
+                ) {
                   teamUserIds.push(commercial._id.toString());
                 }
               });
             }
-            
+
             console.log("Commercial team structure (sinistres):", {
               managerId,
               teamUserIds,
-              teamSize: teamUserIds.length
+              teamSize: teamUserIds.length,
             });
-            
           } catch (error) {
             console.log("Error fetching commercials for sinistres:", error);
           }
-        } else if (userRole === 'manager') {
+        } else if (userRole === "manager") {
           // Manager sees their own sinistres and all sinistres from their team
           try {
-            const commercialsResponse = await axios.get('/commercials', {
-              headers: { Authorization: `Bearer ${token}` }
+            const commercialsResponse = await axios.get("/commercials", {
+              headers: { Authorization: `Bearer ${token}` },
             });
-            
+
             const allCommercials = commercialsResponse.data || [];
-            
+
             // Get all commercials under this manager
-            const teamCommercials = allCommercials.filter(commercial => {
-              const commercialManager = commercial.manager || commercial.createdBy;
-              return commercialManager === currentUserId || 
-                     commercialManager?.toString() === currentUserId;
+            const teamCommercials = allCommercials.filter((commercial) => {
+              const commercialManager =
+                commercial.manager || commercial.createdBy;
+              return (
+                commercialManager === currentUserId ||
+                commercialManager?.toString() === currentUserId
+              );
             });
-            
+
             // Add all commercial IDs from the team
-            teamCommercials.forEach(commercial => {
-              if (commercial._id && !teamUserIds.includes(commercial._id.toString())) {
+            teamCommercials.forEach((commercial) => {
+              if (
+                commercial._id &&
+                !teamUserIds.includes(commercial._id.toString())
+              ) {
                 teamUserIds.push(commercial._id.toString());
               }
             });
-            
+
             console.log("Manager team structure (sinistres):", {
               managerId: currentUserId,
               teamUserIds,
-              teamCommercialsCount: teamCommercials.length
+              teamCommercialsCount: teamCommercials.length,
             });
-            
           } catch (error) {
             console.log("Error fetching manager team for sinistres:", error);
           }
         }
-        
+
         // Filter sinistres based on user role and team
         let filteredData;
-        
-        if (userRole === 'admin') {
+
+        if (userRole === "admin") {
           // Admin sees all
           filteredData = allSinistres;
-        } else if (userRole === 'manager' || userRole === 'commercial') {
+        } else if (userRole === "manager" || userRole === "commercial") {
           // Both manager and commercial see sinistres from their entire team
-          filteredData = allSinistres.filter(sinistre => {
+          filteredData = allSinistres.filter((sinistre) => {
             // Get the creator ID from various possible fields
             const sessionId = sinistre.session?._id?.toString();
-            const sinistreCreatorId = sessionId || sinistre.session || sinistre.cree_par;
-            
+            const sinistreCreatorId =
+              sessionId || sinistre.session || sinistre.cree_par;
+
             // Get lead manager from sinistreDetails or lead
-            const leadManager = sinistre.sinistreDetails?.manager || sinistre.lead?.manager;
-            
+            const leadManager =
+              sinistre.sinistreDetails?.manager || sinistre.lead?.manager;
+
             // Get gestionnaire ID
             const gestionnaireId = sinistre.gestionnaire?._id?.toString();
-            
+
             // Check multiple conditions:
             // 1. Check if sinistre creator is in the team
-            const isCreatedByTeam = teamUserIds.some(teamUserId => 
-              teamUserId?.toString() === sinistreCreatorId?.toString()
+            const isCreatedByTeam = teamUserIds.some(
+              (teamUserId) =>
+                teamUserId?.toString() === sinistreCreatorId?.toString()
             );
-            
+
             // 2. Check if lead manager is in the team (for sinistres assigned to team leads)
-            const isTeamLeadManager = teamUserIds.some(teamUserId => 
-              teamUserId?.toString() === leadManager?.toString()
+            const isTeamLeadManager = teamUserIds.some(
+              (teamUserId) => teamUserId?.toString() === leadManager?.toString()
             );
-            
+
             // 3. Check if gestionnaire is in the team
-            const isTeamGestionnaire = teamUserIds.some(teamUserId => 
-              teamUserId?.toString() === gestionnaireId?.toString()
+            const isTeamGestionnaire = teamUserIds.some(
+              (teamUserId) =>
+                teamUserId?.toString() === gestionnaireId?.toString()
             );
-            
+
             // 4. Check backward compatibility: if gestionnaire name matches userName
             const isGestionnaireByName = sinistre.gestionnaire === userName;
-            
-            return isCreatedByTeam || isTeamLeadManager || isTeamGestionnaire || isGestionnaireByName;
+
+            return (
+              isCreatedByTeam ||
+              isTeamLeadManager ||
+              isTeamGestionnaire ||
+              isGestionnaireByName
+            );
           });
-          
+
           console.log(`${userRole} filtered sinistres:`, {
             totalSinistres: allSinistres.length,
             filteredCount: filteredData.length,
             teamUserIds,
-            filterLogic: "Sees sinistres from entire team (manager + all commercials under manager)"
+            filterLogic:
+              "Sees sinistres from entire team (manager + all commercials under manager)",
           });
         } else {
           // Other roles see only their own sinistres (backward compatible)
           filteredData = allSinistres.filter(
-            sinistre =>
+            (sinistre) =>
               sinistre.session?._id === currentUserId ||
               sinistre.session === currentUserId ||
               sinistre.gestionnaire === userName // Keep this for backward compatibility
           );
         }
-  
+
         // Sort by creation date (newest first)
         const sortedData = filteredData.sort((a, b) => {
           const dateA = new Date(a.createdAt || a.dateSinistre || 0);
           const dateB = new Date(b.createdAt || b.dateSinistre || 0);
           return dateB - dateA; // Descending order (newest first)
         });
-  
+
         // Add team information and key property to each item
         const dataWithKeys = sortedData.map((item, index) => {
           const sessionId = item.session?._id?.toString();
           const sinistreCreatorId = sessionId || item.session || item.cree_par;
-          const isCreatedBySelf = sinistreCreatorId === currentUserId || 
-                                 sinistreCreatorId?.toString() === currentUserId;
-          const isCreatedByManager = managerId && (
-            sinistreCreatorId === managerId || 
-            sinistreCreatorId?.toString() === managerId
-          );
-          
+          const isCreatedBySelf =
+            sinistreCreatorId === currentUserId ||
+            sinistreCreatorId?.toString() === currentUserId;
+          const isCreatedByManager =
+            managerId &&
+            (sinistreCreatorId === managerId ||
+              sinistreCreatorId?.toString() === managerId);
+
           return {
             ...item,
             key: item._id || index, // Use _id or index as key
-            
+
             // Team visibility info
             isTeamSinistre: !isCreatedBySelf,
-            createdByType: isCreatedBySelf ? 'self' : 
-                          isCreatedByManager ? 'manager' : 'team_member',
-            
+            createdByType: isCreatedBySelf
+              ? "self"
+              : isCreatedByManager
+              ? "manager"
+              : "team_member",
+
             // Creator info for display
-            creatorName: item.session 
-              ? `${item.session.prenom || ''} ${item.session.nom || ''}`.trim()
+            creatorName: item.session
+              ? `${item.session.prenom || ""} ${item.session.nom || ""}`.trim()
               : item.cree_par || "N/A",
           };
         });
-  
+
         console.log("Final sinistres data for table:", {
           count: dataWithKeys.length,
           sample: dataWithKeys[0],
           teamInfo: {
             isTeamSinistre: dataWithKeys[0]?.isTeamSinistre,
-            createdByType: dataWithKeys[0]?.createdByType
-          }
+            createdByType: dataWithKeys[0]?.createdByType,
+          },
         });
-  
+
         setAllSinistres(dataWithKeys);
         setFilteredSinistres(dataWithKeys);
-        
       } catch (error) {
         console.error("Error fetching sinistres:", error);
       } finally {
         setLoading(false);
       }
     };
-  
+
     fetchAllSinistres();
   }, [refreshTrigger]);
   const handleFilterChange = (filterName, value) => {
@@ -635,7 +666,7 @@ const Sinistres = () => {
   //     console.log("Decoded token:", decodedToken);
 
   //     if (!decodedToken) {
-      
+
   //       return;
   //     }
 
@@ -706,23 +737,36 @@ const Sinistres = () => {
     try {
       const token = localStorage.getItem("token");
       const decodedToken = token ? jwtDecode(token) : null;
-  
+
       if (!decodedToken) {
         return;
       }
-  
-      const isAdmin = decodedToken.role === "Admin" || decodedToken.role === "admin";
-      const isManager = decodedToken.role === "Manager" || decodedToken.role === "manager";
+
+      const isAdmin =
+        decodedToken.role === "Admin" || decodedToken.role === "admin";
+      const isManager =
+        decodedToken.role === "Manager" || decodedToken.role === "manager";
       const sessionId = decodedToken.userId;
-      const sessionModel = isAdmin ? "Admin" : isManager ? "Manager" : "Commercial";
-  
+      const sessionModel = isAdmin
+        ? "Admin"
+        : isManager
+        ? "Manager"
+        : "Commercial";
+
       // Déterminer le modèle du gestionnaire basé sur l'utilisateur sélectionné
       let gestionnaireModel = null;
       if (values.gestionnaire) {
-        const selectedUser = users.find(user => user._id === values.gestionnaire);
-        gestionnaireModel = selectedUser?.userType === "admin" ? "Admin" : selectedUser?.userType === "manager" ? "Manager" : "Commercial";
+        const selectedUser = users.find(
+          (user) => user._id === values.gestionnaire
+        );
+        gestionnaireModel =
+          selectedUser?.userType === "admin"
+            ? "Admin"
+            : selectedUser?.userType === "manager"
+            ? "Manager"
+            : "Commercial";
       }
-  
+
       const formData = {
         ...values,
         session: sessionId,
@@ -731,8 +775,12 @@ const Sinistres = () => {
         gestionnaire: values.gestionnaire || null,
         gestionnaireModel: gestionnaireModel,
         // Convertir les dates en format ISO
-        dateSinistre: values.dateSinistre ? values.dateSinistre.toISOString() : null,
-        dateDeclaration: values.dateDeclaration ? values.dateDeclaration.toISOString() : null,
+        dateSinistre: values.dateSinistre
+          ? values.dateSinistre.toISOString()
+          : null,
+        dateDeclaration: values.dateDeclaration
+          ? values.dateDeclaration.toISOString()
+          : null,
         // Handle both cases of sinistreExist
         ...(values.sinistreExist === "oui"
           ? {
@@ -745,12 +793,12 @@ const Sinistres = () => {
               sinistreInput: values.sinistreInput,
             }),
       };
-  
+
       // Nettoyer les données
       delete formData.gestionnaireString;
-  
+
       console.log("Final form data:", formData);
-  
+
       if (editingRecord) {
         const response = await axios.put(
           `/sinistres/${editingRecord._id}`,
@@ -767,7 +815,7 @@ const Sinistres = () => {
             item._id === editingRecord._id ? { ...response.data } : item
           )
         );
-  
+
         message.success("Sinistre mise à jour avec succès");
       } else {
         const response = await axios.post("/sinistres", formData);
@@ -775,10 +823,10 @@ const Sinistres = () => {
         setFilteredSinistres((prev) => [{ ...response.data }, ...prev]);
         setCurrentPage(1);
         setRefreshTrigger((prev) => prev + 1);
-  
+
         message.success("Sinistre ajoutée avec succès");
       }
-  
+
       setIsModalOpen(false);
       form.resetFields();
       setEditingRecord(null);
@@ -833,34 +881,51 @@ const Sinistres = () => {
         const decodedToken = jwtDecode(token);
         const role = decodedToken?.role?.toLowerCase();
         const userId = decodedToken?.userId;
-  
+
         if (role === "admin") {
           const [adminsRes, commercialsRes, managersRes] = await Promise.all([
-            axios.get("/admin", { headers: { Authorization: `Bearer ${token}` } }),
-            axios.get("/commercials", { headers: { Authorization: `Bearer ${token}` } }),
-            axios.get("/manager", { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get("/admin", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            axios.get("/commercials", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            axios.get("/manager", {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
           ]);
           setUsers([
-            ...adminsRes.data.map((a) => ({ ...a, userType: "admin", name: a.name || a.nom })),
-            ...commercialsRes.data.map((c) => ({ ...c, userType: "commercial" })),
+            ...adminsRes.data.map((a) => ({
+              ...a,
+              userType: "admin",
+              name: a.name || a.nom,
+            })),
+            ...commercialsRes.data.map((c) => ({
+              ...c,
+              userType: "commercial",
+            })),
             ...managersRes.data.map((m) => ({ ...m, userType: "manager" })),
           ]);
         } else if (role === "manager") {
           // Fetch the manager's own profile + their team of commercials in parallel
           const [managerRes, commercialsRes] = await Promise.all([
-            axios.get(`/manager/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
-            axios.get(`/commercials/manager/${userId}`, { headers: { Authorization: `Bearer ${token}` } }),
+            axios.get(`/manager/${userId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            axios.get(`/commercials/manager/${userId}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
           ]);
-  
+
           const managerData = managerRes.data
             ? [{ ...managerRes.data, userType: "manager" }]
             : [];
-  
+
           const teamCommercials = (commercialsRes.data || []).map((c) => ({
             ...c,
             userType: "commercial",
           }));
-  
+
           setUsers([...managerData, ...teamCommercials]);
         } else {
           // Commercial: only themselves
@@ -868,14 +933,16 @@ const Sinistres = () => {
             headers: { Authorization: `Bearer ${token}` },
           });
           setUsers(
-            commercialRes.data ? [{ ...commercialRes.data, userType: "commercial" }] : []
+            commercialRes.data
+              ? [{ ...commercialRes.data, userType: "commercial" }]
+              : []
           );
         }
       } catch (error) {
         console.error("Error fetching users:", error);
       }
     };
-  
+
     fetchUsers();
   }, []);
   useEffect(() => {
@@ -892,78 +959,78 @@ const Sinistres = () => {
     // };
 
     // fetchClients();
-        const fetchClients = async () => {
-              const token = localStorage.getItem("token");
-              const decodedToken = jwtDecode(token);
-              const userId = decodedToken?.userId;
-              const userRole = decodedToken?.role?.toLowerCase(); // or userType
-            
-              try {
-                setLoading(true);
-                
-                // Always fetch all clients (admin will use all, commercial will filter)
-                const response = await axios.get('/data', {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-            
-                const allLeads = response.data?.chatData || [];
-                console.log("All leads:", allLeads);
-            
-                // const filteredLeads = allLeads.filter(lead => {
-                //   // ADMIN: See all clients
-                //   if (userRole === 'admin') {
-                //     return true;
-                //   }
-            
-                //   // COMMERCIAL: Only see clients assigned to them via commercial field
-                //   if (userRole === 'commercial') {
-                //     const commercialId = 
-                //       typeof lead.commercial === 'string' 
-                //         ? lead.commercial 
-                //         : lead.commercial?._id?.toString();
-                //     return commercialId === userId;
-                //   }
-            
-                //   // MANAGER: Only see clients assigned to them via manager field
-                //   if (userRole === 'manager') {
-                //     const managerId = 
-                //       typeof lead.manager === 'string' 
-                //         ? lead.manager 
-                //         : lead.manager?._id?.toString();
-                //     return managerId === userId;
-                //   }
-            
-                //   // Default: no access if role not recognized
-                //   return false;
-                // });
-            
-                // Sort by createdAt in descending order (newest first)
-                const sortedLeads = allLeads.sort((a, b) => {
-                  return new Date(b.createdAt) - new Date(a.createdAt);
-                });
-            
-                console.log("Filtered and sorted leads:", {
-                  userId,
-                  userRole,
-                  totalLeads: allLeads.length,
-                  filteredCount: sortedLeads.length,
-                  sampleLead: sortedLeads[0],
-                  breakdown: {
-                    admin: userRole === 'admin' ? 'ALL' : 'N/A',
-                    commercial: userRole === 'commercial' ? sortedLeads.length : 'N/A',
-                    manager: userRole === 'manager' ? sortedLeads.length : 'N/A'
-                  }
-                });
-            
-                setClients(sortedLeads);
-              } catch (error) {
-                console.error("Error fetching leads:", error);
-                message.error("Failed to fetch leads");
-              } finally {
-                setLoading(false);
-              }
-            };
-            fetchClients();
+    const fetchClients = async () => {
+      const token = localStorage.getItem("token");
+      const decodedToken = jwtDecode(token);
+      const userId = decodedToken?.userId;
+      const userRole = decodedToken?.role?.toLowerCase(); // or userType
+
+      try {
+        setLoading(true);
+
+        // Always fetch all clients (admin will use all, commercial will filter)
+        const response = await axios.get("/data", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const allLeads = response.data?.chatData || [];
+        console.log("All leads:", allLeads);
+
+        // const filteredLeads = allLeads.filter(lead => {
+        //   // ADMIN: See all clients
+        //   if (userRole === 'admin') {
+        //     return true;
+        //   }
+
+        //   // COMMERCIAL: Only see clients assigned to them via commercial field
+        //   if (userRole === 'commercial') {
+        //     const commercialId =
+        //       typeof lead.commercial === 'string'
+        //         ? lead.commercial
+        //         : lead.commercial?._id?.toString();
+        //     return commercialId === userId;
+        //   }
+
+        //   // MANAGER: Only see clients assigned to them via manager field
+        //   if (userRole === 'manager') {
+        //     const managerId =
+        //       typeof lead.manager === 'string'
+        //         ? lead.manager
+        //         : lead.manager?._id?.toString();
+        //     return managerId === userId;
+        //   }
+
+        //   // Default: no access if role not recognized
+        //   return false;
+        // });
+
+        // Sort by createdAt in descending order (newest first)
+        const sortedLeads = allLeads.sort((a, b) => {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+
+        console.log("Filtered and sorted leads:", {
+          userId,
+          userRole,
+          totalLeads: allLeads.length,
+          filteredCount: sortedLeads.length,
+          sampleLead: sortedLeads[0],
+          breakdown: {
+            admin: userRole === "admin" ? "ALL" : "N/A",
+            commercial: userRole === "commercial" ? sortedLeads.length : "N/A",
+            manager: userRole === "manager" ? sortedLeads.length : "N/A",
+          },
+        });
+
+        setClients(sortedLeads);
+      } catch (error) {
+        console.error("Error fetching leads:", error);
+        message.error("Failed to fetch leads");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClients();
   }, []);
 
   const showDeleteConfirm = (id) => {
@@ -1003,7 +1070,7 @@ const Sinistres = () => {
 
     // Reset form first
     form.resetFields();
-   
+
     // Prepare base form values
     const formValues = {
       // gestionnaire: clientData?.gestionnaire ? { name: clientData.gestionnaireName } : "",
@@ -1090,7 +1157,7 @@ const Sinistres = () => {
   const handleSinistreClick = (record) => {
     navigate(`/Sinistres/${record._id}`);
   };
-  
+
   const columns = [
     {
       title: "N° sinistre",
@@ -1100,9 +1167,9 @@ const Sinistres = () => {
         <span
           onClick={() => handleSinistreClick(record)}
           style={{
-            cursor: 'pointer',
-            color: '#1890ff',
-            textDecoration: 'underline'
+            cursor: "pointer",
+            color: "#1890ff",
+            textDecoration: "underline",
           }}
         >
           {text}
@@ -1154,7 +1221,7 @@ const Sinistres = () => {
         const isClickable = record.sinistreExist === "oui";
         let clientName = "";
         let leadId = null;
-    
+
         if (isClickable) {
           if (record.sinistreDetails) {
             clientName = `${record.sinistreDetails.nom} ${record.sinistreDetails.prenom}`;
@@ -1173,13 +1240,13 @@ const Sinistres = () => {
             record.sinistreInput ||
             "N/A";
         }
-    
+
         const handleClientClick = () => {
           if (isClickable && leadId) {
             navigate(`/client/${leadId}`);
           }
         };
-    
+
         return (
           <span
             onClick={handleClientClick}
@@ -1213,12 +1280,11 @@ const Sinistres = () => {
         }
       },
     },
-   
+
     {
       title: "Assureur",
       dataIndex: "assureur",
       key: "assureur",
-
     },
     {
       title: "Date sinistre",
@@ -1341,19 +1407,19 @@ const Sinistres = () => {
     //   key: "gestionnaire",
     //   render: (_, record) => {
     //     const gestionnaire = record.gestionnaire;
-        
+
     //     if (!gestionnaire) return "N/A";
-        
+
     //     // Commercial model - has nom and prenom
     //     if (gestionnaire.nom && gestionnaire.prenom) {
     //       return `${gestionnaire.nom} ${gestionnaire.prenom}`;
     //     }
-        
+
     //     // Admin model - has name
     //     if (gestionnaire.name) {
     //       return gestionnaire.name;
     //     }
-        
+
     //     // Fallback - check any string field
     //     const stringFields = ['nom', 'prenom', 'name', 'email'];
     //     for (let field of stringFields) {
@@ -1361,7 +1427,7 @@ const Sinistres = () => {
     //         return gestionnaire[field];
     //       }
     //     }
-        
+
     //     return "N/A";
     //   },
     // },
@@ -1372,21 +1438,17 @@ const Sinistres = () => {
       render: (gestionnaireId, record) => {
         // For sinistres: session is directly on the record
         // For contrats: session is also directly on the record
-        
-        const gestionnaireName = 
-          record.session?.nom && record.session?.prenom 
+
+        const gestionnaireName =
+          record.session?.nom && record.session?.prenom
             ? `${record.session.nom} ${record.session.prenom}`
-            : record.session?.nom 
+            : record.session?.nom
             ? record.session.nom
-            : record.intermediaire 
+            : record.intermediaire
             ? record.intermediaire
             : "N/A";
-    
-        return (
-          <h1 style={{ padding: 0 }}>
-            {gestionnaireName}
-          </h1>
-        );
+
+        return <h1 style={{ padding: 0 }}>{gestionnaireName}</h1>;
       },
     },
     // {
@@ -1431,126 +1493,130 @@ const Sinistres = () => {
   };
 
   // return (
-    // <section className=" mx-auto">
-    return (
-      <ConfigProvider locale={fr_FR}>
+  // <section className=" mx-auto">
+  return (
+    <ConfigProvider locale={fr_FR}>
       <section className=" mx-auto">
-      <div className="mb-12 md:p-1 p-1">
-        <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
-          <h2 className="text-xs sm:text-sm font-semibold text-blue-800 text-center md:text-left">
-            Sinistres ({allSinistres.length})
-          </h2>
+        <div className="mb-12 md:p-1 p-1">
+          <div className="flex flex-col md:flex-row justify-between items-center p-4 bg-white rounded-t-md shadow-sm gap-3 md:gap-0">
+            <h2 className="text-xs sm:text-sm font-semibold text-blue-800 text-center md:text-left">
+              Sinistres ({allSinistres.length})
+            </h2>
 
-          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
-            <Button
-              type="secondary"
-              className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold md:w-auto"
-              onClick={showModal}
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-lg">+</span>
-                <span className="text-[10px] sm:text-xs whitespace-nowrap">
-                  ENREGISTRER UN SINISTRE
-                </span>
-              </div>
-            </Button>
+            <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-4">
+              <Button
+                type="secondary"
+                className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold md:w-auto"
+                onClick={showModal}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-lg">+</span>
+                  <span className="text-[10px] sm:text-xs whitespace-nowrap">
+                    ENREGISTRER UN SINISTRE
+                  </span>
+                </div>
+              </Button>
+            </div>
           </div>
-        </div>
-        <div className="p-4 bg-white mt-6 border-t rounded-md border-gray-200 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Date Range Picker */}
-            <div className="col-span-2">
-              <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                Période comprise entre
-              </label>
-              <RangePicker
-                className="w-full"
-                format="DD/MM/YYYY"
-                onChange={(dates) => handleFilterChange("periode", dates)}
-              />
-            </div>
+          <div className="p-4 bg-white mt-6 border-t rounded-md border-gray-200 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Date Range Picker */}
+              <div className="col-span-2">
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                  Période comprise entre
+                </label>
+                <RangePicker
+                  className="w-full"
+                  format="DD/MM/YYYY"
+                  onChange={(dates) => handleFilterChange("periode", dates)}
+                />
+              </div>
 
-            {/* Type de sinistre */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                Type de sinistre
-              </label>
-              <Select
-                className="w-full"
-                placeholder="-- Choisissez --"
-                onChange={(value) => handleFilterChange("typeSinistre", value)}
-                allowClear
-              >
-                <Option value="tous">Tous</Option>
-                <Option value="dommage_corporel">Dommage corporel</Option>
-                <Option value="dommage_materiel">Dommage matériel</Option>
-                <Option value="dommage_corporel_matériel">
-                  Dommage corporel et matériel
-                </Option>
-              </Select>
-            </div>
-
-            {/* Délégation */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                Sinistre en délegation
-              </label>
-              <Select
-                className="w-full"
-                placeholder="-- Choisissez --"
-                onChange={(value) => handleFilterChange("delegation", value)}
-                allowClear
-              >
-                <Option value="tous">Tous</Option>
-                <Option value="oui">Oui</Option>
-                <Option value="non">Non</Option>
-              </Select>
-            </div>
-
-            {/* Risque */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                Risque
-              </label>
-              <Select
-                className="w-full"
-                placeholder="-- Choisissez --"
-                onChange={(value) => handleFilterChange("risque", value)}
-                allowClear
-                showSearch
-                optionFilterProp="children"
-                filterOption={(input, option) =>
-                  option.children.toLowerCase().includes(input.toLowerCase())
-                }
-              >
-                <Option value="tous">Tous les risques</Option>
-                {RISQUES.map((risque) => (
-                  <Option key={risque.value} value={risque.value}>
-                    {risque.label}
+              {/* Type de sinistre */}
+              <div>
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                  Type de sinistre
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="-- Choisissez --"
+                  onChange={(value) =>
+                    handleFilterChange("typeSinistre", value)
+                  }
+                  allowClear
+                >
+                  <Option value="tous">Tous</Option>
+                  <Option value="dommage_corporel">Dommage corporel</Option>
+                  <Option value="dommage_materiel">Dommage matériel</Option>
+                  <Option value="dommage_corporel_matériel">
+                    Dommage corporel et matériel
                   </Option>
-                ))}
-              </Select>
-            </div>
+                </Select>
+              </div>
 
-            {/* Gestionnaire */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                Gestionnaire
-              </label>
-              <Select
-                className="w-full"
-                placeholder="-- Choisissez --"
-                onChange={(value) => handleFilterChange("gestionnaire", value)}
-                loading={loading}
-                showSearch
-                optionFilterProp="children"
-                // filterOption={(input, option) =>
-                //   option.children.toLowerCase().includes(input.toLowerCase())
-                // }
-                allowClear
-              >
-                <Option value="tous">Tous les gestionnaires</Option>
-                {/* {users.map((user) => {
+              {/* Délégation */}
+              <div>
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                  Sinistre en délegation
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="-- Choisissez --"
+                  onChange={(value) => handleFilterChange("delegation", value)}
+                  allowClear
+                >
+                  <Option value="tous">Tous</Option>
+                  <Option value="oui">Oui</Option>
+                  <Option value="non">Non</Option>
+                </Select>
+              </div>
+
+              {/* Risque */}
+              <div>
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                  Risque
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="-- Choisissez --"
+                  onChange={(value) => handleFilterChange("risque", value)}
+                  allowClear
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
+                >
+                  <Option value="tous">Tous les risques</Option>
+                  {RISQUES.map((risque) => (
+                    <Option key={risque.value} value={risque.value}>
+                      {risque.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+
+              {/* Gestionnaire */}
+              <div>
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                  Gestionnaire
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="-- Choisissez --"
+                  onChange={(value) =>
+                    handleFilterChange("gestionnaire", value)
+                  }
+                  loading={loading}
+                  showSearch
+                  optionFilterProp="children"
+                  // filterOption={(input, option) =>
+                  //   option.children.toLowerCase().includes(input.toLowerCase())
+                  // }
+                  allowClear
+                >
+                  <Option value="tous">Tous les gestionnaires</Option>
+                  {/* {users.map((user) => {
                   const displayName =
                     user.userType === "admin"
                       ? `${user.name}`
@@ -1566,436 +1632,505 @@ const Sinistres = () => {
                     </Option>
                   );
                 })} */}
-                    {users.map((user) => {
-  const displayName =
-    user.userType === "admin"
-      ? user.name || user.nom || ""
-      : `${user.nom || ""} ${user.prenom || ""}`.trim();
+                  {users.map((user) => {
+                    const displayName =
+                      user.userType === "admin"
+                        ? user.name || user.nom || ""
+                        : `${user.nom || ""} ${user.prenom || ""}`.trim();
 
-  const typeLabel =
-    user.userType === "admin"
-      ? "Admin"
-      : user.userType === "manager"
-      ? "Manager"
-      : "Commercial";
+                    const typeLabel =
+                      user.userType === "admin"
+                        ? "Admin"
+                        : user.userType === "manager"
+                        ? "Manager"
+                        : "Commercial";
 
-  return (
-    <Option key={user._id} value={user._id}>
-      {displayName} ({typeLabel}) — {user.email}
-    </Option>
-  );
-})}
-              </Select>
+                    return (
+                      <Option key={user._id} value={user._id}>
+                        {displayName} ({typeLabel}) — {user.email}
+                      </Option>
+                    );
+                  })}
+                </Select>
+              </div>
+
+              {/* Statut */}
+              <div>
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                  Statut
+                </label>
+                <Select
+                  className="w-full"
+                  placeholder="-- Choisissez --"
+                  onChange={(value) =>
+                    handleFilterChange("statutSinistre", value)
+                  }
+                  allowClear
+                >
+                  <Option value="tous">Tous</Option>
+                  <Option value="en_cours">En cours</Option>
+                  <Option value="clo">Clos</Option>
+                  <Option value="reouvert">Réouvert</Option>
+                </Select>
+              </div>
+
+              {/* Recherche */}
+              <div>
+                <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                  Recherche
+                </label>
+                <Input
+                  placeholder="Rechercher par numéro, nom, référence..."
+                  allowClear
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
+                  value={filters.search}
+                  className="w-full"
+                />
+              </div>
             </div>
+          </div>
 
-            {/* Statut */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                Statut
-              </label>
-              <Select
-                className="w-full"
-                placeholder="-- Choisissez --"
-                onChange={(value) =>
-                  handleFilterChange("statutSinistre", value)
-                }
-                allowClear
+          <div className="bg-white mt-4 rounded-lg shadow-md w-full  overflow-x-auto">
+            <Table
+              columns={[
+                ...columns.map((col) => ({
+                  ...col,
+                  title: (
+                    <div className="flex flex-col items-center">
+                      <div className="text-xs">{col.title}</div>
+                    </div>
+                  ),
+                })),
+              ]}
+              dataSource={filteredSinistres.slice(
+                (currentPage - 1) * pageSize,
+                currentPage * pageSize
+              )}
+              pagination={{
+                current: currentPage,
+                pageSize,
+                total: filteredSinistres.length,
+                // onChange: (page) => setCurrentPage(page),
+                onChange: (page, pageSize) => {
+                  setCurrentPage(page);
+                  setPageSize(pageSize);
+                },
+                showSizeChanger: true,
+                pageSizeOptions: ["10", "20", "30", "50", "100"],
+                showTotal: (total, range) =>
+                  `${range[0]}-${range[1]} of ${total} items`,
+              }}
+              rowKey={(record) => record._id}
+              bordered
+              className="custom-table text-xs sm:text-sm"
+              // rowSelection={rowSelection}
+              tableLayout="auto"
+            />
+          </div>
+        </div>
+
+        <Modal
+          title={
+            <div className="bg-gray-100 p-2 -mx-6 -mt-6 flex justify-between items-center sticky top-0 z-10 border-b">
+              <span className="font-medium text-sm">
+                {editingRecord
+                  ? "MODIFIER LE SINISTRE"
+                  : "ENREGISTRER UN SINISTRE"}
+              </span>
+              <button
+                onClick={handleCancel}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
               >
-                <Option value="tous">Tous</Option>
-                <Option value="en_cours">En cours</Option>
-                <Option value="clo">Clos</Option>
-                <Option value="reouvert">Réouvert</Option>
-              </Select>
+                <CloseOutlined className="text-xs" />
+              </button>
             </div>
-
-            {/* Recherche */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700 mb-1">
-                Recherche
-              </label>
-              <Input
-                placeholder="Rechercher par numéro, nom, référence..."
-                allowClear
-                onChange={(e) => handleFilterChange("search", e.target.value)}
-                value={filters.search}
-                className="w-full"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white mt-4 rounded-lg shadow-md w-full  overflow-x-auto">
-          <Table
-            columns={[
-              ...columns.map((col) => ({
-                ...col,
-                title: (
-                  <div className="flex flex-col items-center">
-                    <div className="text-xs">{col.title}</div>
-                  </div>
-                ),
-              })),
-            ]}
-            dataSource={filteredSinistres.slice(
-              (currentPage - 1) * pageSize,
-              currentPage * pageSize
-            )}
-            pagination={{
-              current: currentPage,
-              pageSize,
-              total: filteredSinistres.length,
-              // onChange: (page) => setCurrentPage(page),
-              onChange: (page, pageSize) => {
-                setCurrentPage(page);
-                setPageSize(pageSize);
-              },
-              showSizeChanger: true,
-              pageSizeOptions: ["10", "20", "30", "50", "100"],
-              showTotal: (total, range) =>
-                `${range[0]}-${range[1]} of ${total} items`,
-            }}
-            rowKey={(record) => record._id}
-            
-            bordered
-            className="custom-table text-xs sm:text-sm"
-            // rowSelection={rowSelection}
-            tableLayout="auto"
-          />
-        </div>
-      </div>
-
-      <Modal
-        title={
-          <div className="bg-gray-100 p-2 -mx-6 -mt-6 flex justify-between items-center sticky top-0 z-10 border-b">
-            <span className="font-medium text-sm">
-              {editingRecord
-                ? "MODIFIER LE SINISTRE"
-                : "ENREGISTRER UN SINISTRE"}
-            </span>
-            <button
-              onClick={handleCancel}
-              className="text-gray-500 hover:text-gray-700 focus:outline-none text-xs"
-            >
-              <CloseOutlined className="text-xs" />
-            </button>
-          </div>
-        }
-        open={isModalOpen}
-        onCancel={handleCancel}
-        footer={null}
-        width="30%"
-        style={{
-          position: "fixed",
-          right: 0,
-          top: 0,
-          bottom: 0,
-          height: "100vh",
-          margin: 0,
-          padding: 0,
-          overflow: "hidden",
-        }}
-        bodyStyle={{
-          height: "calc(100vh - 49px)",
-          padding: 0,
-          margin: 0,
-        }}
-        maskStyle={{
-          backgroundColor: "rgba(0, 0, 0, 0.1)",
-        }}
-        closeIcon={null}
-      >
-        <div
-          className="h-full overflow-y-auto ml-2 overflow-clip w-full"
-          style={{ scrollbarWidth: "thin" }}
+          }
+          open={isModalOpen}
+          onCancel={handleCancel}
+          footer={null}
+          width="30%"
+          style={{
+            position: "fixed",
+            right: 0,
+            top: 0,
+            bottom: 0,
+            height: "100vh",
+            margin: 0,
+            padding: 0,
+            overflow: "hidden",
+          }}
+          bodyStyle={{
+            height: "calc(100vh - 49px)",
+            padding: 0,
+            margin: 0,
+          }}
+          maskStyle={{
+            backgroundColor: "rgba(0, 0, 0, 0.1)",
+          }}
+          closeIcon={null}
         >
-          <Form
-            form={form}
-            onFinish={handleFormSubmit}
-            layout="vertical"
-            className="space-y-2 w-full"
+          <div
+            className="h-full overflow-y-auto ml-2 overflow-clip w-full"
+            style={{ scrollbarWidth: "thin" }}
           >
-            {/* === INFORMATION === */}
-            <h2 className="text-sm font-semibold mt-3 mb-2">INFORMATIONS</h2>
-            <Form.Item
-              label="N° de sinistre"
-              name="numeroSinistre"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
+            <Form
+              form={form}
+              onFinish={handleFormSubmit}
+              layout="vertical"
+              className="space-y-2 w-full"
             >
-              <Input placeholder="Entrez le numéro de sinistre" />
-            </Form.Item>
-
-            {/* LE SINISTRE */}
-            <h2 className="text-sm font-semibold mt-16 mb-4">LE SINISTRE</h2>
-
-            <Form.Item
-              label="Le sinistré existe-t-il dans votre CRM ?"
-              name="sinistreExist"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Radio.Group>
-                <Radio value="oui">Oui</Radio>
-                <Radio value="non">Non</Radio>
-              </Radio.Group>
-            </Form.Item>
-
-            {/* If "oui" show Select */}
-            {/* If sinistré exists (oui) - show client select */}
-            {sinistreExist === "oui" && (
+              {/* === INFORMATION === */}
+              <h2 className="text-sm font-semibold mt-3 mb-2">INFORMATIONS</h2>
               <Form.Item
-                label="Sinistré"
-                name="sinistreId"
+                label="N° de sinistre"
+                name="numeroSinistre"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Input placeholder="Entrez le numéro de sinistre" />
+              </Form.Item>
+
+              {/* LE SINISTRE */}
+              <h2 className="text-sm font-semibold mt-16 mb-4">LE SINISTRE</h2>
+
+              <Form.Item
+                label="Le sinistré existe-t-il dans votre CRM ?"
+                name="sinistreExist"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Radio.Group>
+                  <Radio value="oui">Oui</Radio>
+                  <Radio value="non">Non</Radio>
+                </Radio.Group>
+              </Form.Item>
+
+              {/* If "oui" show Select */}
+              {/* If sinistré exists (oui) - show client select */}
+              {sinistreExist === "oui" && (
+                <Form.Item
+                  label="Sinistré"
+                  name="sinistreId"
+                  rules={[
+                    { required: false, message: "Ce champ est obligatoire" },
+                  ]}
+                >
+                  <Select
+                    showSearch
+                    optionFilterProp="children"
+                    placeholder="-- Choisissez un sinistré --"
+                    loading={loadingClients}
+                    // filterOption={(input, option) =>
+                    //   option.children.toLowerCase().includes(input.toLowerCase())
+                    // }
+                  >
+                    {clients.map((client) => (
+                      <Option key={client._id} value={client._id}>
+                        {client.nom} {client.prenom}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              )}
+
+              {/* If sinistré doesn't exist (non) - show manual entry fields */}
+              {sinistreExist === "non" && (
+                <>
+                  <Form.Item
+                    label="Nom du sinistré"
+                    name="sinistreNom"
+                    rules={[
+                      {
+                        required: false,
+                        message: "Le champ nom du sinistré est obligatoire",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Entrez le nom du sinistré" />
+                  </Form.Item>
+
+                  <Form.Item
+                    label="Prénom du sinistré"
+                    name="sinistrePrenom"
+                    rules={[
+                      {
+                        required: false,
+                        message: "Le champ prénom du sinistré est obligatoire",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Entrez le prénom du sinistré" />
+                  </Form.Item>
+                  <Form.Item
+                    label="Numéro de contrat*"
+                    name="sinistreInput"
+                    rules={[
+                      {
+                        required: false,
+                        message: "Le champ numéro de sinistre est obligatoire",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Entrez le numéro de sinistre" />
+                  </Form.Item>
+                </>
+              )}
+
+              {/* Only show contract section if sinistré exists (oui) */}
+              {sinistreExist === "oui" && (
+                <>
+                  {/* Contract Existence Toggle */}
+                  <Form.Item
+                    label="Le contrat existe-t-il dans votre CRM ?"
+                    name="contratExist"
+                    rules={[
+                      { required: false, message: "Ce champ est obligatoire" },
+                    ]}
+                  >
+                    <Radio.Group>
+                      <Radio value="oui">Oui</Radio>
+                      <Radio value="non">Non</Radio>
+                    </Radio.Group>
+                  </Form.Item>
+
+                  {/* If contract exists (oui) - show contract select */}
+                  {/* {contratExist === "oui" && (
+                    <Form.Item
+                      label="Contrat"
+                      name="contratId"
+                      rules={[
+                        {
+                          required: false,
+                          message: "Le champ contrat est obligatoire",
+                        },
+                      ]}
+                    >
+                      <Select
+                        placeholder={
+                          loadingContrats
+                            ? "Chargement..."
+                            : "-- Choisissez un contrat --"
+                        }
+                        loading={loadingContrats}
+                        showSearch
+                        optionFilterProp="children"
+                        // filterOption={(input, option) =>
+                        //   option.children
+                        //     .toLowerCase()
+                        //     .includes(input.toLowerCase())
+                        // }
+                      >
+                        {contrats.map((contrat) => (
+                          <Option key={contrat._id} value={contrat._id}>
+                            {contrat.contractNumber} - {contrat.insurer}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  )} */}
+                  {contratExist === "oui" && (
+  <Form.Item
+    label="Contrat"
+    name="contratId"
+    rules={[{ required: false, message: "Le champ contrat est obligatoire" }]}
+  >
+    <Select
+      placeholder={
+        loadingContrats
+          ? "Chargement..."
+          : !selectedClientId
+          ? "-- Sélectionnez d'abord un sinistré --"
+          : "-- Choisissez un contrat --"
+      }
+      loading={loadingContrats}
+      showSearch
+      optionFilterProp="label"
+      disabled={!selectedClientId}
+      notFoundContent={
+        loadingContrats
+          ? "Chargement..."
+          : !selectedClientId
+          ? "Sélectionnez d'abord un sinistré"
+          : "Aucun contrat pour ce client"
+      }
+    >
+      {contrats
+        .filter((contrat) => {
+          const leadId =
+            contrat.lead?._id?.toString() ||
+            contrat.lead?.toString() ||
+            contrat.leadId?.toString();
+          return leadId === selectedClientId?.toString();
+        })
+        .map((contrat) => {
+          const label = `${contrat.contractNumber || ""} - ${contrat.insurer || ""}`;
+          return (
+            <Option key={contrat._id} value={contrat._id} label={label}>
+              {label}
+            </Option>
+          );
+        })}
+    </Select>
+  </Form.Item>
+)}
+
+                  {/* If contract doesn't exist (non) - show manual entry */}
+                  {contratExist === "non" && (
+                    <Form.Item
+                      label="Numéro de contrat"
+                      name="contratNumber"
+                      rules={[
+                        {
+                          required: false,
+                          message: "Le champ numéro de contrat est obligatoire",
+                        },
+                      ]}
+                    >
+                      <Input placeholder="Entrez le numéro de contrat" />
+                    </Form.Item>
+                  )}
+                </>
+              )}
+
+              {/* DÉTAIL DU SINISTRE */}
+              <h2 className="text-sm font-semibold mt-12 mb-4">
+                DÉTAIL DU SINISTRE
+              </h2>
+
+              <Form.Item name="risque" label="Risque" className="w-full">
+                <Select
+                  showSearch
+                  placeholder="-- Choisissez --"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
+                  className="w-full"
+                >
+                  {RISQUES.map((risque) => (
+                    <Option key={risque.value} value={risque.value}>
+                      {risque.label}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item name="assureur" label="Assureur" className="w-full">
+                <Select
+                  showSearch
+                  placeholder="-- Choisissez --"
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().includes(input.toLowerCase())
+                  }
+                  className="w-full"
+                >
+                  {ASSUREURS.map((assureur) => (
+                    <Option key={assureur.value} value={assureur.value}>
+                      {assureur.label}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                label="Date de sinistre"
+                name="dateSinistre"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <DatePicker
+                  className="w-full"
+                  placeholder="Sélectionnez la date"
+                />
+              </Form.Item>
+
+              <Form.Item
+                label="Date de déclaration"
+                name="dateDeclaration"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <DatePicker
+                  className="w-full"
+                  placeholder="Sélectionnez la date"
+                />
+              </Form.Item>
+
+              <Form.Item
+                label="Statut du sinistre"
+                name="statutSinistre"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Select placeholder="-- Choisissez --">
+                  <Option value="en_cours">En cours</Option>
+                  <Option value="clo">Clos</Option>
+                  <Option value="reouvert">Réouvert</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item
+                label="Type de sinistre"
+                name="typeSinistre"
                 rules={[
                   { required: false, message: "Ce champ est obligatoire" },
                 ]}
               >
                 <Select
+                  placeholder="-- Choisissez --"
                   showSearch
                   optionFilterProp="children"
-                  placeholder="-- Choisissez un sinistré --"
-                  loading={loadingClients}
-                  // filterOption={(input, option) =>
-                  //   option.children.toLowerCase().includes(input.toLowerCase())
-                  // }
+                  className="w-full"
                 >
-                  {clients.map((client) => (
-                    <Option key={client._id} value={client._id}>
-                      {client.nom} {client.prenom}
-                    </Option>
-                  ))}
+                  <Option value="dommage_corporel">Dommage corporel</Option>
+                  <Option value="dommage_materiel">Dommage matériel</Option>
+                  <Option value="dommage_corporel_matériel">
+                    Dommage corporel et matériel
+                  </Option>
                 </Select>
               </Form.Item>
-            )}
 
-            {/* If sinistré doesn't exist (non) - show manual entry fields */}
-            {sinistreExist === "non" && (
-              <>
-                <Form.Item
-                  label="Nom du sinistré"
-                  name="sinistreNom"
-                  rules={[
-                    {
-                      required: false,
-                      message: "Le champ nom du sinistré est obligatoire",
-                    },
-                  ]}
-                >
-                  <Input placeholder="Entrez le nom du sinistré" />
-                </Form.Item>
-
-                <Form.Item
-                  label="Prénom du sinistré"
-                  name="sinistrePrenom"
-                  rules={[
-                    {
-                      required: false,
-                      message: "Le champ prénom du sinistré est obligatoire",
-                    },
-                  ]}
-                >
-                  <Input placeholder="Entrez le prénom du sinistré" />
-                </Form.Item>
-                <Form.Item
-                  label="Numéro de contrat*"
-                  name="sinistreInput"
-                  rules={[
-                    {
-                      required: false,
-                      message: "Le champ numéro de sinistre est obligatoire",
-                    },
-                  ]}
-                >
-                  <Input placeholder="Entrez le numéro de sinistre" />
-                </Form.Item>
-              </>
-            )}
-
-            {/* Only show contract section if sinistré exists (oui) */}
-            {sinistreExist === "oui" && (
-              <>
-                {/* Contract Existence Toggle */}
-                <Form.Item
-                  label="Le contrat existe-t-il dans votre CRM ?"
-                  name="contratExist"
-                  rules={[
-                    { required: false, message: "Ce champ est obligatoire" },
-                  ]}
-                >
-                  <Radio.Group>
-                    <Radio value="oui">Oui</Radio>
-                    <Radio value="non">Non</Radio>
-                  </Radio.Group>
-                </Form.Item>
-
-                {/* If contract exists (oui) - show contract select */}
-                {contratExist === "oui" && (
-                  <Form.Item
-                    label="Contrat"
-                    name="contratId"
-                    rules={[
-                      {
-                        required: false,
-                        message: "Le champ contrat est obligatoire",
-                      },
-                    ]}
-                  >
-                    <Select
-                      placeholder={
-                        loadingContrats
-                          ? "Chargement..."
-                          : "-- Choisissez un contrat --"
-                      }
-                      loading={loadingContrats}
-                      showSearch
-                      optionFilterProp="children"
-                      // filterOption={(input, option) =>
-                      //   option.children
-                      //     .toLowerCase()
-                      //     .includes(input.toLowerCase())
-                      // }
-                    >
-                      {contrats.map((contrat) => (
-                        <Option key={contrat._id} value={contrat._id}>
-                          {contrat.contractNumber} - {contrat.insurer}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                )}
-
-                {/* If contract doesn't exist (non) - show manual entry */}
-                {contratExist === "non" && (
-                  <Form.Item
-                    label="Numéro de contrat"
-                    name="contratNumber"
-                    rules={[
-                      {
-                        required: false,
-                        message: "Le champ numéro de contrat est obligatoire",
-                      },
-                    ]}
-                  >
-                    <Input placeholder="Entrez le numéro de contrat" />
-                  </Form.Item>
-                )}
-              </>
-            )}
-
-            {/* DÉTAIL DU SINISTRE */}
-            <h2 className="text-sm font-semibold mt-12 mb-4">
-              DÉTAIL DU SINISTRE
-            </h2>
-
-            <Form.Item name="risque" label="Risque" className="w-full">
-              <Select showSearch
-                  placeholder="-- Choisissez --"
-                  optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
-                  } className="w-full">
-                {RISQUES.map((risque) => (
-                  <Option key={risque.value} value={risque.value}>
-                    {risque.label}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item name="assureur" label="Assureur" className="w-full">
-              <Select showSearch
-                  placeholder="-- Choisissez --"
-                  optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
-                  } className="w-full">
-                {ASSUREURS.map((assureur) => (
-                  <Option key={assureur.value} value={assureur.value}>
-                    {assureur.label}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              label="Date de sinistre"
-              name="dateSinistre"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <DatePicker
-                className="w-full"
-                placeholder="Sélectionnez la date"
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="Date de déclaration"
-              name="dateDeclaration"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <DatePicker
-                className="w-full"
-                placeholder="Sélectionnez la date"
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="Statut du sinistre"
-              name="statutSinistre"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Select placeholder="-- Choisissez --">
-                <Option value="en_cours">En cours</Option>
-                <Option value="clo">Clos</Option>
-                <Option value="reouvert">Réouvert</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              label="Type de sinistre"
-              name="typeSinistre"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Select
-                placeholder="-- Choisissez --"
-                showSearch
-                optionFilterProp="children"
-                className="w-full"
+              <Form.Item
+                label="Responsabilité"
+                name="responsabilite"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
               >
-                <Option value="dommage_corporel">Dommage corporel</Option>
-                <Option value="dommage_materiel">Dommage matériel</Option>
-                <Option value="dommage_corporel_matériel">
-                  Dommage corporel et matériel
-                </Option>
-              </Select>
-            </Form.Item>
+                <Input placeholder="responsabilité" />
+              </Form.Item>
 
-            <Form.Item
-              label="Responsabilité"
-              name="responsabilite"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Input placeholder="responsabilité" />
-            </Form.Item>
+              <Form.Item label="Montant du sinistre" name="montantSinistre">
+                <Input type="number" />
+              </Form.Item>
 
-            <Form.Item label="Montant du sinistre" name="montantSinistre">
-              <Input type="number" />
-            </Form.Item>
+              <Form.Item
+                label="Sinistre en délégation ?"
+                name="delegation"
+                rules={[
+                  { required: false, message: "Ce champ est obligatoire" },
+                ]}
+              >
+                <Select placeholder="-- Choisissez --">
+                  <Option value="oui">Oui</Option>
+                  <Option value="non">Non</Option>
+                </Select>
+              </Form.Item>
 
-            <Form.Item
-              label="Sinistre en délégation ?"
-              name="delegation"
-              rules={[{ required: false, message: "Ce champ est obligatoire" }]}
-            >
-              <Select placeholder="-- Choisissez --">
-                <Option value="oui">Oui</Option>
-                <Option value="non">Non</Option>
-              </Select>
-            </Form.Item>
+              <Form.Item
+                label="Coordonnées de l'expert"
+                name="coordonnees_expert"
+              >
+                <Input placeholder="Coordonnées de l'expert" />
+              </Form.Item>
 
-            <Form.Item label="Coordonnées de l'expert" name="coordonnees_expert">
-              <Input placeholder="Coordonnées de l'expert" />
-            </Form.Item>
-
-            {/* <Form.Item
+              {/* <Form.Item
               label="Gestionnaire"
               name="gestionnaire"
               rules={[
@@ -2042,56 +2177,61 @@ const Sinistres = () => {
                 })}
               </Select>
             </Form.Item> */}
-            <Form.Item
-  label="Gestionnaire"
-  name="gestionnaire" // Ce sera directement l'ID
-  rules={[
-    {
-      required: false,
-      message: "Veuillez sélectionner un gestionnaire",
-    },
-  ]}
->
-  <Select
-    className="w-full text-xs h-7"
-    placeholder="-- Choisissez--"
-    showSearch
-    optionFilterProp="children"
-  >
-    {users.map((user) => {
-      const displayName =
-        user.userType === "admin"
-          ? user.name
-          : `${user.nom} ${user.prenom}`;
+              <Form.Item
+                label="Gestionnaire"
+                name="gestionnaire" // Ce sera directement l'ID
+                rules={[
+                  {
+                    required: false,
+                    message: "Veuillez sélectionner un gestionnaire",
+                  },
+                ]}
+              >
+                <Select
+                  className="w-full text-xs h-7"
+                  placeholder="-- Choisissez--"
+                  showSearch
+                  optionFilterProp="children"
+                >
+                  {users.map((user) => {
+                    const displayName =
+                      user.userType === "admin"
+                        ? user.name
+                        : `${user.nom} ${user.prenom}`;
 
-      return (
-        <Option key={user._id} value={user._id}>
-          {displayName} (
-            {user.userType === "admin" ? "Admin" : user.userType === "manager" ? "Manager" : "Commercial"})
-        </Option>
-      );
-    })}
-  </Select>
-</Form.Item>
+                    return (
+                      <Option key={user._id} value={user._id}>
+                        {displayName} (
+                        {user.userType === "admin"
+                          ? "Admin"
+                          : user.userType === "manager"
+                          ? "Manager"
+                          : "Commercial"}
+                        )
+                      </Option>
+                    );
+                  })}
+                </Select>
+              </Form.Item>
 
-{/* Champ caché pour le modèle du gestionnaire */}
-<Form.Item name="gestionnaireModel" hidden>
-  <Input />
-</Form.Item>
-          </Form>
-          <Button
-            type="primary"
-            htmlType="submit"
-            className="w-full text-xs h-7 mt-2 mb-4"
-            onClick={() => form.submit()}
-          >
-            Enregistrer
-          </Button>
-        </div>
-      </Modal>
+              {/* Champ caché pour le modèle du gestionnaire */}
+              <Form.Item name="gestionnaireModel" hidden>
+                <Input />
+              </Form.Item>
+            </Form>
+            <Button
+              type="primary"
+              htmlType="submit"
+              className="w-full text-xs h-7 mt-2 mb-4"
+              onClick={() => form.submit()}
+            >
+              Enregistrer
+            </Button>
+          </div>
+        </Modal>
       </section>
-  </ConfigProvider>
-);
+    </ConfigProvider>
+  );
 };
 
 export default Sinistres;
