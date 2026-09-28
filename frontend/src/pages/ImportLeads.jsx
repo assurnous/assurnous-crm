@@ -110,6 +110,14 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
   // };
 
   const handleTransfer = async () => {
+    console.log("═══════════════════════════════════════════════");
+    console.log("🔍 [handleTransfer] DÉBUT");
+    console.log("   fileData.length :", fileData?.length);
+    console.log("   fileData[0]     :", fileData?.[0]);
+    console.log("   agenceValidation:", agenceValidation);
+    console.log("   valid           :", agenceValidation?.valid);
+    console.log("   errors          :", agenceValidation?.errors);
+    console.log("═══════════════════════════════════════════════");
     if (!fileData || fileData.length === 0) {
         message.error("Aucune donnée à transférer");
         return;
@@ -121,53 +129,190 @@ const ImportLeads = ({ onImportSuccess = () => {} }) => {
       );
       return;
   }
+  console.log("═══════════════════════════════════════════════");
+console.log("🔍 DEBUG — Données avant envoi au backend");
+console.log("   Nombre de leads:", fileData?.length);
+console.log("   Premier lead:", fileData?.[0]);
+console.log("   Champs du 1er lead:", Object.keys(fileData?.[0] || {}));
+console.log("   Valeur agence 1er:", fileData?.[0]?.agence);
+console.log("   Valeur agence 2e :", fileData?.[1]?.agence);
+console.log("   Valeur agence 3e :", fileData?.[2]?.agence);
+console.log("═══════════════════════════════════════════════");
     setIsImporting(true);
     setValidationError(null);
-
     try {
-        const response = await axios.post('/import', fileData, {
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          validateStatus: (status) => status < 500,
-        });
-
-        if (response.status === 200) {
-            message.success(`${response.data.count} leads importés avec succès`);
-            onImportSuccess();
-            setImportedFiles([...importedFiles, fileName]);
-            setFileData(null);
-            setFileName(null);
-        } 
-        // else if (response.status === 400) {
-        //     // Handle different types of validation errors
-        //     if (response.data.duplicatePhones) {
-        //         setDuplicates({
-        //             inFile: response.data.duplicatePhones,
-        //             inDatabase: []
-        //         });
-                
-        //         const errorMsg = response.data.message === 'Duplicate phone numbers found in import file' 
-        //             ? `Doublons dans le fichier: ${response.data.duplicatePhones.join(', ')}`
-        //             : `Doublons existants en base: ${response.data.duplicatePhones.join(', ')}`;
-                
-        //         setValidationError(errorMsg);
-        //     } 
-        //     // else if (response.data.invalidLeads) {
-        //     //     setValidationError(
-        //     //         `${response.data.invalidLeads.length} leads sans numéro de téléphone`
-        //     //     );
-        //     // }
-        // }
-    } catch (error) {
-        console.error("Erreur lors de l'importation:", error);
+      const token = localStorage.getItem("token");
+    
+      const response = await axios.post('/import', fileData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,   // ⬅️ AJOUTER
+        },
+        validateStatus: (status) => status < 500,
+      });
+    
+      console.log("📥 Réponse /import:", response.status, response.data);
+    
+      // ═══════════════════════════════════════════════════════════════
+      if (response.status === 200) {
+        const data = response.data;
+      
+        // ═══════════════════════════════════════════════════════════════
+        // CAS 1 : Succès complet
+        // ═══════════════════════════════════════════════════════════════
+        if (data.count > 0 && data.skipped === 0) {
+          message.success(`✅ ${data.count} lead(s) importé(s) avec succès`);
+          setValidationError(null);
+          onImportSuccess();
+          setImportedFiles([...importedFiles, fileName]);
+          setFileData(null);
+          setFileName(null);
+          return;
+        }
+      
+        // ═══════════════════════════════════════════════════════════════
+        // CAS 2 : Succès PARTIEL — certains importés, d'autres rejetés
+        // ═══════════════════════════════════════════════════════════════
+        if (data.count > 0 && data.skipped > 0) {
+          message.warning(
+            `⚠️ ${data.count} importé(s), ${data.skipped} rejeté(s)`
+          );
+      
+          if (data.rejectedLeads && data.rejectedLeads.length > 0) {
+            const details = data.rejectedLeads
+              .map((r) =>
+                `• ${r.nom || "?"} ${r.prenom || "?"} (agence: ${r.agence || "?"}) → ${(r.errors || [])
+                  .map((e) => `${e.path}: ${e.message}`)
+                  .join("; ")}`
+              )
+              .join("\n");
+      
+            setValidationError(details);
+            console.warn("⚠️ Leads rejetés:", data.rejectedLeads);
+          }
+      
+          onImportSuccess();
+          setImportedFiles([...importedFiles, fileName]);
+          setFileData(null);
+          setFileName(null);
+          return;
+        }
+      
+        // ═══════════════════════════════════════════════════════════════
+        // CAS 3 : AUCUN lead importé (mais status 200 par erreur)
+        // ═══════════════════════════════════════════════════════════════
         message.error(
-            error.response?.data?.message || 
-            "Erreur inconnue lors de l'importation"
+          `❌ Aucun lead importé — ${data.skipped || 0} rejeté(s)`
         );
+        // Ne PAS reset le fileData → l'utilisateur doit voir le problème
+        if (data.rejectedLeads && data.rejectedLeads.length > 0) {
+          const details = data.rejectedLeads
+            .map((r) =>
+              `• ${r.nom || "?"} ${r.prenom || "?"} (agence: ${r.agence || "?"}) → ${(r.errors || [])
+                .map((e) => `${e.path}: ${e.message}`)
+                .join("; ")}`
+            )
+            .join("\n");
+          setValidationError(details);
+        }
+        return;
+      }
+      
+      // ═══════════════════════════════════════════════════════════════
+      // CAS 4 : Échec total (400)
+      // ═══════════════════════════════════════════════════════════════
+      if (response.status === 400) {
+        const data = response.data;
+        console.error("❌ Import échoué:", data);
+      
+        // Message principal
+        message.error(data.message || "Import échoué");
+      
+        // ═══════════════════════════════════════════════════════════════
+        // Afficher les détails de chaque lead rejeté
+        // ═══════════════════════════════════════════════════════════════
+        if (data.rejectedLeads && data.rejectedLeads.length > 0) {
+          const details = data.rejectedLeads
+            .map((r) => {
+              const nom = `${r.nom || "?"} ${r.prenom || "?"}`.trim();
+              const agence = r.agence || "—";
+              const erreurs = (r.errors || [])
+                .map((e) => `${e.path}: ${e.message}`)
+                .join(" | ");
+              return `• Ligne ${r.index + 1} — ${nom} (agence: ${agence}) → ${erreurs}`;
+            })
+            .join("\n");
+      
+          setValidationError(details);
+        }
+        // Erreurs simples (sans rejectedLeads)
+        else if (data.errors && Array.isArray(data.errors)) {
+          const details = data.errors
+            .map((e) => `• ${e.path}: ${e.message}`)
+            .join("\n");
+          setValidationError(details);
+        }
+        // Fallback
+        else {
+          setValidationError(data.message || JSON.stringify(data));
+        }
+      
+        return;
+      }
+    } catch (error) {
+      console.error("❌ Erreur réseau ou exception:", error);
+      message.error(
+        error.response?.data?.message ||
+        error.message ||
+        "Erreur inconnue lors de l'importation"
+      );
     } finally {
-        setIsImporting(false);
+      setIsImporting(false);
     }
+    // try {
+    //     const response = await axios.post('/import', fileData, {
+    //       headers: {
+    //         'Content-Type': 'application/json'
+    //       },
+    //       validateStatus: (status) => status < 500,
+    //     });
+
+    //     if (response.status === 200) {
+    //         message.success(`${response.data.count} leads importés avec succès`);
+    //         onImportSuccess();
+    //         setImportedFiles([...importedFiles, fileName]);
+    //         setFileData(null);
+    //         setFileName(null);
+    //     } 
+    //     // else if (response.status === 400) {
+    //     //     // Handle different types of validation errors
+    //     //     if (response.data.duplicatePhones) {
+    //     //         setDuplicates({
+    //     //             inFile: response.data.duplicatePhones,
+    //     //             inDatabase: []
+    //     //         });
+                
+    //     //         const errorMsg = response.data.message === 'Duplicate phone numbers found in import file' 
+    //     //             ? `Doublons dans le fichier: ${response.data.duplicatePhones.join(', ')}`
+    //     //             : `Doublons existants en base: ${response.data.duplicatePhones.join(', ')}`;
+                
+    //     //         setValidationError(errorMsg);
+    //     //     } 
+    //     //     // else if (response.data.invalidLeads) {
+    //     //     //     setValidationError(
+    //     //     //         `${response.data.invalidLeads.length} leads sans numéro de téléphone`
+    //     //     //     );
+    //     //     // }
+    //     // }
+    // } catch (error) {
+    //     console.error("Erreur lors de l'importation:", error);
+    //     message.error(
+    //         error.response?.data?.message || 
+    //         "Erreur inconnue lors de l'importation"
+    //     );
+    // } finally {
+    //     setIsImporting(false);
+    // }
 };
 
   const handleRemove = () => {

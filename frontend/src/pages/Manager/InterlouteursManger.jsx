@@ -325,6 +325,26 @@ const InterlouteursManager = () => {
       ),
     },
     {
+      title: "AGENCE",
+      dataIndex: "agence",
+      key: "agence",
+      render: (agence) => {
+        if (!agence) {
+          return <span className="text-gray-400 italic">Non définie</span>;
+        }
+        const colors = {
+          LILLE: "blue",
+          LENS: "green",
+          VALENCIENNES: "purple",
+        };
+        return (
+          <Tag color={colors[agence] || "default"} className="capitalize font-medium">
+            {agence}
+          </Tag>
+        );
+      },
+    },
+    {
       title: "DERNIÈRE ACTIVITÉ",
       key: "lastActivity",
       render: (_, record) => (
@@ -534,8 +554,9 @@ const InterlouteursManager = () => {
               <Input placeholder="Entrez le téléphone" />
             </Form.Item>
           </div>
+          
 
-          <div className="form-grid">
+          {/* <div className="form-grid">
             <Form.Item
               name="status"
               label="Statut"
@@ -565,8 +586,61 @@ const InterlouteursManager = () => {
             >
               <Input.Password placeholder="Entrez le mot de passe" />
             </Form.Item>
-          </div>
+          </div> */}
+{/* Statut + Agence */}
+<div className="form-grid">
+  <Form.Item
+    name="status"
+    label="Statut"
+    initialValue="active"
+    className="form-item"
+  >
+    <Select>
+      <Option value="active">Actif</Option>
+      <Option value="inactive">Inactif</Option>
+      <Option value="pending">En attente</Option>
+    </Select>
+  </Form.Item>
 
+  <Form.Item
+    name="agence"
+    label="Agence"
+    rules={[
+      {
+        required: true,
+        message: "Veuillez sélectionner une agence",
+      },
+    ]}
+    className="form-item"
+  >
+    <Select placeholder="-- Choisissez l'agence --" allowClear>
+      <Option value="LENS">LENS</Option>
+      <Option value="VALENCIENNES">VALENCIENNES</Option>
+      <Option value="LILLE">LILLE</Option>
+    </Select>
+  </Form.Item>
+</div>
+
+{/* Password */}
+<div className="form-grid">
+  <Form.Item
+    name="password"
+    label="Mot de passe"
+    rules={[
+      {
+        required: !isEditing,
+        message: "Veuillez entrer le mot de passe",
+      },
+      {
+        min: 6,
+        message: "Le mot de passe doit contenir au moins 6 caractères"
+      }
+    ]}
+    className="form-item"
+  >
+    <Input.Password placeholder="Entrez le mot de passe" />
+  </Form.Item>
+</div>
           {!isEditing && (
             <div className="bg-blue-50 p-3 rounded-lg mb-4">
               <p className="text-blue-700 text-sm">

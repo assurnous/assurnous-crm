@@ -888,6 +888,38 @@ if (filterValues.agence && filterValues.agence !== "tous") {
 
       const allLeads = response.data?.chatData || [];
       console.log("Total leads from API:", allLeads.length);
+      // ═══════════════════════════════════════════════════════════════
+// 🎯 NOUVEAU : Récupérer l'agence du manager/commercial connecté
+// ═══════════════════════════════════════════════════════════════
+let currentUserAgence = null;
+
+if (userRole === "manager") {
+  try {
+    // const managerRes = await axios.get(`/manager/${userId}`, {
+    //   headers: { Authorization: `Bearer ${token}` },
+    // });
+    const managerRes = await axios.get(`https://api.assurnous.com/manager/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    currentUserAgence = managerRes.data?.agence || null;
+    console.log("🎯 Manager agence:", currentUserAgence);
+  } catch (err) {
+    console.error("Erreur récupération agence manager:", err);
+  }
+} else if (userRole === "commercial") {
+  try {
+    // const commercialRes = await axios.get(`/commercials/${userId}`, {
+    //   headers: { Authorization: `Bearer ${token}` },
+    // });
+    const commercialRes = await axios.get(`https://api.assurnous.com/commercials/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    currentUserAgence = commercialRes.data?.agence || null;
+    console.log("🎯 Commercial agence:", currentUserAgence);
+  } catch (err) {
+    console.error("Erreur récupération agence commercial:", err);
+  }
+}
 
       // Get user information and team structure
       let userManagerId = null;
@@ -1019,43 +1051,92 @@ if (filterValues.agence && filterValues.agence !== "tous") {
           teamUserIds.includes(commercial._id?.toString())
         );
 
+        // filteredLeads = allLeads.filter((lead) => {
+        //   // Get manager from lead
+        //   const leadManagerId = lead.manager?._id?.toString() || lead.manager;
+
+        //   // Get gestionnaire from lead
+        //   const gestionnaireId =
+        //     lead.gestionnaire?._id?.toString() || lead.gestionnaire;
+
+        //   // Get commercial from lead
+        //   const commercialId =
+        //     lead.commercial?._id?.toString() || lead.commercial;
+
+        //   // Get creator (cree_par) from lead
+        //   const creatorName = lead.cree_par;
+
+        //   // Check multiple conditions:
+        //   // 1. Check if lead manager is in the team
+        //   const isTeamLeadManager = teamUserIds.some(
+        //     (teamUserId) => teamUserId?.toString() === leadManagerId?.toString()
+        //   );
+
+        //   // 2. Check if gestionnaire is in the team
+        //   const isTeamGestionnaire = teamUserIds.some(
+        //     (teamUserId) =>
+        //       teamUserId?.toString() === gestionnaireId?.toString()
+        //   );
+
+        //   // 3. Check if commercial is in the team
+        //   const isTeamCommercial = teamUserIds.some(
+        //     (teamUserId) => teamUserId?.toString() === commercialId?.toString()
+        //   );
+
+        //   // 4. Check by creator name (for backward compatibility)
+        //   // Look for any team member's name in the cree_par field
+        //   let isCreatedByTeam = false;
+        //   if (creatorName && teamMembers.length > 0) {
+        //     // Check if creatorName contains any team member's name
+        //     isCreatedByTeam = teamMembers.some((member) => {
+        //       const memberName = `${member.prenom || ""} ${
+        //         member.nom || ""
+        //       }`.trim();
+        //       return (
+        //         creatorName.includes(memberName) ||
+        //         memberName.includes(creatorName)
+        //       );
+        //     });
+        //   }
+
+        //   return (
+        //     isTeamLeadManager ||
+        //     isTeamGestionnaire ||
+        //     isTeamCommercial ||
+        //     isCreatedByTeam
+        //   );
+        // });
         filteredLeads = allLeads.filter((lead) => {
           // Get manager from lead
           const leadManagerId = lead.manager?._id?.toString() || lead.manager;
-
+        
           // Get gestionnaire from lead
           const gestionnaireId =
             lead.gestionnaire?._id?.toString() || lead.gestionnaire;
-
+        
           // Get commercial from lead
           const commercialId =
             lead.commercial?._id?.toString() || lead.commercial;
-
+        
           // Get creator (cree_par) from lead
           const creatorName = lead.cree_par;
-
+        
           // Check multiple conditions:
-          // 1. Check if lead manager is in the team
           const isTeamLeadManager = teamUserIds.some(
             (teamUserId) => teamUserId?.toString() === leadManagerId?.toString()
           );
-
-          // 2. Check if gestionnaire is in the team
+        
           const isTeamGestionnaire = teamUserIds.some(
             (teamUserId) =>
               teamUserId?.toString() === gestionnaireId?.toString()
           );
-
-          // 3. Check if commercial is in the team
+        
           const isTeamCommercial = teamUserIds.some(
             (teamUserId) => teamUserId?.toString() === commercialId?.toString()
           );
-
-          // 4. Check by creator name (for backward compatibility)
-          // Look for any team member's name in the cree_par field
+        
           let isCreatedByTeam = false;
           if (creatorName && teamMembers.length > 0) {
-            // Check if creatorName contains any team member's name
             isCreatedByTeam = teamMembers.some((member) => {
               const memberName = `${member.prenom || ""} ${
                 member.nom || ""
@@ -1066,15 +1147,25 @@ if (filterValues.agence && filterValues.agence !== "tous") {
               );
             });
           }
-
+        
+          // ═══════════════════════════════════════════════════════════════
+          // 🎯 NOUVEAU : Match par agence
+          // ═══════════════════════════════════════════════════════════════
+          let isSameAgence = false;
+          if (currentUserAgence && lead.agence) {
+            isSameAgence =
+              String(lead.agence).trim().toUpperCase() ===
+              String(currentUserAgence).trim().toUpperCase();
+          }
+        
           return (
             isTeamLeadManager ||
             isTeamGestionnaire ||
             isTeamCommercial ||
-            isCreatedByTeam
+            isCreatedByTeam ||
+            isSameAgence   // ⬅️ AJOUT : le lead est conservé si même agence
           );
         });
-
         console.log(`${userRole} filtered clients:`, {
           totalLeads: allLeads.length,
           filteredCount: filteredLeads.length,

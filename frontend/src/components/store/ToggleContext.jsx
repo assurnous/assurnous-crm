@@ -1,22 +1,47 @@
+// import React, { createContext, useEffect, useState } from "react";
+
+// export const ToggleContext = createContext();
+
+// export const ToggleProvider = ({ children }) => {
+//     const [collapsed, setCollapsed] = useState(false);;
+
+//     const onClickHandler = () => {
+//         setCollapsed(!collapsed)
+//     };
+//     useEffect(() => {
+//         const token = localStorage.getItem("token");
+//         if (token) {
+//             setCollapsed(false); // Ensure the sidebar is expanded if token exists
+//         }
+//     }, []);
+//     return (
+//         <ToggleContext.Provider value={{ collapsed,onClickHandler }}>
+//             {children}
+//         </ToggleContext.Provider>
+//     );
+// };
 import React, { createContext, useEffect, useState } from "react";
 
 export const ToggleContext = createContext();
 
 export const ToggleProvider = ({ children }) => {
-    const [collapsed, setCollapsed] = useState(false);;
+  // ⬇️ Initialisation basée sur la présence du token
+  const [collapsed, setCollapsed] = useState(() => {
+    const token = localStorage.getItem("token");
+    return !token;   // false (ouvert) si token, true (fermé) sinon
+  });
 
-    const onClickHandler = () => {
-        setCollapsed(!collapsed)
-    };
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            setCollapsed(false); // Ensure the sidebar is expanded if token exists
-        }
-    }, []);
-    return (
-        <ToggleContext.Provider value={{ collapsed,onClickHandler }}>
-            {children}
-        </ToggleContext.Provider>
-    );
+  const onClickHandler = (value) => {
+    if (typeof value === "boolean") {
+      setCollapsed(value);
+    } else {
+      setCollapsed((prev) => !prev);
+    }
+  };
+
+  return (
+    <ToggleContext.Provider value={{ collapsed, onClickHandler }}>
+      {children}
+    </ToggleContext.Provider>
+  );
 };

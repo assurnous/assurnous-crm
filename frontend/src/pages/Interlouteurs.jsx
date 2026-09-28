@@ -269,6 +269,26 @@ const Interlouteurs = () => {
         </div>
       ),
     },
+    {
+      title: "AGENCE",
+      dataIndex: "agence",
+      key: "agence",
+      render: (agence) => {
+        if (!agence) {
+          return <span className="text-gray-400 italic">Non définie</span>;
+        }
+        const colors = {
+          LILLE: "blue",
+          LENS: "green",
+          VALENCIENNES: "purple",
+        };
+        return (
+          <Tag color={colors[agence] || "default"} className="capitalize font-medium">
+            {agence}
+          </Tag>
+        );
+      },
+    },
     // {
     //   title: "LAST ACTIVITY",
     //   key: "lastActivity",
@@ -552,6 +572,23 @@ const Interlouteurs = () => {
                 <Option value="pending">En attente</Option>
               </Select>
             </Form.Item>
+            <Form.Item
+  name="agence"
+  label="Agence"
+  rules={[
+    {
+      required: userType === "manager" || userType === "commercial",
+      message: "L'agence est obligatoire",
+    },
+  ]}
+  className="form-item"
+>
+  <Select placeholder="-- Choisissez l'agence --" allowClear>
+    <Option value="LENS">LENS</Option>
+    <Option value="VALENCIENNES">VALENCIENNES</Option>
+    <Option value="LILLE">LILLE</Option>
+  </Select>
+</Form.Item>
             <Form.Item
               name="password"
               label="Mot de passe"

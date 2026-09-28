@@ -429,20 +429,27 @@ const SideBar = () => {
     })
     .filter(Boolean);
 
-  const toggleSidebar = () => {
-    if (!decodedToken) {
-      // Set sidebar to collapsed if token is missing (not logged in)
-      onClickHandler(true);
-    } else {
-      // Set sidebar to expanded if token exists
-      onClickHandler(false);
-    }
-  };
+  // const toggleSidebar = () => {
+  //   if (!decodedToken) {
+  //     // Set sidebar to collapsed if token is missing (not logged in)
+  //     onClickHandler(true);
+  //   } else {
+  //     // Set sidebar to expanded if token exists
+  //     onClickHandler(false);
+  //   }
+  // };
 
+  // useEffect(() => {
+  //   toggleSidebar();
+  // }, []);
   useEffect(() => {
-    toggleSidebar();
-  }, []);
-
+    // Ouvre le sidebar si connecté, ferme si déconnecté
+    if (decodedToken) {
+      onClickHandler(false);   // ouvert
+    } else {
+      onClickHandler(true);    // fermé
+    }
+  }, [token]);   // ⬅️ Dépendance sur le token pour se redéclencher au login
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(path);
 
