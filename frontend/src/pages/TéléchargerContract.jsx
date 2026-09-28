@@ -1045,23 +1045,66 @@ const handleLeadClick = (lead) => {
       dataIndex: "insurer",
       key: "insurer",
     },
+    // {
+    //   title: "Statut",
+    //   dataIndex: "status",
+    //   key: "status",
+    //   render: (status) => {
+    //     const statusMap = {
+    //       en_cours: { color: "green", text: "En cours" },
+    //       mise_en_demeure: { color: "volcano", text: "Mise en demeure" },
+    //       reduit: { color: "cyan", text: "Réduit" },
+    //       resilie: { color: "magenta", text: "Résilié" },
+    //       sans_effet: { color: "default", text: "Sans effet" },
+    //       suspendu: { color: "gold", text: "Suspendu" },
+    //       temporaire: { color: "lime", text: "Temporaire" },
+    //     };
+    //     return (
+    //       <Tag color={statusMap[status]?.color || "default"}>
+    //         {statusMap[status]?.text || status}
+    //       </Tag>
+    //     );
+    //   },
+    //   filters: [
+    //     { text: "En cours", value: "en_cours" },
+    //     { text: "Mise en demeure", value: "mise_en_demeure" },
+    //     { text: "Réduit", value: "reduit" },
+    //     { text: "Résilié", value: "resilie" },
+    //     { text: "Sans effet", value: "sans_effet" },
+    //     { text: "Suspendu", value: "suspendu" },
+    //     { text: "Temporaire", value: "temporaire" },
+    //   ],
+    //   onFilter: (value, record) => record.status === value,
+    // },
     {
       title: "Statut",
       dataIndex: "status",
       key: "status",
       render: (status) => {
         const statusMap = {
-          en_cours: { color: "green", text: "En cours" },
-          mise_en_demeure: { color: "volcano", text: "Mise en demeure" },
-          reduit: { color: "cyan", text: "Réduit" },
-          resilie: { color: "magenta", text: "Résilié" },
-          sans_effet: { color: "default", text: "Sans effet" },
-          suspendu: { color: "gold", text: "Suspendu" },
-          temporaire: { color: "lime", text: "Temporaire" },
+          en_cours:        { bg: "#16a34a", text: "En cours" },         // vert
+          mise_en_demeure: { bg: "#ea580c", text: "Mise en demeure" },  // orange foncé
+          reduit:          { bg: "#0891b2", text: "Réduit" },           // cyan foncé
+          resilie:         { bg: "#db2777", text: "Résilié" },          // rose/magenta
+          sans_effet:      { bg: "#6b7280", text: "Sans effet" },       // gris
+          suspendu:        { bg: "#ca8a04", text: "Suspendu" },         // or/doré
+          temporaire:      { bg: "#65a30d", text: "Temporaire" },       // lime foncé
         };
+    
+        const conf = statusMap[status];
+    
         return (
-          <Tag color={statusMap[status]?.color || "default"}>
-            {statusMap[status]?.text || status}
+          <Tag
+            style={{
+              backgroundColor: conf?.bg || "#6b7280",
+              color: "#fff",
+              border: "none",
+              fontWeight: 600,
+              padding: "2px 10px",
+              borderRadius: 4,
+            }}
+          >
+            {conf?.text || status}
           </Tag>
         );
       },
@@ -1154,38 +1197,81 @@ const handleLeadClick = (lead) => {
       },
     },
  
+    // {
+    //   title: "Actions",
+    //   key: "actions",
+    //   render: (_, record) => (
+    //     <Space size="middle">
+    
+    //         <Button
+    //           icon={<DownloadOutlined />}
+    //           onClick={() => {
+    //             // Open first document in new tab
+    //             window.open(record.documents[0].url, "_blank");
+    //           }}
+    //           type="text"
+    //           title="Télécharger le document"
+    //         />
+      
+      
+    //         <Button
+    //           icon={<EditOutlined />}
+    //           onClick={() => handleEdit(record)}
+    //           type="text"
+    //         />
+    
+      
+    //         <Button
+    //           icon={<DeleteOutlined />}
+    //           onClick={() => showDeleteConfirm(record.key)}
+    //           type="text"
+    //           danger
+    //         />
+    //     </Space>
+    //   ),
+    // },
     {
       title: "Actions",
       key: "actions",
-      render: (_, record) => (
-        <Space size="middle">
+      render: (_, record) => {
+        const hasDocument =
+          Array.isArray(record.documents) && record.documents.length > 0;
     
+        return (
+          <Space size="middle">
             <Button
               icon={<DownloadOutlined />}
               onClick={() => {
-                // Open first document in new tab
-                window.open(record.documents[0].url, "_blank");
+                if (hasDocument) {
+                  window.open(record.documents[0].url, "_blank");
+                } else {
+                  message.warning("Aucun document disponible pour ce contrat");
+                }
               }}
               type="text"
-              title="Télécharger le document"
+              title={
+                hasDocument
+                  ? "Télécharger le document"
+                  : "Aucun document disponible"
+              }
+              disabled={!hasDocument}   // 👈 disables the button when no doc
             />
-      
-      
+    
             <Button
               icon={<EditOutlined />}
               onClick={() => handleEdit(record)}
               type="text"
             />
     
-      
             <Button
               icon={<DeleteOutlined />}
               onClick={() => showDeleteConfirm(record.key)}
               type="text"
               danger
             />
-        </Space>
-      ),
+          </Space>
+        );
+      },
     },
   ];
 

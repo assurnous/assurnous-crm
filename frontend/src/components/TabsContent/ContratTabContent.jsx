@@ -356,20 +356,63 @@ const ContratTabContent = () => {
       dataIndex: "insurer",
       key: "insurer",
     },
+    // {
+    //   title: "Statut",
+    //   dataIndex: "status",
+    //   key: "status",
+    //   render: (status) => {
+    //     const statusMap = {
+    //       etude: { color: "blue", text: "En étude" },
+    //       devis_envoye: { color: "orange", text: "Devis envoyé" },
+    //       attente_signature: { color: "purple", text: "En attente signature" },
+    //       cloture_sans_suite: { color: "red", text: "Clôturé sans suite" },
+    //     };
+    //     return (
+    //       <Tag color={statusMap[status]?.color || "default"}>
+    //         {statusMap[status]?.text || status}
+    //       </Tag>
+    //     );
+    //   },
+    //   filters: [
+    //     { text: "En cours", value: "en_cours" },
+    //     { text: "Mise en demeure", value: "mise_en_demeure" },
+    //     { text: "Réduit", value: "reduit" },
+    //     { text: "Résilié", value: "resilie" },
+    //     { text: "Sans effet", value: "sans_effet" },
+    //     { text: "Suspendu", value: "suspendu" },
+    //     { text: "Temporaire", value: "temporaire" }
+    //   ],
+    //   onFilter: (value, record) => record.status === value,
+    // },
     {
       title: "Statut",
       dataIndex: "status",
       key: "status",
       render: (status) => {
         const statusMap = {
-          etude: { color: "blue", text: "En étude" },
-          devis_envoye: { color: "orange", text: "Devis envoyé" },
-          attente_signature: { color: "purple", text: "En attente signature" },
-          cloture_sans_suite: { color: "red", text: "Clôturé sans suite" },
+          en_cours:        { bg: "#16a34a", text: "En cours" },         // vert
+          mise_en_demeure: { bg: "#ea580c", text: "Mise en demeure" },  // orange foncé
+          reduit:          { bg: "#0891b2", text: "Réduit" },           // cyan foncé
+          resilie:         { bg: "#db2777", text: "Résilié" },          // rose/magenta
+          sans_effet:      { bg: "#6b7280", text: "Sans effet" },       // gris
+          suspendu:        { bg: "#ca8a04", text: "Suspendu" },         // or/doré
+          temporaire:      { bg: "#65a30d", text: "Temporaire" },       // lime foncé
         };
+    
+        const conf = statusMap[status];
+    
         return (
-          <Tag color={statusMap[status]?.color || "default"}>
-            {statusMap[status]?.text || status}
+          <Tag
+            style={{
+              backgroundColor: conf?.bg || "#6b7280",
+              color: "#fff",
+              border: "none",
+              fontWeight: 600,
+              padding: "2px 10px",
+              borderRadius: 4,
+            }}
+          >
+            {conf?.text || status}
           </Tag>
         );
       },
@@ -380,7 +423,7 @@ const ContratTabContent = () => {
         { text: "Résilié", value: "resilie" },
         { text: "Sans effet", value: "sans_effet" },
         { text: "Suspendu", value: "suspendu" },
-        { text: "Temporaire", value: "temporaire" }
+        { text: "Temporaire", value: "temporaire" },
       ],
       onFilter: (value, record) => record.status === value,
     },

@@ -1887,6 +1887,7 @@ const Home = () => {
   const [filterYear, setFilterYear] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
   const [availableYears, setAvailableYears] = useState([]);
+  const [filterStatus, setFilterStatus] = useState(""); 
   const [rawContrats, setRawContrats] = useState([]);
   const [rawClients, setRawClients] = useState([]);
   const [rawDigitalClients, setRawDigitalClients] = useState([]);
@@ -1925,22 +1926,43 @@ const Home = () => {
     }
   }, []);
 
+  // const filteredContrats = useMemo(() => {
+  //   if (!filterYear && !filterMonth) return rawContrats;
+
+  //   return rawContrats.filter((c) => {
+  //     const d = c.effectiveDate || c.createdAt;
+  //     if (!d) return !filterYear && !filterMonth;
+
+  //     const date = new Date(d);
+  //     const y = date.getUTCFullYear();
+  //     const m = date.getUTCMonth() + 1;
+
+  //     if (filterYear && y !== parseInt(filterYear)) return false;
+  //     if (filterMonth && m !== parseInt(filterMonth)) return false;
+  //     return true;
+  //   });
+  // }, [rawContrats, filterYear, filterMonth]);
   const filteredContrats = useMemo(() => {
-    if (!filterYear && !filterMonth) return rawContrats;
-
     return rawContrats.filter((c) => {
-      const d = c.effectiveDate || c.createdAt;
-      if (!d) return !filterYear && !filterMonth;
-
-      const date = new Date(d);
-      const y = date.getUTCFullYear();
-      const m = date.getUTCMonth() + 1;
-
-      if (filterYear && y !== parseInt(filterYear)) return false;
-      if (filterMonth && m !== parseInt(filterMonth)) return false;
+      // ── Period filter (year/month) ──
+      if (filterYear || filterMonth) {
+        const d = c.effectiveDate || c.createdAt;
+        if (!d) return false;
+  
+        const date = new Date(d);
+        const y = date.getUTCFullYear();
+        const m = date.getUTCMonth() + 1; // 1-12
+  
+        if (filterYear && y !== parseInt(filterYear)) return false;
+        if (filterMonth && m !== parseInt(filterMonth)) return false;
+      }
+  
+      // ── Status filter ──
+      if (filterStatus && c.status !== filterStatus) return false;
+  
       return true;
     });
-  }, [rawContrats, filterYear, filterMonth]);
+  }, [rawContrats, filterYear, filterMonth, filterStatus]);
 
   useEffect(() => {
     if (!rawContrats.length && !rawClients.length) return;
@@ -2556,8 +2578,22 @@ const Home = () => {
           <option value="11">Novembre</option>
           <option value="12">Décembre</option>
         </select>
-
-        {(filterYear || filterMonth) && (
+{/* ── Status filter ── */}
+<select
+  value={filterStatus}
+  onChange={(e) => setFilterStatus(e.target.value)}
+  className="border border-gray-300 rounded px-3 py-1 text-sm bg-white"
+>
+  <option value="">Tous les statuts</option>
+  <option value="en_cours">En cours</option>
+  <option value="mise_en_demeure">Mise en demeure</option>
+  <option value="reduit">Réduit</option>
+  <option value="resilie">Résilié</option>
+  <option value="sans_effet">Sans effet</option>
+  <option value="suspendu">Suspendu</option>
+  <option value="temporaire">Temporaire</option>
+</select>
+        {/* {(filterYear || filterMonth) && (
           <button
             onClick={() => {
               setFilterYear("");
@@ -2567,15 +2603,44 @@ const Home = () => {
           >
             Réinitialiser
           </button>
-        )}
+        )} */}
+        {(filterYear || filterMonth || filterStatus) && (
+  <button
+    onClick={() => {
+      setFilterYear("");
+      setFilterMonth("");
+      setFilterStatus("");   // 👈 ADD THIS
+    }}
+    className="text-sm text-blue-600 hover:underline"
+  >
+    Réinitialiser
+  </button>
+)}
 
-        <span className="text-sm text-gray-500 ml-auto">
+        {/* <span className="text-sm text-gray-500 ml-auto">
           {filteredContrats.length} contrat
           {filteredContrats.length > 1 ? "s" : ""}
           {filterYear
             ? ` — ${filterMonth ? MONTH_NAMES[filterMonth] + " " : ""}${filterYear}`
             : ""}
-        </span>
+        </span> */}
+        <span className="text-sm text-gray-500 ml-auto">
+  {filteredContrats.length} contrat{filteredContrats.length > 1 ? "s" : ""}
+  {filterYear
+    ? ` — ${filterMonth ? MONTH_NAMES[filterMonth] + " " : ""}${filterYear}`
+    : ""}
+  {filterStatus
+    ? ` — ${{
+        en_cours: "En cours",
+        mise_en_demeure: "Mise en demeure",
+        reduit: "Réduit",
+        resilie: "Résilié",
+        sans_effet: "Sans effet",
+        suspendu: "Suspendu",
+        temporaire: "Temporaire",
+      }[filterStatus] || filterStatus}`
+    : ""}
+</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

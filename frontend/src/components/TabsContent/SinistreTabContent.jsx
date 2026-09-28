@@ -1442,17 +1442,52 @@ dateDeclaration: sinistre.dateDeclaration
       dataIndex: "dateDeclaration",
       key: "dateDeclaration",
     },
+    // {
+    //   title: "Statut",
+    //   dataIndex: "statutSinistre",
+    //   key: "statutSinistre",
+    //   render: (status) => {
+    //     const statusMap = {
+    //       en_cours: "En cours",
+    //       clo: "Clôturé",
+    //       reouvert: "Réouvert",
+    //     };
+    //     return statusMap[status] || status;
+    //   },
+    //   filters: [
+    //     { text: "En cours", value: "en_cours" },
+    //     { text: "Clôturé", value: "clo" },
+    //     { text: "Réouvert", value: "reouvert" },
+    //   ],
+    //   onFilter: (value, record) => record.statutSinistre === value,
+    // },
     {
       title: "Statut",
       dataIndex: "statutSinistre",
       key: "statutSinistre",
       render: (status) => {
         const statusMap = {
-          en_cours: "En cours",
-          clo: "Clôturé",
-          reouvert: "Réouvert",
+          en_cours: { bg: "#16a34a", text: "En cours" },   // vert
+          clo:      { bg: "#6b7280", text: "Clôturé" },    // gris
+          reouvert: { bg: "#ea580c", text: "Réouvert" },   // orange foncé
         };
-        return statusMap[status] || status;
+    
+        const conf = statusMap[status];
+    
+        return (
+          <Tag
+            style={{
+              backgroundColor: conf?.bg || "#6b7280",
+              color: "#fff",
+              border: "none",
+              fontWeight: 600,
+              padding: "2px 10px",
+              borderRadius: 4,
+            }}
+          >
+            {conf?.text || status}
+          </Tag>
+        );
       },
       filters: [
         { text: "En cours", value: "en_cours" },
