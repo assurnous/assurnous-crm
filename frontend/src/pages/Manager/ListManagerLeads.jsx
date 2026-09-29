@@ -67,6 +67,7 @@ const ListManagerLeads = () => {
   const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
   const [isUnassignModalVisible, setIsUnassignModalVisible] = useState(false);
   const [isOpenModalImport, setIsOpenModalImport] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [assignForm] = Form.useForm();
   const [unassignForm] = Form.useForm();
   const [currentManagerId, setCurrentManagerId] = useState(null);
@@ -1481,6 +1482,58 @@ if (userRole === "manager") {
       message.error("Échec de la suppression du client");
     }
   };
+  // ═════════════════════════════════════════════════════════════════
+// 🎯 Suppression en masse de clients (page manager)
+// ═════════════════════════════════════════════════════════════════
+const handleBulkDelete = () => {
+  if (selectedLeads.length === 0) {
+    message.warning("Aucun client sélectionné");
+    return;
+  }
+
+  Modal.confirm({
+    title: "Confirmer la suppression",
+    content: `Êtes-vous sûr de vouloir supprimer ${selectedLeads.length} client(s) ? Cette action est irréversible.`,
+    okText: "Oui, supprimer",
+    okType: "danger",
+    cancelText: "Non",
+    onOk: async () => {
+      setBulkDeleting(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.post(
+          "/lead/bulk-delete",
+          { ids: selectedLeads },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        console.log("🗑️ Réponse bulk delete leads (manager):", res.data);
+
+        message.success(
+          `${res.data.deletedCount} client(s) supprimé(s) avec succès`
+        );
+
+        // Retirer les clients supprimés des states
+        const deletedSet = new Set(selectedLeads);
+        setChatData((prev) =>
+          prev.filter((lead) => !deletedSet.has(lead._id))
+        );
+        setFilteredData((prev) =>
+          prev.filter((lead) => !deletedSet.has(lead._id))
+        );
+        setSelectedLeads([]);
+      } catch (error) {
+        console.error("❌ Erreur suppression en masse (manager):", error);
+        message.error(
+          error.response?.data?.message ||
+            "Erreur lors de la suppression des clients"
+        );
+      } finally {
+        setBulkDeleting(false);
+      }
+    },
+  });
+};
 
   // Helper function to get column value
   const getColumnValue = (item, columnKey) => {
@@ -1987,6 +2040,19 @@ if (userRole === "manager") {
       </span>
     </div>
   </Button>
+  {["admin", "manager"].includes(currentUserInfo?.role?.toLowerCase()) && (
+    <Button
+      danger
+      type="primary"
+      icon={<DeleteOutlined />}
+      onClick={handleBulkDelete}
+      disabled={selectedLeads.length === 0}
+      loading={bulkDeleting}
+      className="w-full md:w-auto"
+    >
+      Supprimer {selectedLeads.length > 0 ? `(${selectedLeads.length})` : ""}
+    </Button>
+  )}
 </div>
       </div>
 
