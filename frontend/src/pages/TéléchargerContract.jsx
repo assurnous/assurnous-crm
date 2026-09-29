@@ -588,17 +588,23 @@ if (filterValues.search) {
         const currentUserId = decodedToken?.userId;
         const userRole = decodedToken?.role?.toLowerCase();
         
-        // Fetch all contracts
+        // // Fetch all contracts
+        // const response = await axios.get("/contrat", {
+        //   headers: { Authorization: `Bearer ${token}` }
+        // });
+       
+  
+        // const allContrat = response.data || [];
         const response = await axios.get("/contrat", {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        console.log("Fetched all contracts:", {
-          count: response.data?.length,
-          firstContract: response.data?.[0]
-        });
-  
-        const allContrat = response.data || [];
+        // Extraire le tableau selon la structure de la réponse
+        const allContrat = Array.isArray(response.data)
+          ? response.data                        // réponse directe : [ ... ]
+          : response.data?.data || [];            // réponse wrappée : { success, data: [ ... ] }
+        
+        console.log("📊 Total contrats reçus:", allContrat.length);
         
         // Get user information and team structure
         let userManagerId = null;

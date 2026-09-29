@@ -173,21 +173,43 @@ const ContratTabContent = () => {
           throw new Error("Missing contrat ID for update");
         }
   
-        response = await axios.put(`/contrat/${contratId}`, formData);
+      //   response = await axios.put(`/contrat/${contratId}`, formData);
+      // setContratData(prev => prev.map(item => 
+      //   item.key === contratId ? formatContratItem(response.data) : item
+      // ));
+      // setFilteredContrat(prev => prev.map(item => 
+      //   item.key === contratId ? formatContratItem(response.data) : item
+      // ));
+      response = await axios.put(`/contrat/${contratId}`, formData);
+  
+      const updatedContrat =
+      response.data?.contract ||
+      response.data?.data ||
+      response.data;
+      
       setContratData(prev => prev.map(item => 
-        item.key === contratId ? formatContratItem(response.data) : item
+        item.key === contratId ? formatContratItem(updatedContrat) : item
       ));
       setFilteredContrat(prev => prev.map(item => 
-        item.key === contratId ? formatContratItem(response.data) : item
+        item.key === contratId ? formatContratItem(updatedContrat) : item
       ));
         message.success("Contrat mis à jour avec succès");
         form.resetFields();
         setIsModalOpen(false);
       } else {
         // CREATE NEW CONTRAT
+        // response = await axios.post("/contrat", formData);
+        // const newItem = formatContratItem(response.data);
         response = await axios.post("/contrat", formData);
-        const newItem = formatContratItem(response.data);
-      
+        console.log("✅ POST /contrat response:", response.data);
+        
+        // 🎯 Extraction défensive : gère "contract", "data" et objet direct
+        const createdContrat =
+          response.data?.contract ||     // ⬅️ AJOUTER cette clé (votre backend)
+          response.data?.data ||          // fallback générique
+          response.data;                  // fallback ultime
+        
+        const newItem = formatContratItem(createdContrat);
         setContratData(prev => [newItem, ...prev]);
         setFilteredContrat(prev => [newItem, ...prev]);
         setCurrentPage(1);
