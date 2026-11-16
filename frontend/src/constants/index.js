@@ -775,7 +775,7 @@ export const ASSUREURS = [
 {value: 'leocare', label: 'Leocare'},
 {value: 'hiscox', label: 'Hiscox'},
 {value: 'add_value', label: 'Add Value'},
-{ vaue: 'air_bag', label: 'Air Bag'},
+{ value: 'air_bag', label: 'Air Bag'},
 ];
 
   export const RISQUES = [
