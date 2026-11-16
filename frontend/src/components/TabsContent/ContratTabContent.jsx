@@ -769,6 +769,7 @@ const handleEdit = (record) => {
             >
               <Select 
                 showSearch
+                allowClear
                 placeholder="-- Choisissez --"
                 optionFilterProp="children"
                 filterOption={(input, option) =>
