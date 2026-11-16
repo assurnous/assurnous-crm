@@ -1931,50 +1931,61 @@ const Sinistres = () => {
                     </Form.Item>
                   )} */}
                   {contratExist === "oui" && (
-  <Form.Item
-    label="Contrat"
-    name="contratId"
-    rules={[{ required: false, message: "Le champ contrat est obligatoire" }]}
-  >
-    <Select
-      placeholder={
-        loadingContrats
-          ? "Chargement..."
-          : !selectedClientId
-          ? "-- Sélectionnez d'abord un sinistré --"
-          : "-- Choisissez un contrat --"
-      }
-      loading={loadingContrats}
-      showSearch
-      optionFilterProp="label"
-      disabled={!selectedClientId}
-      notFoundContent={
-        loadingContrats
-          ? "Chargement..."
-          : !selectedClientId
-          ? "Sélectionnez d'abord un sinistré"
-          : "Aucun contrat pour ce client"
-      }
-    >
-      {contrats
-        .filter((contrat) => {
-          const leadId =
-            contrat.lead?._id?.toString() ||
-            contrat.lead?.toString() ||
-            contrat.leadId?.toString();
-          return leadId === selectedClientId?.toString();
-        })
-        .map((contrat) => {
-          const label = `${contrat.contractNumber || ""} - ${contrat.insurer || ""}`;
-          return (
-            <Option key={contrat._id} value={contrat._id} label={label}>
-              {label}
-            </Option>
-          );
-        })}
-    </Select>
-  </Form.Item>
-)}
+                    <Form.Item
+                      label="Contrat"
+                      name="contratId"
+                      rules={[
+                        {
+                          required: false,
+                          message: "Le champ contrat est obligatoire",
+                        },
+                      ]}
+                    >
+                      <Select
+                        placeholder={
+                          loadingContrats
+                            ? "Chargement..."
+                            : !selectedClientId
+                            ? "-- Sélectionnez d'abord un sinistré --"
+                            : "-- Choisissez un contrat --"
+                        }
+                        loading={loadingContrats}
+                        showSearch
+                        optionFilterProp="label"
+                        disabled={!selectedClientId}
+                        notFoundContent={
+                          loadingContrats
+                            ? "Chargement..."
+                            : !selectedClientId
+                            ? "Sélectionnez d'abord un sinistré"
+                            : "Aucun contrat pour ce client"
+                        }
+                      >
+                        {contrats
+                          .filter((contrat) => {
+                            const leadId =
+                              contrat.lead?._id?.toString() ||
+                              contrat.lead?.toString() ||
+                              contrat.leadId?.toString();
+                            return leadId === selectedClientId?.toString();
+                          })
+                          .map((contrat) => {
+                            const label = `${contrat.contractNumber || ""} - ${
+                              contrat.insurer || ""
+                            }`;
+                            return (
+                              <Option
+                                key={contrat._id}
+                                value={contrat._id}
+                                label={label}
+                              >
+                                {label}
+                              </Option>
+                            );
+                          })}
+                      </Select>
+                    </Form.Item>
+                  )}
 
                   {/* If contract doesn't exist (non) - show manual entry */}
                   {contratExist === "non" && (
@@ -2020,6 +2031,7 @@ const Sinistres = () => {
               <Form.Item name="assureur" label="Assureur" className="w-full">
                 <Select
                   showSearch
+                  allowClear
                   placeholder="-- Choisissez --"
                   optionFilterProp="children"
                   filterOption={(input, option) =>
