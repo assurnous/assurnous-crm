@@ -2029,7 +2029,7 @@ const Sinistres = () => {
                 </Select>
               </Form.Item>
 
-              <Form.Item name="assureur" label="Assureur" className="w-full">
+              {/* <Form.Item name="assureur" label="Assureur" className="w-full">
                 <Select
                   showSearch
                   allowClear
@@ -2049,7 +2049,22 @@ const Sinistres = () => {
                     </Option>
                   ))}
                 </Select>
-              </Form.Item>
+              </Form.Item> */}
+              <Form.Item name="assureur" label="Assureur" className="w-full">
+  <Select
+    showSearch
+    allowClear
+    placeholder="-- Choisissez --"
+    optionFilterProp="label"          // search on the label field, not children
+    options={ASSUREURS}               // pass data directly; no <Option> mapping
+    filterOption={(input, option) =>
+      (option?.label ?? "")
+        .toLowerCase()
+        .includes(input.toLowerCase())
+    }
+    className="w-full"
+  />
+</Form.Item>
 
               <Form.Item
                 label="Date de sinistre"
