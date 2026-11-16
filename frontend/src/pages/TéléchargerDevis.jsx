@@ -1749,6 +1749,7 @@ console.log("clients state:", {
           className="w-full text-xs h-7"
           placeholder="Sélectionnez un type de risque"
           showSearch
+          allowClear
           optionFilterProp="children"
           filterOption={(input, option) =>
             option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
@@ -1775,6 +1776,7 @@ console.log("clients state:", {
                   >
                     <Select
               showSearch
+              allowClear
               placeholder="Sélectionnez un assureur"
               optionFilterProp="children"
               filterOption={(input, option) =>

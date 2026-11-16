@@ -2013,6 +2013,7 @@ const Sinistres = () => {
               <Form.Item name="risque" label="Risque" className="w-full">
                 <Select
                   showSearch
+                  allowClear
                   placeholder="-- Choisissez --"
                   optionFilterProp="children"
                   filterOption={(input, option) =>
