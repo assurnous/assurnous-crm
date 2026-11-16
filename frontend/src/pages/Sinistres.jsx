@@ -2034,8 +2034,11 @@ const Sinistres = () => {
                   allowClear
                   placeholder="-- Choisissez --"
                   optionFilterProp="children"
+                  // filterOption={(input, option) =>
+                  //   option.children.toLowerCase().includes(input.toLowerCase())
+                  // }
                   filterOption={(input, option) =>
-                    option.children.toLowerCase().includes(input.toLowerCase())
+                    (option?.children ?? "").toString().toLowerCase().includes(input.toLowerCase())
                   }
                   className="w-full"
                 >
