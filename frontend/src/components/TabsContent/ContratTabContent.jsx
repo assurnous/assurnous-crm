@@ -747,7 +747,7 @@ const handleEdit = (record) => {
               label="Risque"
               rules={[{ required: false, message: 'Ce champ est obligatoire' }]}
             >
-              <Select placeholder="-- Choisissez --" showSearch
+              <Select placeholder="-- Choisissez --" showSearch allowClear
               className="w-full" 
               filterOption={(input, option) =>
                 option.children.toLowerCase().includes(input.toLowerCase())

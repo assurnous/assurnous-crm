@@ -2274,6 +2274,7 @@ const SinistreTabContent = () => {
                 <Select
                   placeholder="-- Choisissez --"
                   showSearch
+                  allowClear
                   className="w-full"
                   filterOption={(input, option) =>
                     option.children.toLowerCase().includes(input.toLowerCase())
