@@ -888,7 +888,7 @@ export const ASSUREURS = [
   { value: "assurmax", label: "Assurmax" },
   { value: "xenassur", label: "Xenassur" },
   { value: "mila", label: "Mila" },
-  { value: "leocare", label: "Léocare" },
+  { value: "leocare", label: "Leocare" },
   { value: "maxence", label: "Maxence" },
   { value: "wazari", label: "Wazari" },
   { value: "hiscox", label: "Hiscox" },
